@@ -8,7 +8,7 @@ public class PlatformImpl implements Platform {
 
     @Override
     public FakeArmorStand createFakeArmorStand() {
-        return new FakeArmorStandImpl();
+        return new FakeTextDisplayImpl();
     }
 
     @Override
