@@ -31,13 +31,19 @@ repositories {
     }    
 }
 
-val localDependencies = 
+val spigotNmsAllDependency = "de.epiceric:shopchest-nms-spigot-all:1.0.4"
+val spigotNmsAllJar = file(
+    "${System.getProperty("user.home")}/.m2/repository/de/epiceric/shopchest-nms-spigot-all/1.0.4/shopchest-nms-spigot-all-1.0.4.jar"
+)
+
 tasks.shadowJar {
     dependencies {
         include(project(":nms:interface"))
         include(project(":nms:reflection"))
         include(project(":nms:paper"))
-        include(dependency("de.epiceric:shopchest-nms-spigot-all"))
+        if (spigotNmsAllJar.isFile) {
+            include(dependency("de.epiceric:shopchest-nms-spigot-all"))
+        }
         include(dependency("org.inventivetalent:reflectionhelper"))
         include(dependency("org.codemc.worldguardwrapper:worldguardwrapper"))
         include(dependency("org.bstats:bstats-base"))
@@ -55,7 +61,9 @@ dependencies {
     implementation(project(":nms:interface"))
     implementation(project(":nms:reflection"))
     implementation(project(":nms:paper"))
-    implementation("de.epiceric:shopchest-nms-spigot-all:1.0.4")
+    if (spigotNmsAllJar.isFile) {
+        implementation(spigotNmsAllDependency)
+    }
     // Shaded api
     implementation("org.inventivetalent:reflectionhelper:1.18.13-SNAPSHOT")
     implementation("org.codemc.worldguardwrapper:worldguardwrapper:1.2.0-SNAPSHOT")
