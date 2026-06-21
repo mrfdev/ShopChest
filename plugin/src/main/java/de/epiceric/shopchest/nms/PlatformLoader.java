@@ -164,7 +164,8 @@ public class PlatformLoader {
     }
 
     private Platform getPaperPlatform(String minecraftVersionId) {
-        if ("26.1".equals(minecraftVersionId) || minecraftVersionId.startsWith("26.1.")) {
+        if ("26.1".equals(minecraftVersionId) || minecraftVersionId.startsWith("26.1.")
+                || "26.2".equals(minecraftVersionId) || minecraftVersionId.startsWith("26.2.")) {
             return new de.epiceric.shopchest.nms.paper.v1_21_7.PlatformImpl();
         }
         switch (minecraftVersionId) {

@@ -1,9 +1,13 @@
 package de.epiceric.shopchest.language.item;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.logging.Level;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
+import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -15,9 +19,8 @@ import de.epiceric.shopchest.ShopChest;
 
 public class LocalizedItemNameManager implements ItemNameManager {
 
-    private final static String ERROR_ITEM_NAME = "ERROR";
-
     private final Map<String, String> itemTranslations;
+    private final Set<String> missingTranslations = ConcurrentHashMap.newKeySet();
 
     public LocalizedItemNameManager(@NotNull Map<String, String> itemTranslations) {
         this.itemTranslations = itemTranslations;
@@ -33,6 +36,11 @@ public class LocalizedItemNameManager implements ItemNameManager {
         final ItemMeta meta;
         if (!stack.hasItemMeta() || (meta = stack.getItemMeta()) == null) {
             return getDefaultName(stack);
+        }
+
+        final String itemName;
+        if (meta.hasItemName() && !(itemName = meta.getItemName()).isEmpty()) {
+            return itemName;
         }
 
         final String displayName;
@@ -63,22 +71,70 @@ public class LocalizedItemNameManager implements ItemNameManager {
 
     @NotNull
     private String getDefaultName(@NotNull ItemStack stack) {
-        try {
-            return getCached(stack.getTranslationKey());
-        } catch (Exception e) {
-            ShopChest.getInstance().getLogger().log(Level.SEVERE, e.getMessage());
-            return ERROR_ITEM_NAME;
+        final String key = getTranslationKey(stack);
+        final String cachedTranslation = itemTranslations.get(key);
+        if (cachedTranslation != null && !cachedTranslation.isEmpty()) {
+            return cachedTranslation;
         }
+        if (!itemTranslations.isEmpty() && missingTranslations.add(key)) {
+            ShopChest.getInstance().getLogger().warning("Could not get the item translation for '" + key
+                    + "'. Falling back to a generated item name.");
+        }
+        return getReadableName(stack);
     }
 
     @NotNull
-    private String getCached(@NotNull String key) {
-        final String cachedTranslation = itemTranslations.get(key);
-        if (cachedTranslation == null) {
-            // Keep this behavior to ensure quick fixes
-            throw new RuntimeException("Could not get the translation for '" + key + "'. Report it to github");
+    public static String getReadableName(@NotNull ItemStack stack) {
+        return getReadableName(stack.getType(), getTranslationKey(stack));
+    }
+
+    @NotNull
+    private static String getTranslationKey(@NotNull ItemStack stack) {
+        final Material type = stack.getType();
+        if (type.isItem()) {
+            try {
+                return type.asItemType().getTranslationKey();
+            } catch (Exception ignored) {
+                // Fall back to a registry-derived key below.
+            }
         }
-        return cachedTranslation;
+
+        final NamespacedKey key = type.getKeyOrNull();
+        if (key == null) {
+            return type.name().toLowerCase(Locale.ROOT);
+        }
+
+        final String prefix = type.isBlock() ? "block" : "item";
+        return prefix + "." + key.getNamespace() + "." + key.getKey();
+    }
+
+    @NotNull
+    private static String getReadableName(@NotNull Material type, @NotNull String translationKey) {
+        String name = translationKey;
+        final int lastDot = name.lastIndexOf('.');
+        if (lastDot >= 0 && lastDot + 1 < name.length()) {
+            name = name.substring(lastDot + 1);
+        }
+        final int lastColon = name.lastIndexOf(':');
+        if (lastColon >= 0 && lastColon + 1 < name.length()) {
+            name = name.substring(lastColon + 1);
+        }
+        if (name.isEmpty()) {
+            name = type.name().toLowerCase(Locale.ROOT);
+        }
+
+        final StringBuilder readableName = new StringBuilder(name.length());
+        for (String word : name.split("_")) {
+            if (word.isEmpty()) continue;
+            if (readableName.length() > 0) {
+                readableName.append(' ');
+            }
+            readableName.append(Character.toUpperCase(word.charAt(0)));
+            if (word.length() > 1) {
+                readableName.append(word.substring(1));
+            }
+        }
+        return readableName.length() == 0 ? type.name() : readableName.toString();
     }
 
 }

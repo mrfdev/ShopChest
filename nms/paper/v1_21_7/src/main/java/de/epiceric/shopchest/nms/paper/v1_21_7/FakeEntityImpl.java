@@ -22,15 +22,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class FakeEntityImpl<T> implements FakeEntity {
 
-    private final static AtomicInteger ENTITY_COUNTER;
+    private final static int FAKE_ENTITY_ID_START = 1_000_000_000;
+    private final static AtomicInteger NEXT_FAKE_ENTITY_ID = new AtomicInteger(FAKE_ENTITY_ID_START);
     private final static EntityDataAccessor<Boolean> DATA_NO_GRAVITY;
     private final static EntityDataAccessor<Boolean> DATA_SILENT;
 
     static {
         try {
-            final Field entityCounterField = Entity.class.getDeclaredField(ObfuscatedFieldNames.ENTITY_COUNTER);
-            entityCounterField.setAccessible(true);
-            ENTITY_COUNTER = (AtomicInteger) entityCounterField.get(null);
             final Field dataNoGravityField = Entity.class.getDeclaredField(ObfuscatedFieldNames.DATA_NO_GRAVITY);
             dataNoGravityField.setAccessible(true);
             DATA_NO_GRAVITY = forceCast(dataNoGravityField.get(null));
@@ -45,12 +43,28 @@ public abstract class FakeEntityImpl<T> implements FakeEntity {
     protected final int entityId;
 
     public FakeEntityImpl() {
-        entityId = ENTITY_COUNTER.incrementAndGet();
+        entityId = NEXT_FAKE_ENTITY_ID.incrementAndGet();
     }
 
     @SuppressWarnings("unchecked")
     protected static <T> T forceCast(Object o) {
         return (T) o;
+    }
+
+    protected static EntityType<?> entityType(String fieldName) {
+        try {
+            Class<?> owner;
+            try {
+                owner = Class.forName("net.minecraft.world.entity.EntityTypes");
+            } catch (ClassNotFoundException ignored) {
+                owner = EntityType.class;
+            }
+            final Field field = owner.getDeclaredField(fieldName);
+            field.setAccessible(true);
+            return forceCast(field.get(null));
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

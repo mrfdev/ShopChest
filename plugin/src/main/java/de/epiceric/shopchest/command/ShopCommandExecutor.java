@@ -537,6 +537,7 @@ class ShopCommandExecutor implements CommandExecutor {
 
         String property = args[2];
         String value = args[3];
+        boolean updateHologramLocations = isHologramLocationProperty(property);
 
         if (args[1].equalsIgnoreCase("set")) {
             plugin.getShopChestConfig().set(property, value);
@@ -551,7 +552,17 @@ class ShopCommandExecutor implements CommandExecutor {
             return false;
         }
 
+        if (updateHologramLocations) {
+            for (Shop shop : shopUtils.getShops()) {
+                shop.updateHologramLocation();
+            }
+        }
+
         return true;
+    }
+
+    private boolean isHologramLocationProperty(String property) {
+        return property.equalsIgnoreCase("hologram-lift");
     }
 
     private void removeAll(CommandSender sender, String[] args) {

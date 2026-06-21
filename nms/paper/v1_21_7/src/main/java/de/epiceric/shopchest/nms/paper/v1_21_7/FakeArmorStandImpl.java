@@ -23,6 +23,7 @@ public class FakeArmorStandImpl extends FakeEntityImpl<String> implements FakeAr
 
     private final static byte INVISIBLE_FLAG = 0b100000;
     private final static byte MARKER_FLAG = 0b10000;
+    private final static EntityType<?> ARMOR_STAND_ENTITY_TYPE = entityType("ARMOR_STAND");
     private final static EntityDataAccessor<Byte> DATA_SHARED_FLAGS_ID;
     private final static EntityDataAccessor<Optional<Component>> DATA_CUSTOM_NAME;
     private final static EntityDataAccessor<Boolean> DATA_CUSTOM_NAME_VISIBLE;
@@ -56,7 +57,7 @@ public class FakeArmorStandImpl extends FakeEntityImpl<String> implements FakeAr
 
     @Override
     protected EntityType<?> getEntityType() {
-        return EntityType.ARMOR_STAND;
+        return ARMOR_STAND_ENTITY_TYPE;
     }
 
     @Override

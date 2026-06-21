@@ -253,6 +253,20 @@ public class Shop {
         }
     }
 
+    /**
+     * Recalculate and move the hologram without recreating the shop item.
+     * <p><b>Has to be called synchronously!</b></p>
+     */
+    public void updateHologramLocation() {
+        if (hologram == null || !hologram.exists()) return;
+
+        PreCreateResult preResult = preCreateHologram();
+        if (preResult == null) return;
+
+        holoLocation = getHologramLocation(preResult.chests, preResult.face);
+        hologram.setLocation(holoLocation);
+    }
+
     private String[] getHologramText(Inventory inventory) {
         List<String> lines = new ArrayList<>();
 

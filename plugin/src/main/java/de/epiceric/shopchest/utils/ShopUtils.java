@@ -30,7 +30,7 @@ import de.epiceric.shopchest.shop.Shop.ShopType;
 
 public class ShopUtils {
 
-    private final Map<UUID, Counter> playerShopAmount = new HashMap<>();
+    private final Map<UUID, Integer> playerShopAmount = new HashMap<>();
 
     // concurrent since it is updated in async task
     private final Map<UUID, Location> playerLocation = new ConcurrentHashMap<>();
@@ -114,7 +114,7 @@ public class ShopUtils {
 
         if (addToDatabase) {
             if (shop.getShopType() != ShopType.ADMIN) {
-                playerShopAmount.compute(shop.getVendor().getUniqueId(), (uuid, amount) -> amount == null ? new Counter(1) : amount.increment());
+                playerShopAmount.compute(shop.getVendor().getUniqueId(), (uuid, amount) -> amount == null ? 1 : amount + 1);
             }
             plugin.getShopDatabase().addShop(shop, callback);
         } else {
@@ -175,7 +175,7 @@ public class ShopUtils {
 
         if (removeFromDatabase) {
             if (shop.getShopType() != ShopType.ADMIN) {
-                playerShopAmount.compute(shop.getVendor().getUniqueId(), (uuid, amount) -> amount == null ? new Counter() : amount.decrement());
+                playerShopAmount.compute(shop.getVendor().getUniqueId(), (uuid, amount) -> amount == null ? 0 : Math.max(0, amount - 1));
             }
             plugin.getShopDatabase().removeShop(shop, callback);
         } else {
@@ -225,7 +225,7 @@ public class ShopUtils {
         // Database#removeShop removes shop by ID so this only needs to be called once
         if (removeFromDatabase) {
             if (!isAdmin) {
-                playerShopAmount.compute(vendorUuid, (uuid, amount) -> amount == null ? new Counter() : amount.decrement());
+                playerShopAmount.compute(vendorUuid, (uuid, amount) -> amount == null ? 0 : Math.max(0, amount - 1));
             }
             plugin.getShopDatabase().removeShop(toRemove.values().iterator().next(), callback);
         } else {
@@ -289,7 +289,7 @@ public class ShopUtils {
      * @return The amount of a shops a player has (admin shops won't be counted)
      */
     public int getShopAmount(OfflinePlayer p) {
-        return playerShopAmount.getOrDefault(p.getUniqueId(), new Counter()).get();
+        return playerShopAmount.getOrDefault(p.getUniqueId(), 0);
     }
 
     /**
@@ -329,7 +329,7 @@ public class ShopUtils {
             @Override
             public void onResult(Map<UUID, Integer> result) {
                 playerShopAmount.clear();
-                result.forEach((uuid, amount) -> playerShopAmount.put(uuid, new Counter(amount)));
+                result.forEach((uuid, amount) -> playerShopAmount.put(uuid, Math.max(0, amount)));
                 if (callback != null) callback.onResult(result);
             }
 

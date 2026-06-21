@@ -10,6 +10,9 @@ target/
 .factorypath
 
 /.vscode/
+/servers/
+/logs/
+
 # Ignore Gradle project-specific cache directory
 .gradle
 

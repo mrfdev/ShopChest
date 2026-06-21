@@ -16,6 +16,7 @@ import java.util.List;
 
 public class FakeItemImpl extends FakeEntityImpl<ItemStack> implements FakeItem {
 
+    private final static EntityType<?> ITEM_ENTITY_TYPE = entityType("ITEM");
     private final static EntityDataAccessor<net.minecraft.world.item.ItemStack> DATA_ITEM;
 
     static {
@@ -45,7 +46,7 @@ public class FakeItemImpl extends FakeEntityImpl<ItemStack> implements FakeItem 
 
     @Override
     protected EntityType<?> getEntityType() {
-        return EntityType.ITEM;
+        return ITEM_ENTITY_TYPE;
     }
 
     @Override

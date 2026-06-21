@@ -10,7 +10,6 @@ import org.jetbrains.annotations.NotNull;
 import de.epiceric.shopchest.ShopChest;
 import de.epiceric.shopchest.config.FileLoader;
 import de.epiceric.shopchest.config.LanguageConfigurationLoader;
-import de.epiceric.shopchest.language.item.DummyItemNameManager;
 import de.epiceric.shopchest.language.item.ItemNameManager;
 import de.epiceric.shopchest.language.item.LocalizedItemNameManager;
 
@@ -73,8 +72,7 @@ public class LanguageLoader {
         }
         final Map<String, String> storedItems = languageConfigurationLoader.getTranslations(itemsFile, logger);
         if (storedItems.isEmpty()) {
-            logger.warning("You have to configure items language file. Follow the usage section on github");
-            return new DummyItemNameManager();
+            logger.warning("Items language file is empty. Falling back to generated item names.");
         }
         return new LocalizedItemNameManager(storedItems);
     }

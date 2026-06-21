@@ -18,14 +18,14 @@ public class Hologram {
     // concurrent since update task is in async thread
     private final Set<UUID> viewers = ConcurrentHashMap.newKeySet();
     private final List<ArmorStandWrapper> wrappers = new ArrayList<>();
-    private final Location location;
+    private Location location;
     private final ShopChest plugin;
 
     private boolean exists;
 
     public Hologram(ShopChest plugin, String[] lines, Location location) {
         this.plugin = plugin;
-        this.location = location;
+        this.location = location.clone();
 
         for (int i = 0; i < lines.length; i++) {
             addLine(i, lines[i]);
@@ -39,6 +39,23 @@ public class Hologram {
      */
     public Location getLocation() {
         return location.clone();
+    }
+
+    /**
+     * Move the whole hologram while preserving the spacing between lines.
+     *
+     * @param location New base location of the hologram
+     */
+    public void setLocation(Location location) {
+        double deltaX = location.getX() - this.location.getX();
+        double deltaY = location.getY() - this.location.getY();
+        double deltaZ = location.getZ() - this.location.getZ();
+
+        this.location = location.clone();
+
+        for (ArmorStandWrapper wrapper : wrappers) {
+            wrapper.setLocation(wrapper.getLocation().add(deltaX, deltaY, deltaZ));
+        }
     }
 
     /**

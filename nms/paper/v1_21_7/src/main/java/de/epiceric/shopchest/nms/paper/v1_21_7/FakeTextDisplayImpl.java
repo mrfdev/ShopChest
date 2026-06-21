@@ -27,6 +27,7 @@ public class FakeTextDisplayImpl extends FakeEntityImpl<String> implements FakeA
     private final static float MARKER_ARMOR_STAND_OFFSET = 1.975f;
     private final static float CULLING_WIDTH = 3f;
     private final static float CULLING_HEIGHT = 0.5f;
+    private final static EntityType<?> TEXT_DISPLAY_ENTITY_TYPE = entityType("TEXT_DISPLAY");
     private final static EntityDataAccessor<Byte> DATA_BILLBOARD_RENDER_CONSTRAINTS;
     private final static EntityDataAccessor<Float> DATA_WIDTH;
     private final static EntityDataAccessor<Float> DATA_HEIGHT;
@@ -70,7 +71,7 @@ public class FakeTextDisplayImpl extends FakeEntityImpl<String> implements FakeA
 
     @Override
     protected EntityType<?> getEntityType() {
-        return EntityType.TEXT_DISPLAY;
+        return TEXT_DISPLAY_ENTITY_TYPE;
     }
 
     @Override
