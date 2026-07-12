@@ -293,7 +293,8 @@ message.commandDescription.remove=&a/%COMMAND% remove - Remove a shop.
 
 # Set the command description message for '/shop info' when you type '/shop'.
 # Usable Placeholders: %COMMAND%
-message.commandDescription.info=&a/%COMMAND% info - Retrieve shop information.
+message.commandDescription.info-plugin=&a/%COMMAND% info - View ShopChest information and documentation.
+message.commandDescription.inspect=&a/%COMMAND% inspect - Retrieve information about a shop.
 
 # Set the command description message for '/shop removeall' when you type '/shop'.
 # Usable Placeholders: %COMMAND%

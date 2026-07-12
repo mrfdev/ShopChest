@@ -83,7 +83,8 @@ message.commandDescription.footer=&6==== Ende
 message.commandDescription.create=&a/%COMMAND% create <amount> <buy-price> <sell-price> - Erstelle einen Shop.
 message.commandDescription.create-admin=&a/%COMMAND% create <amount> <buy-price> <sell-price> [admin] - Erstelle einen Shop.
 message.commandDescription.remove=&a/%COMMAND% remove - Entferne einen Shop.
-message.commandDescription.info=&a/%COMMAND% info - Rufe Informationen über den Shop ab.
+message.commandDescription.info-plugin=&a/%COMMAND% info - Zeige ShopChest-Informationen und Dokumentation an.
+message.commandDescription.inspect=&a/%COMMAND% inspect - Rufe Informationen über einen Shop ab.
 message.commandDescription.removeall=&a/%COMMAND% removeall - Entferne alle Shops eines Spielers.
 message.commandDescription.reload=&a/%COMMAND% reload - Lade die Shops neu.
 message.commandDescription.update=&a/%COMMAND% update - Suche nach Aktualisierungen.

@@ -1,131 +1,69 @@
 # ShopChest
 
-ShopChest - Spigot/Bukkit Plugin
+ShopChest is 1MoreBlock's chest-shop plugin. Players can attach a persistent shop to a chest, display its product and prices in a hologram, and trade through a Vault-compatible economy.
 
-<!-- TOC -->
-* [ShopChest](#shopchest)
-  * [General information](#general-information)
-  * [Usage](#usage)
-    * [Why](#why)
-    * [Instructions](#instructions)
-  * [API](#api)
-  * [Build](#build)
-  * [Issues](#issues)
-  * [Download](#download)
-<!-- TOC -->
+This repository is a maintained fork of [EpicEricEE/ShopChest](https://github.com/EpicEricEE/ShopChest), based on later compatibility work from [Flowsqy/ShopChest](https://github.com/Flowsqy/ShopChest). The custom build focuses on the current 1MoreBlock Paper targets.
 
-## General information
+## Compatibility
 
-This fork of [ShopChest](https://github.com/EpicEricEE/ShopChest) intend to be updatable easily.
-You can find below the previous and original description of this fork.
-Although the current repository structure still respect what it's said in the section, goals changed.
-**The current project only aims to support recent minecraft versions.**
-Maybe in the future a complete rewrite will happen, but it has not started yet.
+| Component | Verified target |
+| --- | --- |
+| Minecraft / Paper | 26.1.2 supported; 26.2 compatibility tested |
+| Server runtime | Java 25 for the supported Paper versions |
+| Plugin bytecode | Java 17 |
+| Build toolchain | Gradle wrapper with a Java 21+ toolchain; Java 25 is supported |
+| Required plugins | Vault and a Vault economy provider |
 
-### Previous description
-It also adds some common features like barrel or shulker shops.
-It's still in progress and therefore, this repository has many branches.
-Most of them have very explicit name, but there is two things to know:
+The same shaded plugin jar is intended for Paper 26.1.2 and 26.2. Older Minecraft releases are outside this fork's supported scope.
 
-- The 'master' branch is the original plugin, with no major changes.
-  It supports the most recent version of Minecraft.
-- The 'feature/clean-project' branch is a 'work-in-progress' branch.
-  It contains bug fixes and adds new features.
-  However, as the structure change, some plugin that were previously using ShopChest can break.
-  If it's the case, just use the original version (in 'master' branch).
+## Features
 
-## Usage
+- Player and unlimited-stock admin chest shops
+- Separate buy and sell prices, with either direction disabled by setting its price to `0`
+- Floating product item and configurable hologram text
+- Per-player shop limits and per-material creation permissions
+- Optional click confirmation, partial transaction calculation, creation costs, and refunds
+- SQLite or MySQL persistence with built-in legacy schema migration
+- Protection hooks for WorldGuard, Towny, PlotSquared, BentoBox, GriefPrevention, AreaShop, AuthMe, ASkyBlock, uSkyBlock, and IslandWorld
+- Optional cross-server vendor notifications through the BungeeCord plugin channel
 
-To download the plugin, see the Download section below. <br>
+## Quick Start
 
-### Why
-Since 1.20.1, ShopChest use a new language system in order to avoid major changes at each minecraft release. <br>
-Note that it can break support for older version.
-Although it uses a minecraft chat mechanic added in 1.8, it's part of the Bukkit API since February 13 of 2023.
-Backward compatibility is possible but requires more work and will be provided only if requested in the issues section. <br>
-Previously, all messages were store in a single file called `<locale>.lang`.
-Now each language is made of two files:
-- `messages-<locale>.lang` which contains ShopChest internal messages and which will likely never change
-- `items-<locale>.lang` which contains item translations used by holograms.
+1. Install Vault, a Vault-compatible economy plugin, and `ShopChest-1.15.0-SNAPSHOT-all.jar`.
+2. Start Paper once, then review `plugins/ShopChest/config.yml` and `hologram-format.yml`.
+3. Hold the item to sell, run `/shop create <amount> <buy-price> <sell-price>`, and click a chest within 15 seconds.
+4. Run `/shop info` for the installed version, starting commands, and the canonical player guide.
 
-The second one differs a bit from previously.
-As minecraft is constantly updated with new items, there is no point to provide it, it would be constantly outdated.
+See the [player guide](docs/player-guide.md) for normal use and [installation](docs/installation.md) for the complete server setup.
 
-### Instructions
+## Documentation
 
-- Install the plugin in your plugin folder.
-- Run the server a first time to generate each configuration files
-- Set the desired locale in the configuration
-- Restart the server (or process the command /shop reload) to generate local-specifics language files.
-- Copy the output of [LangGenerator](https://github.com/Flowsqy/ShopChestLangGenerator) into the used items language file.
-- Restart the server (or process the command /shop reload) to load the correct translations.
+- [Commands](docs/commands.md)
+- [Permissions](docs/permissions.md)
+- [Hologram placeholders](docs/placeholders.md)
+- [Configuration](docs/configuration.md)
+- [Installation and updates](docs/installation.md)
+- [Integrations](docs/integrations.md)
+- [Troubleshooting](docs/troubleshooting.md)
 
-You may have some warnings if shops are loaded while the items file is empty.
-(For example during the reload process).
-It's perfectly fine, even if it says that you should report them, you can ignore it **as long as the file is empty**.
-<br>
-You may need to repeat this process at each minecraft update in order to be able to have the translations for the new items.
-
-## API
-
-To use the API, you need to add the following repository and dependency in your maven project:
-
-```xml
-<repositories>
-  <repository>
-    <id>shopchest-repo</id>
-    <url>https://epicericee.github.io/ShopChest/maven/</url>
-  </repository>
-</repositories>
-
-<dependencies>
-  <dependency>
-    <groupId>de.epiceric</groupId>
-    <artifactId>ShopChest</artifactId>
-    <version>1.11.1</version>
-    <scope>provided</scope>
-  </dependency>
-</dependencies>
-```
-
-You can find the javadoc here: https://epicericee.github.io/ShopChest/javadoc/
+Canonical public documentation: <https://docs.1moreblock.com/custom-server-plugins/shopchest/>
 
 ## Build
 
-To compile the project, you will need jdk 21 and maven.
+The normal build is:
 
-You also need, in order to compile nms spigot modules, to have previously run the spigot buildtools with the `--remapped` arg for each version specified in `nms/spigot/README.md`.
-This requirement might force you to get other jdk version to run the buildtools for specific versions. It's only needed by the buildtools, not by ShopChest.
-
-First, add nms interface to your maven local repository.
-```batch
-./gradlew nms:interface:publishToMavenLocal
-```
-It needs to be done at least once.
-As long as there is no changes to the `nms/interface` module, you don't need to do this step again.
-
-Then you need to compile spigot nms submodules
-```batch
-cd nms/spigot
-mvn install
+```bash
+JAVA_HOME=/path/to/jdk-25 ./gradlew build plugin:shadowJar
 ```
 
-Finally to actually compile the plugin, return at the root of the project (`cd ../..` if you are in the same shell) and do
-```batch
-./gradlew plugin:shadowJar
-```
+The deployable jar is written to `plugin/build/libs/ShopChest-1.15.0-SNAPSHOT-all.jar`. Gradle includes the Paper NMS module automatically. If a local Spigot NMS aggregate has been prepared, the build also includes it, but that aggregate is not required for the supported Paper targets.
 
-After the build succeeded, the ShopChest jar is found in the `plugin/build/libs/` folder.
+## Persistence and Updates
 
-## Issues
+Shops, optional economy logs, player logout times, and schema metadata are stored in SQLite by default. MySQL is also supported. Back up the complete `plugins/ShopChest/` directory or the configured MySQL database before updating. Do not replace or delete the database while shops exist in the world.
 
-If you find any issues, please provide them in the [Issues Section](https://github.com/Flowsqy/ShopChest/issues) with a
-good description of how to reproduce it. If you get any error messages in the console, please also provide them.
+The plugin owns only its source documentation. The central `1MB-Plugins-Docs` repository imports and publishes it; this repository does not build or force-push the public documentation site.
 
-## Download
+## License and Support
 
-You can download the recent builds in the [release section](https://github.com/Flowsqy/ShopChest/releases).
-This resource/plugin can also be found on the official spigot
-page [here](https://www.spigotmc.org/resources/shopchest.11431/), but as I don't own it, the most recent build there
-only supports Minecraft up to 1.16.
-
+The project is distributed under the license in [LICENSE.txt](LICENSE.txt). Report reproducible source issues at <https://github.com/mrfdev/ShopChest/issues> and include the Paper build, ShopChest version, relevant configuration, and full exception when applicable.

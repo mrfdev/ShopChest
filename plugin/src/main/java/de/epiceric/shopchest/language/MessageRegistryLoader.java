@@ -108,7 +108,8 @@ public class MessageRegistryLoader {
         register(messages, Message.COMMAND_DESC_CREATE, "message.commandDescription.create", "&a/%COMMAND% create <amount> <buy-price> <sell-price> - Create a shop.");
         register(messages, Message.COMMAND_DESC_CREATE_ADMIN, "message.commandDescription.create-admin", "&a/%COMMAND% create <amount> <buy-price> <sell-price> [admin] - Create a shop.");
         register(messages, Message.COMMAND_DESC_REMOVE, "message.commandDescription.remove", "&a/%COMMAND% remove - Remove a shop.");
-        register(messages, Message.COMMAND_DESC_INFO, "message.commandDescription.info", "&a/%COMMAND% info - Retrieve shop information.");
+        register(messages, Message.COMMAND_DESC_INFO, "message.commandDescription.info-plugin", "&a/%COMMAND% info - View ShopChest information and documentation.");
+        register(messages, Message.COMMAND_DESC_INSPECT, "message.commandDescription.inspect", "&a/%COMMAND% inspect - Retrieve information about a shop.");
         register(messages, Message.COMMAND_DESC_REMOVEALL, "message.commandDescription.removeall", "&a/%COMMAND% removeall - Remove all shops of a player.");
         register(messages, Message.COMMAND_DESC_RELOAD, "message.commandDescription.reload", "&a/%COMMAND% reload - Reload shops.");
         register(messages, Message.COMMAND_DESC_UPDATE, "message.commandDescription.update", "&a/%COMMAND% update - Check for Updates.");

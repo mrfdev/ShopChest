@@ -86,11 +86,19 @@ public class ShopCommand {
             }
         });
 
-        addSubCommand(new ShopSubCommand("info", true, executor, tabCompleter) {
+        addSubCommand(new ShopSubCommand("info", false, executor, tabCompleter) {
             @Override
             public String getHelpMessage(CommandSender sender) {
                 final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
                 return messageRegistry.getMessage(Message.COMMAND_DESC_INFO, cmdReplacement);
+            }
+        });
+
+        addSubCommand(new ShopSubCommand("inspect", true, executor, tabCompleter) {
+            @Override
+            public String getHelpMessage(CommandSender sender) {
+                final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+                return messageRegistry.getMessage(Message.COMMAND_DESC_INSPECT, cmdReplacement);
             }
         });
 

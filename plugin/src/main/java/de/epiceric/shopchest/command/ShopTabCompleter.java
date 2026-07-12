@@ -28,6 +28,7 @@ class ShopTabCompleter implements TabCompleter {
 
             List<String> createSubCommands = Arrays.asList("admin");
             List<String> configSubCommands = Arrays.asList("add", "remove", "set");
+            List<String> infoSubCommands = Arrays.asList("shop");
             List<String> areaShopRemoveEvents = Arrays.asList("DELETE", "RESELL", "SELL", "UNRENT");
             List<String> townyShopPlots = Arrays.asList("ARENA", "COMMERCIAL", "EMBASSY", "FARM", "INN", "JAIL", "RESIDENTIAL", "SPLEEF", "WILDS");
 
@@ -48,6 +49,18 @@ class ShopTabCompleter implements TabCompleter {
                         return returnCompletions;
                     } else {
                         return configSubCommands;
+                    }
+                } else if (args[0].equals("info")) {
+                    if (!args[1].equals("")) {
+                        for (String s : infoSubCommands) {
+                            if (s.startsWith(args[1])) {
+                                returnCompletions.add(s);
+                            }
+                        }
+
+                        return returnCompletions;
+                    } else {
+                        return infoSubCommands;
                     }
                 } else if (args[0].equals("removeall")) {
                     if (!args[1].equals("")) {

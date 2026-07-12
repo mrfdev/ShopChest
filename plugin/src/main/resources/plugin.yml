@@ -12,6 +12,7 @@ api-version: 1.13
 permissions:
   shopchest.*:
     description: Gives access to all ShopChest permissions.
+    default: op
     children:
       shopchest.create: true
       shopchest.create.buy: true
@@ -21,6 +22,7 @@ permissions:
       shopchest.remove.other: true
       shopchest.remove.admin: true
       shopchest.buy: true
+      shopchest.sell: true
       shopchest.openOther: true
       shopchest.notification.update: true
       shopchest.reload: true

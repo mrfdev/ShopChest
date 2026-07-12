@@ -13,6 +13,10 @@ import de.epiceric.shopchest.shop.ShopProduct;
 import de.epiceric.shopchest.utils.*;
 import de.epiceric.shopchest.utils.ClickType.CreateClickType;
 import de.epiceric.shopchest.utils.ClickType.SelectClickType;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.HoverEvent;
+import net.md_5.bungee.api.chat.TextComponent;
+import net.md_5.bungee.api.chat.hover.content.Text;
 import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -28,6 +32,8 @@ import java.util.List;
 import java.util.stream.Stream;
 
 class ShopCommandExecutor implements CommandExecutor {
+
+    private static final String DOCS_URL = "https://docs.1moreblock.com/custom-server-plugins/shopchest/";
 
     private ShopChest plugin;
     private ShopUtils shopUtils;
@@ -99,6 +105,16 @@ class ShopCommandExecutor implements CommandExecutor {
                 } else {
                     sender.sendMessage(messageRegistry.getMessage(Message.NO_PERMISSION_REMOVE_OTHERS));
                 }
+            } else if (subCommand.getName().equalsIgnoreCase("info")) {
+                if (args.length >= 2 && args[1].equalsIgnoreCase("shop")) {
+                    if (sender instanceof Player) {
+                        info((Player) sender);
+                    } else {
+                        sender.sendMessage(ChatColor.RED + "Only players can inspect a shop.");
+                    }
+                } else {
+                    sendPluginInfo(sender);
+                }
             } else {
                 if (sender instanceof Player) {
                     Player p = (Player) sender;
@@ -123,7 +139,7 @@ class ShopCommandExecutor implements CommandExecutor {
                         }
                     } else if (subCommand.getName().equalsIgnoreCase("remove")) {
                         remove(p);
-                    } else if (subCommand.getName().equalsIgnoreCase("info")) {
+                    } else if (subCommand.getName().equalsIgnoreCase("inspect")) {
                         info(p);
                     } else if (subCommand.getName().equalsIgnoreCase("limits")) {
                         plugin.debug(p.getName() + " is viewing his shop limits: " + shopUtils.getShopAmount(p) + "/" + shopUtils.getShopLimit(p));
@@ -143,6 +159,31 @@ class ShopCommandExecutor implements CommandExecutor {
         }
 
         return false;
+    }
+
+    private void sendPluginInfo(CommandSender sender) {
+        String command = Config.mainCommandName;
+
+        sender.sendMessage(" ");
+        sender.sendMessage(ChatColor.GOLD + "ShopChest " + ChatColor.GRAY + "v" + plugin.getDescription().getVersion());
+        sender.sendMessage(ChatColor.YELLOW + "Create chest shops to buy and sell items with other players.");
+        sender.sendMessage(ChatColor.GREEN + "/" + command + " create <amount> <buy-price> <sell-price>"
+                + ChatColor.GRAY + " - Create a shop");
+        sender.sendMessage(ChatColor.GREEN + "/" + command + " limits" + ChatColor.GRAY + " - View your shop limit");
+        sender.sendMessage(ChatColor.GREEN + "/" + command + " inspect" + ChatColor.GRAY + " - Inspect a shop");
+
+        if (sender instanceof Player) {
+            TextComponent docs = new TextComponent("View the ShopChest player guide");
+            docs.setColor(net.md_5.bungee.api.ChatColor.AQUA);
+            docs.setUnderlined(true);
+            docs.setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, DOCS_URL));
+            docs.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text("Open " + DOCS_URL)));
+            ((Player) sender).spigot().sendMessage(docs);
+        } else {
+            sender.sendMessage(ChatColor.AQUA + DOCS_URL);
+        }
+
+        sender.sendMessage(" ");
     }
 
     /**
