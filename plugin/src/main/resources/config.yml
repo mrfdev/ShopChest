@@ -6,8 +6,8 @@
 #
 
 # Set the main command you have to enter to manage the shops.
-# (default: "/shop ...")
-main-command-name: "shop"
+# (default: "/shops ...")
+main-command-name: "shops"
 
 # Set the language file for all translatable messages or names.
 # The value must equal to the name of one of a file in the 'lang' folder

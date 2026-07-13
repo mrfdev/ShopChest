@@ -6,6 +6,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
@@ -21,6 +23,7 @@ public class LocalizedItemNameManager implements ItemNameManager {
 
     private final Map<String, String> itemTranslations;
     private final Set<String> missingTranslations = ConcurrentHashMap.newKeySet();
+    private static final LegacyComponentSerializer LEGACY_COMPONENT_SERIALIZER = LegacyComponentSerializer.legacySection();
 
     public LocalizedItemNameManager(@NotNull Map<String, String> itemTranslations) {
         this.itemTranslations = itemTranslations;
@@ -39,12 +42,12 @@ public class LocalizedItemNameManager implements ItemNameManager {
         }
 
         final String itemName;
-        if (meta.hasItemName() && !(itemName = meta.getItemName()).isEmpty()) {
+        if ((itemName = serializePlainly(meta.itemName())) != null && !itemName.isEmpty()) {
             return itemName;
         }
 
         final String displayName;
-        if (meta.hasDisplayName() && !(displayName = meta.getDisplayName()).isEmpty()) {
+        if ((displayName = serializePlainly(meta.displayName())) != null && !displayName.isEmpty()) {
             return displayName;
         }
 
@@ -91,19 +94,7 @@ public class LocalizedItemNameManager implements ItemNameManager {
     @NotNull
     private static String getTranslationKey(@NotNull ItemStack stack) {
         final Material type = stack.getType();
-        if (type.isItem()) {
-            try {
-                return type.asItemType().getTranslationKey();
-            } catch (Exception ignored) {
-                // Fall back to a registry-derived key below.
-            }
-        }
-
-        final NamespacedKey key = type.getKeyOrNull();
-        if (key == null) {
-            return type.name().toLowerCase(Locale.ROOT);
-        }
-
+        final NamespacedKey key = type.getKey();
         final String prefix = type.isBlock() ? "block" : "item";
         return prefix + "." + key.getNamespace() + "." + key.getKey();
     }
@@ -135,6 +126,11 @@ public class LocalizedItemNameManager implements ItemNameManager {
             }
         }
         return readableName.length() == 0 ? type.name() : readableName.toString();
+    }
+
+    @Nullable
+    private static String serializePlainly(@Nullable Component component) {
+        return component == null ? null : LEGACY_COMPONENT_SERIALIZER.serialize(component);
     }
 
 }

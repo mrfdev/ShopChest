@@ -1,7 +1,7 @@
 package de.epiceric.shopchest.language;
 
 import de.epiceric.shopchest.config.Placeholder;
-import net.md_5.bungee.api.ChatColor;
+import de.epiceric.shopchest.utils.LegacyColorUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Function;
@@ -26,7 +26,7 @@ public class MessageRegistry {
         final String storedMessage = messages[message.ordinal()];
         if (storedMessage == null) {
             // Mimic old behavior -> send an error message to the player
-            return ChatColor.RED + "An error occurred: Message not found: " + message;
+            return LegacyColorUtils.color('c', "An error occurred: Message not found: " + message);
         }
 
         return applyReplacements(storedMessage, replacements);

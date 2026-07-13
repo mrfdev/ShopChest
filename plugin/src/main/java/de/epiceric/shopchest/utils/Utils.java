@@ -5,7 +5,6 @@ import de.epiceric.shopchest.config.Placeholder;
 import de.epiceric.shopchest.language.Message;
 import de.epiceric.shopchest.language.MessageRegistry;
 import de.epiceric.shopchest.language.Replacement;
-import de.epiceric.shopchest.nms.CustomBookMeta;
 import de.epiceric.shopchest.shop.Shop;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -47,16 +46,8 @@ public class Utils {
             BookMeta bookMeta1 = (BookMeta) itemStack1.getItemMeta();
             BookMeta bookMeta2 = (BookMeta) itemStack2.getItemMeta();
 
-            if ((getMajorVersion() == 9 && getRevision() == 1) || getMajorVersion() == 8) {
-                CustomBookMeta.Generation generation1 = CustomBookMeta.getGeneration(itemStack1);
-                CustomBookMeta.Generation generation2 = CustomBookMeta.getGeneration(itemStack2);
-
-                if (generation1 == null) CustomBookMeta.setGeneration(itemStack1, CustomBookMeta.Generation.ORIGINAL);
-                if (generation2 == null) CustomBookMeta.setGeneration(itemStack2, CustomBookMeta.Generation.ORIGINAL);
-            } else {
-                if (bookMeta1.getGeneration() == null) bookMeta1.setGeneration(BookMeta.Generation.ORIGINAL);
-                if (bookMeta2.getGeneration() == null) bookMeta2.setGeneration(BookMeta.Generation.ORIGINAL);
-            }
+            if (bookMeta1.getGeneration() == null) bookMeta1.setGeneration(BookMeta.Generation.ORIGINAL);
+            if (bookMeta2.getGeneration() == null) bookMeta2.setGeneration(BookMeta.Generation.ORIGINAL);
 
             itemStack1.setItemMeta(bookMeta1);
             itemStack2.setItemMeta(bookMeta2);
@@ -81,15 +72,8 @@ public class Utils {
         ArrayList<ItemStack> inventoryItems = new ArrayList<>();
 
         if (inventory instanceof PlayerInventory) {
-            for (int i = 0; i < 37; i++) {
-                if (i == 36) {
-                    if (getMajorVersion() < 9) {
-                        break;
-                    }
-                    i = 40;
-                }
-                inventoryItems.add(inventory.getItem(i));
-            }
+            inventoryItems.addAll(Arrays.asList(((PlayerInventory) inventory).getStorageContents()));
+            inventoryItems.add(((PlayerInventory) inventory).getItemInOffHand());
         } else {
             for (int i = 0; i < inventory.getSize(); i++) {
                 inventoryItems.add(inventory.getItem(i));
@@ -116,37 +100,14 @@ public class Utils {
         HashMap<Integer, Integer> slotFree = new HashMap<>();
 
         if (inventory instanceof PlayerInventory) {
-            for (int i = 0; i < 37; i++) {
-                if (i == 36) {
-                    if (getMajorVersion() < 9) {
-                        break;
-                    }
-                    i = 40;
-                }
-
-                ItemStack item = inventory.getItem(i);
-                if (item == null || item.getType() == Material.AIR) {
-                    slotFree.put(i, itemStack.getMaxStackSize());
-                } else {
-                    if (isItemSimilar(item, itemStack)) {
-                        int amountInSlot = item.getAmount();
-                        int amountToFullStack = itemStack.getMaxStackSize() - amountInSlot;
-                        slotFree.put(i, amountToFullStack);
-                    }
-                }
+            final ItemStack[] contents = ((PlayerInventory) inventory).getStorageContents();
+            for (int i = 0; i < contents.length; i++) {
+                addFreeSpace(slotFree, i, contents[i], itemStack);
             }
+            addFreeSpace(slotFree, 40, ((PlayerInventory) inventory).getItemInOffHand(), itemStack);
         } else {
             for (int i = 0; i < inventory.getSize(); i++) {
-                ItemStack item = inventory.getItem(i);
-                if (item == null || item.getType() == Material.AIR) {
-                    slotFree.put(i, itemStack.getMaxStackSize());
-                } else {
-                    if (isItemSimilar(item, itemStack)) {
-                        int amountInSlot = item.getAmount();
-                        int amountToFullStack = itemStack.getMaxStackSize() - amountInSlot;
-                        slotFree.put(i, amountToFullStack);
-                    }
-                }
+                addFreeSpace(slotFree, i, inventory.getItem(i), itemStack);
             }
         }
 
@@ -158,18 +119,20 @@ public class Utils {
         return freeAmount;
     }
 
+    private static void addFreeSpace(Map<Integer, Integer> slotFree, int slot, ItemStack currentItem, ItemStack targetItem) {
+        if (currentItem == null || currentItem.getType() == Material.AIR) {
+            slotFree.put(slot, targetItem.getMaxStackSize());
+        } else if (isItemSimilar(currentItem, targetItem)) {
+            int amountToFullStack = targetItem.getMaxStackSize() - currentItem.getAmount();
+            slotFree.put(slot, amountToFullStack);
+        }
+    }
+
     /**
      * @param p Player whose item in his main hand should be returned
      * @return {@link ItemStack} in his main hand, or {@code null} if he doesn't hold one
      */
     public static ItemStack getItemInMainHand(Player p) {
-        if (getMajorVersion() < 9) {
-            if (p.getItemInHand().getType() == Material.AIR)
-                return null;
-            else
-                return p.getItemInHand();
-        }
-
         if (p.getInventory().getItemInMainHand().getType() == Material.AIR)
             return null;
         else
@@ -181,9 +144,7 @@ public class Utils {
      * @return {@link ItemStack} in his off hand, or {@code null} if he doesn't hold one or the server version is below 1.9
      */
     public static ItemStack getItemInOffHand(Player p) {
-        if (getMajorVersion() < 9)
-            return null;
-        else if (p.getInventory().getItemInOffHand().getType() == Material.AIR)
+        if (p.getInventory().getItemInOffHand().getType() == Material.AIR)
             return null;
         else
             return p.getInventory().getItemInOffHand();
@@ -195,9 +156,7 @@ public class Utils {
      *         if he doesn't have one in both hands
      */
     public static ItemStack getPreferredItemInHand(Player p) {
-        if (getMajorVersion() < 9)
-            return getItemInMainHand(p);
-        else if (getItemInMainHand(p) != null)
+        if (getItemInMainHand(p) != null)
             return getItemInMainHand(p);
         else
             return getItemInOffHand(p);
@@ -208,11 +167,8 @@ public class Utils {
      * @return Whether a player has an axe in one of his hands
      */
     public static boolean hasAxeInHand(Player p) {
-        List<String> axes;
-        if (Utils.getMajorVersion() < 13)
-            axes = Arrays.asList("WOOD_AXE", "STONE_AXE", "IRON_AXE", "GOLD_AXE", "DIAMOND_AXE");
-        else 
-            axes = Arrays.asList("WOODEN_AXE", "STONE_AXE", "IRON_AXE", "GOLDEN_AXE", "DIAMOND_AXE");
+        List<String> axes = Arrays.asList("WOODEN_AXE", "STONE_AXE", "IRON_AXE", "GOLDEN_AXE",
+                "DIAMOND_AXE", "NETHERITE_AXE");
 
         ItemStack item = getItemInMainHand(p);
         if (item == null || !axes.contains(item.getType().toString())) {
@@ -255,7 +211,7 @@ public class Utils {
             }
 
             if (item != null) {
-                if (item.getDurability() == 0) {
+                if (ItemUtils.getDamage(item) == 0) {
                     String perm1 = permission + "." + item.getType().toString();
                     String perm2 = permission + "." + item.getType().toString() + ".0";
 
@@ -264,7 +220,7 @@ public class Utils {
                     }
                 }
 
-                if (player.hasPermission(permission + "." + item.getType().toString() + "." + item.getDurability())) {
+                if (player.hasPermission(permission + "." + item.getType().toString() + "." + ItemUtils.getDamage(item))) {
                     b3 = true;
                 }
             }

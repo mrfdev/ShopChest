@@ -7,9 +7,12 @@ repositories {
     mavenCentral()
     maven {
         url = uri("https://hub.spigotmc.org/nexus/content/repositories/snapshots/")
-    }    
+    }
+    maven {
+        url = uri("https://repo.papermc.io/repository/maven-public/")
+    }
 }
 
 dependencies {
-    implementation("org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:26.2.build.60-beta")
 }

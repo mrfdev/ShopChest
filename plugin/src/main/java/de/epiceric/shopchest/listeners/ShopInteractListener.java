@@ -27,6 +27,7 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.block.Chest;
 import org.bukkit.block.DoubleChest;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -111,7 +112,7 @@ public class ShopInteractListener implements Listener {
         if (Config.enableAuthMeIntegration && plugin.hasAuthMe() && !AuthMeApi.getInstance().isAuthenticated(p))
             return;
 
-        if (e.isCancelled() && !p.hasPermission(Permissions.CREATE_PROTECTED)) {
+        if (e.useInteractedBlock() == Event.Result.DENY && !p.hasPermission(Permissions.CREATE_PROTECTED)) {
             p.sendMessage(messageRegistry.getMessage(Message.NO_PERMISSION_CREATE_PROTECTED));
             plugin.debug(p.getName() + " is not allowed to create a shop on the selected chest");
         } else if (shopUtils.isShop(b.getLocation())) {
@@ -202,10 +203,10 @@ public class ShopInteractListener implements Listener {
                 if (e.getAction() == Action.RIGHT_CLICK_BLOCK || e.getAction() == Action.LEFT_CLICK_BLOCK) {
                     ItemStack item = Utils.getItemInMainHand(p);
 
-                    if (item == null || !(infoItem.getType() == item.getType() && infoItem.getDurability() == item.getDurability())) {
+                    if (!ItemUtils.isSameTypeAndDamage(infoItem, item)) {
                         item = Utils.getItemInOffHand(p);
 
-                        if (item != null && infoItem.getType() == item.getType() && infoItem.getDurability() == item.getDurability()) {
+                        if (ItemUtils.isSameTypeAndDamage(infoItem, item)) {
                             e.setCancelled(true);
                             info(p, shop);
                             return;

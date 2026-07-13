@@ -35,30 +35,30 @@ message.chest-no-shop=&cChest is not a shop.
 # Usable Placeholders: %CREATION-PRICE%
 message.shop-create-not-enough-money=&cNot enough money. You need &6%CREATION-PRICE% &cto create a shop.
 
-# Set the vendor message the player gets after entering '/shop info'.
+# Set the vendor message the player gets after entering '/shops info'.
 # Usable Placeholders: %VENDOR%
 message.shopInfo.vendor=&6Vendor: &e%VENDOR%
 
-# Set the product message the player gets after entering '/shop info'.
+# Set the product message the player gets after entering '/shops info'.
 # Usable Placeholders: %AMOUNT%, %ITEMNAME%
 message.shopInfo.product=&6Product: &e%AMOUNT% x %ITEMNAME%
 
-# Set the in-stock message the player after entering '/shop info'.
+# Set the in-stock message the player after entering '/shops info'.
 # Usable Placeholders=%STOCK%
 message.shopInfo.stock=&6In Stock: &e%STOCK%
 
-# Set the chest-space message the player after entering '/shop info'.
+# Set the chest-space message the player after entering '/shops info'.
 # Usable Placeholders=%CHEST-SPACE%
 message.shopInfo.chest-space=&6Space in chest: &e%CHEST-SPACE%
 
-# Set the price message the player gets after entering '/shop info'.
+# Set the price message the player gets after entering '/shops info'.
 # Usable Placeholders: %BUY-PRICE%, %SELL-PRICE%
 message.shopInfo.price=&6Price: Buy: &e%BUY-PRICE%&6 Sell: &e%SELL-PRICE%
 
 # If the sell price or buy price is disabled, this message will be displayed instead of the price in the message above.
 message.shopInfo.disabled=&7Disabled
 
-# Set the type message the player gets after entering '/shop info' ...
+# Set the type message the player gets after entering '/shops info' ...
 # ... when the shop is normal.
 message.shopInfo.is-normal=&6Type: &eNormal
 
@@ -122,7 +122,7 @@ message.vendor-out-of-stock=&cYour shop that sells &6%AMOUNT% x %ITEMNAME% &cis 
 # Usable Placeholders: %ERROR%
 message.error-occurred=&cAn error occurred: %ERROR%
 
-# Set the message when the arguments <AMOUNT>, <BUY-PRICE> and/or <SELL-PRICE> of '/shop create' are not a number.
+# Set the message when the arguments <AMOUNT>, <BUY-PRICE> and/or <SELL-PRICE> of '/shops create' are not a number.
 message.amount-and-price-not-number=&cAmount and prices must be numbers.
 
 # Set the message when the argument <AMOUNT> is zero
@@ -271,52 +271,52 @@ message.noPermission.extend-others=&cYou don't have permission to extend this ch
 # Set the message when a not permitted player tries to extend a chest into a protected region/plot (e.g. WorldGuard/Towny).
 message.noPermission.extend-protected=&cYou don't have permission to extend this chest to here.
 
-# Set the header of the help message the player gets after entering '/shop' or an invalid command.
+# Set the header of the help message the player gets after entering '/shops' or an invalid command.
 # Usable Placeholders: %COMMAND%
 message.commandDescription.header=&6==== &c/%COMMAND% &6Help
 
-# Set the footer of the help message the player gets after entering '/shop' or an invalid command.
+# Set the footer of the help message the player gets after entering '/shops' or an invalid command.
 # Usable Placeholders: %COMMAND%
 message.commandDescription.footer=&6==== End
 
-# Set the command description message for '/shop create' when you type '/shop'.
+# Set the command description message for '/shops create' when you type '/shops'.
 # Usable Placeholders: %COMMAND%
 message.commandDescription.create=&a/%COMMAND% create <amount> <buy-price> <sell-price> - Create a shop.
 
-# Set the command description message for '/shop create' when you type '/shop' and have permission "shopchest.create.admin"
+# Set the command description message for '/shops create' when you type '/shops' and have permission "shopchest.create.admin"
 # Usable Placeholders: %COMMAND%
 message.commandDescription.create-admin=&a/%COMMAND% create <amount> <buy-price> <sell-price> [admin] - Create a shop.
 
-# Set the command description message for '/shop remove' when you type '/shop'.
+# Set the command description message for '/shops remove' when you type '/shops'.
 # Usable Placeholders: %COMMAND%
 message.commandDescription.remove=&a/%COMMAND% remove - Remove a shop.
 
-# Set the command description message for '/shop info' when you type '/shop'.
+# Set the command description message for '/shops info' when you type '/shops'.
 # Usable Placeholders: %COMMAND%
 message.commandDescription.info-plugin=&a/%COMMAND% info - View ShopChest information and documentation.
 message.commandDescription.inspect=&a/%COMMAND% inspect - Retrieve information about a shop.
 
-# Set the command description message for '/shop removeall' when you type '/shop'.
+# Set the command description message for '/shops removeall' when you type '/shops'.
 # Usable Placeholders: %COMMAND%
 message.commandDescription.removeall=&a/%COMMAND% removeall - Remove all shops of a player.
 
-# Set the command description message for '/shop reload' when you type '/shop'.
+# Set the command description message for '/shops reload' when you type '/shops'.
 # Usable Placeholders: %COMMAND%
 message.commandDescription.reload=&a/%COMMAND% reload - Reload shops.
 
-# Set the command description message for '/shop update' when you type '/shop'.
+# Set the command description message for '/shops update' when you type '/shops'.
 # Usable Placeholders: %COMMAND%
 message.commandDescription.update=&a/%COMMAND% update - Check for Updates.
 
-# Set the command description message for '/shop limits' when you type '/shop'.
+# Set the command description message for '/shops limits' when you type '/shops'.
 # Usable Placeholders: %COMMAND%
 message.commandDescription.limits=&a/%COMMAND% limits - View shop limits.
 
-# Set the command description message for '/shop open' when you type '/shop'.
+# Set the command description message for '/shops open' when you type '/shops'.
 # Usable Placeholders: %COMMAND%
 message.commandDescription.open=&a/%COMMAND% open - Open a shop.
 
-# Set the command description message for '/shop config' when you type '/shop'.
+# Set the command description message for '/shops config' when you type '/shops'.
 # Usable Placeholders: %COMMAND%
 message.commandDescription.config=&a/%COMMAND% config <set|add|remove> <property> <value> - Change configuration values.
 

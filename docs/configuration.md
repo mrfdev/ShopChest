@@ -6,7 +6,7 @@ ShopChest creates `config.yml`, `hologram-format.yml`, and a `lang/` directory u
 
 | Key | Default | Behavior |
 | --- | --- | --- |
-| `main-command-name` | `shop` | Dynamic root command. Requires a restart to re-register after changing. |
+| `main-command-name` | `shops` | Dynamic root command. Requires a restart to re-register after changing. |
 | `language-file` | `en_US` | Selects `messages-<locale>.lang` and `items-<locale>.lang`. |
 | `shop-info-item` | `STICK` | Clicking a shop with this item shows details; an empty value disables it. |
 | `confirm-shopping` | `false` | Requires a second click before a buy or sell. |
@@ -28,7 +28,7 @@ ShopChest creates `config.yml`, `hologram-format.yml`, and a `lang/` directory u
 | --- | --- | --- |
 | `only-show-shops-in-sight` | `true` | Shows only the shop being targeted instead of all nearby shop holograms. |
 | `hologram-fixed-bottom` | `true` | Anchors the bottom line so extra lines grow upward. |
-| `hologram-lift` | `0.25` | Vertical hologram offset in blocks; updates loaded holograms live through `/shop config set hologram-lift <value>`. |
+| `hologram-lift` | `0.25` | Vertical hologram offset in blocks; updates loaded holograms live through `/shops config set hologram-lift <value>`. |
 | `maximal-distance` | `2` | Hologram visibility radius in blocks. |
 | `maximal-item-distance` | `40` | Floating product visibility radius in blocks. |
 | `append-potion-level-to-item-name` | `false` | Adds a Roman-numeral potion level when the product has no custom name. |
@@ -59,8 +59,8 @@ The `enable-*-integration` flags control WorldGuard, Towny, AuthMe, PlotSquared,
 
 `database.type` accepts exactly `SQLite` or `MySQL`. `database.table-prefix` defaults to `shopchest_` and may contain only letters, numbers, dashes, and underscores. SQLite stores its file in the plugin data folder. MySQL requires `hostname`, `port`, `database`, `username`, and `password`; `ping-interval` defaults to 3600 seconds and `0` disables keepalive pings.
 
-Database selection, connection details, and table prefix should be changed only while the server is stopped. ShopChest reconnects during `/shop reload`, but moving existing data between SQLite and MySQL is not an automatic migration.
+Database selection, connection details, and table prefix should be changed only while the server is stopped. ShopChest reconnects during `/shops reload`, but moving existing data between SQLite and MySQL is not an automatic migration.
 
 ## Reload Versus Restart
 
-`/shop reload` reloads normal configuration values, language files, the hologram format, updater tasks, database connection, and shops in loaded chunks. Use a full restart for `main-command-name`, database backend changes, debug-file creation, integration registration, or plugin dependency changes. Existing holograms move immediately only when `hologram-lift` is changed through the config command.
+`/shops reload` reloads normal configuration values, language files, the hologram format, updater tasks, database connection, and shops in loaded chunks. Use a full restart for `main-command-name`, database backend changes, debug-file creation, integration registration, or plugin dependency changes. Existing holograms move immediately only when `hologram-lift` is changed through the config command.

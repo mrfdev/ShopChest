@@ -8,13 +8,13 @@ This repository is a maintained fork of [EpicEricEE/ShopChest](https://github.co
 
 | Component | Verified target |
 | --- | --- |
-| Minecraft / Paper | 26.1.2 supported; 26.2 compatibility tested |
-| Server runtime | Java 25 for the supported Paper versions |
-| Plugin bytecode | Java 17 |
-| Build toolchain | Gradle wrapper with a Java 21+ toolchain; Java 25 is supported |
+| Minecraft / Paper | 26.2 build 60 beta |
+| Server runtime | Java 25 |
+| Plugin bytecode | Java 25 |
+| Build toolchain | Gradle wrapper with a Java 25 toolchain |
 | Required plugins | Vault and a Vault economy provider |
 
-The same shaded plugin jar is intended for Paper 26.1.2 and 26.2. Older Minecraft releases are outside this fork's supported scope.
+The shaded plugin jar is intended for Paper 26.2. Older Minecraft releases, including 26.1.x, are outside this branch's supported scope.
 
 ## Features
 
@@ -31,8 +31,8 @@ The same shaded plugin jar is intended for Paper 26.1.2 and 26.2. Older Minecraf
 
 1. Install Vault, a Vault-compatible economy plugin, and `ShopChest-1.15.0-SNAPSHOT-all.jar`.
 2. Start Paper once, then review `plugins/ShopChest/config.yml` and `hologram-format.yml`.
-3. Hold the item to sell, run `/shop create <amount> <buy-price> <sell-price>`, and click a chest within 15 seconds.
-4. Run `/shop info` for the installed version, starting commands, and the canonical player guide.
+3. Hold the item to sell, run `/shops create <amount> <buy-price> <sell-price>`, and click a chest within 15 seconds.
+4. Run `/shops info` for the installed version, starting commands, and the canonical player guide.
 
 See the [player guide](docs/player-guide.md) for normal use and [installation](docs/installation.md) for the complete server setup.
 
@@ -56,7 +56,7 @@ The normal build is:
 JAVA_HOME=/path/to/jdk-25 ./gradlew build plugin:shadowJar
 ```
 
-The deployable jar is written to `plugin/build/libs/ShopChest-1.15.0-SNAPSHOT-all.jar`. Gradle includes the Paper NMS module automatically. If a local Spigot NMS aggregate has been prepared, the build also includes it, but that aggregate is not required for the supported Paper targets.
+The deployable jar is written to `plugin/build/libs/ShopChest-1.15.0-SNAPSHOT-all.jar`. Gradle includes the Paper NMS module automatically; legacy Spigot NMS aggregates are not part of this branch's supported build.
 
 ## Persistence and Updates
 

@@ -25,26 +25,17 @@ repositories {
     maven {
         url = uri("https://repo.papermc.io/repository/maven-public/")
     }
-    // Inventive Talent repo (ReflectionHelper)
-    maven {
-        url = uri("https://repo.inventivetalent.org/content/groups/public/")
-    }    
 }
 
-val spigotNmsAllDependency = "de.epiceric:shopchest-nms-spigot-all:1.0.4"
-val spigotNmsAllJar = file(
-    "${System.getProperty("user.home")}/.m2/repository/de/epiceric/shopchest-nms-spigot-all/1.0.4/shopchest-nms-spigot-all-1.0.4.jar"
-)
+configurations.configureEach {
+    exclude(group = "org.bukkit", module = "bukkit")
+    exclude(group = "org.spigotmc", module = "spigot-api")
+}
 
 tasks.shadowJar {
     dependencies {
         include(project(":nms:interface"))
-        include(project(":nms:reflection"))
         include(project(":nms:paper"))
-        if (spigotNmsAllJar.isFile) {
-            include(dependency("de.epiceric:shopchest-nms-spigot-all"))
-        }
-        include(dependency("org.inventivetalent:reflectionhelper"))
         include(dependency("org.codemc.worldguardwrapper:worldguardwrapper"))
         include(dependency("org.bstats:bstats-base"))
         include(dependency("org.bstats:bstats-bukkit"))
@@ -53,19 +44,13 @@ tasks.shadowJar {
     relocate("org.bstats", "de.epiceric.shopchest.dependencies.bstats")
     relocate("org.codemc.worldguardwrapper", "de.epiceric.shopchest.dependencies.worldguardwrapper")
     relocate("com.zaxxer.hikari", "de.epiceric.shopchest.dependencies.hikari")
-    relocate("org.inventivetalent.reflection", "de.epiceric.shopchest.dependencies.reflectionhelper")
 }
 
 dependencies {
     // Nms modules
     implementation(project(":nms:interface"))
-    implementation(project(":nms:reflection"))
     implementation(project(":nms:paper"))
-    if (spigotNmsAllJar.isFile) {
-        implementation(spigotNmsAllDependency)
-    }
     // Shaded api
-    implementation("org.inventivetalent:reflectionhelper:1.18.13-SNAPSHOT")
     implementation("org.codemc.worldguardwrapper:worldguardwrapper:1.2.0-SNAPSHOT")
     implementation("org.bstats:bstats-bukkit:3.0.2")
     implementation("com.zaxxer:HikariCP:6.3.0")

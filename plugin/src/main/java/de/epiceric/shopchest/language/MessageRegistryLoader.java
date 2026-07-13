@@ -1,6 +1,6 @@
 package de.epiceric.shopchest.language;
 
-import net.md_5.bungee.api.ChatColor;
+import de.epiceric.shopchest.utils.LegacyColorUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -123,7 +123,7 @@ public class MessageRegistryLoader {
 
     private void register(@NotNull String[] messages, @NotNull Message message, @NotNull String path, @Nullable String defaultValue) {
         final String rawValue = storedMessages.getOrDefault(path, defaultValue);
-        messages[message.ordinal()] = ChatColor.translateAlternateColorCodes('&', rawValue);
+        messages[message.ordinal()] = LegacyColorUtils.translateAlternateColorCodes('&', rawValue);
     }
 
 }

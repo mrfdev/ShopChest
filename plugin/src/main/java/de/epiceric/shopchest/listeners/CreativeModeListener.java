@@ -17,6 +17,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockMultiPlaceEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
@@ -108,9 +109,13 @@ public class CreativeModeListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
-    public void onPlayerPickup(PlayerPickupItemEvent e) {
+    public void onEntityPickup(EntityPickupItemEvent e) {
+        if (!(e.getEntity() instanceof Player player)) {
+            return;
+        }
+
         // Cancel any item pickups if SelectClickType is set
-        ClickType clickType = ClickType.getPlayerClickType(e.getPlayer());
+        ClickType clickType = ClickType.getPlayerClickType(player);
         if (clickType instanceof SelectClickType)
             e.setCancelled(true);
     }

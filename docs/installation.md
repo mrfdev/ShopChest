@@ -2,12 +2,12 @@
 
 ## Requirements
 
-- Paper 26.1.2 as the supported live target, or Paper 26.2 for compatibility testing
-- Java 25 to run those Paper versions
+- Paper 26.2 as the supported live target
+- Java 25 to run Paper 26.2
 - Vault
 - A Vault-compatible economy provider registered before ShopChest enables
 
-ShopChest's own classes target Java 17 bytecode, but the supported Paper server determines the Java 25 runtime requirement.
+ShopChest's own classes target Java 25 bytecode for the supported Paper server.
 
 ## Fresh Installation
 
@@ -16,7 +16,7 @@ ShopChest's own classes target Java 17 bytecode, but the supported Paper server 
 3. Place `ShopChest-1.15.0-SNAPSHOT-all.jar` in `plugins/`. Remove older ShopChest jars so only one top-level jar remains.
 4. Start the server and verify that ShopChest reports its version without disabling itself.
 5. Review `plugins/ShopChest/config.yml` and `hologram-format.yml`.
-6. Run `/shop info`, `/shop limits`, and a controlled create/buy/sell test.
+6. Run `/shops info`, `/shops limits`, and a controlled create/buy/sell test.
 
 ShopChest disables itself when Vault, an economy provider, database access, or a compatible server platform is unavailable.
 
@@ -26,7 +26,7 @@ ShopChest disables itself when Vault, an economy provider, database access, or a
 2. Back up `plugins/ShopChest/` and, for MySQL, the configured ShopChest tables.
 3. Replace the old jar with the newly built shaded jar. Keep exactly one ShopChest jar in `plugins/`.
 4. Preserve `config.yml`, `hologram-format.yml`, language files, and database data.
-5. Start the server, watch schema migration messages, and test `/shop info`, `/shop reload`, shop creation, holograms, and both trade directions.
+5. Start the server, watch schema migration messages, and test `/shops info`, `/shops reload`, shop creation, holograms, and both trade directions.
 
 Legacy database migrations create backup tables before converting old unprefixed shop and economy-log schemas. They do not migrate data between database engines.
 
@@ -42,4 +42,4 @@ The output is `plugin/build/libs/ShopChest-1.15.0-SNAPSHOT-all.jar`. Local `serv
 
 ## Compatibility Policy
 
-The project compiles against the 26.1 API line and uses one jar for Paper 26.1.2 and 26.2. Paper 26.2 remains a compatibility-test target until promoted separately. Do not change the main target merely to test an experimental Paper build.
+The project compiles against the Paper 26.2 API line and supports Paper 26.2 only. Older Paper and Minecraft releases are intentionally out of scope for this branch.

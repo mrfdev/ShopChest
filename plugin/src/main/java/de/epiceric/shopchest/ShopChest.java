@@ -5,7 +5,6 @@ import com.wasteofplastic.askyblock.ASkyBlock;
 import de.epiceric.shopchest.command.ShopCommand;
 import de.epiceric.shopchest.config.Config;
 import de.epiceric.shopchest.config.hologram.HologramFormat;
-import de.epiceric.shopchest.event.ShopInitializedEvent;
 import de.epiceric.shopchest.external.BentoBoxShopFlag;
 import de.epiceric.shopchest.external.PlotSquaredOldShopFlag;
 import de.epiceric.shopchest.external.PlotSquaredShopFlag;
@@ -18,7 +17,6 @@ import de.epiceric.shopchest.listeners.WorldGuardListener;
 import de.epiceric.shopchest.listeners.*;
 import de.epiceric.shopchest.nms.Platform;
 import de.epiceric.shopchest.nms.PlatformLoader;
-import de.epiceric.shopchest.nms.reflection.ShopChestDebug;
 import de.epiceric.shopchest.shop.Shop;
 import de.epiceric.shopchest.shop.Shop.ShopType;
 import de.epiceric.shopchest.sql.Database;
@@ -132,7 +130,7 @@ public class ShopChest extends JavaPlugin {
             }
         }
 
-        debug("Loading ShopChest version " + getDescription().getVersion());
+        debug("Loading ShopChest version " + getPluginMeta().getVersion());
 
         worldGuard = Bukkit.getServer().getPluginManager().getPlugin("WorldGuard");
         if (worldGuard != null) {
@@ -142,7 +140,7 @@ public class ShopChest extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        debug("Enabling ShopChest version " + getDescription().getVersion());
+        debug("Enabling ShopChest version " + getPluginMeta().getVersion());
 
         if (!getServer().getPluginManager().isPluginEnabled("Vault")) {
             debug("Could not find plugin \"Vault\"");
@@ -159,7 +157,7 @@ public class ShopChest extends JavaPlugin {
         }
 
         // Load NMS
-        final PlatformLoader platformLoader = new PlatformLoader(new ShopChestDebug(getLogger(), this::debug, this::debug));
+        final PlatformLoader platformLoader = new PlatformLoader();
         try {
             platform = platformLoader.loadPlatform();
         } catch (RuntimeException e) {
@@ -383,7 +381,7 @@ public class ShopChest extends JavaPlugin {
                         isUpdateNeeded = true;
 
                         getLogger().warning(String.format("Version %s is available! You are running version %s.",
-                                latestVersion, getDescription().getVersion()));
+                                latestVersion, getPluginMeta().getVersion()));
 
                         for (Player p : getServer().getOnlinePlayers()) {
                             if (p.hasPermission(Permissions.UPDATE_NOTIFICATION)) {
@@ -481,7 +479,6 @@ public class ShopChest extends JavaPlugin {
                 shopUtils.loadShops(loadedChunks, new Callback<Integer>(ShopChest.this) {
                     @Override
                     public void onResult(Integer result) {
-                        getServer().getPluginManager().callEvent(new ShopInitializedEvent(result));
                         getLogger().info("Loaded " + result + " shops in already loaded chunks");
                         debug("Loaded " + result + " shops in already loaded chunks");
                     }

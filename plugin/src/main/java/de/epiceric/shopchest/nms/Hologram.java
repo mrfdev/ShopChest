@@ -6,13 +6,13 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
 
 import de.epiceric.shopchest.ShopChest;
 import de.epiceric.shopchest.config.Config;
+import de.epiceric.shopchest.utils.LegacyColorUtils;
 
 public class Hologram {
     // concurrent since update task is in async thread
@@ -190,7 +190,7 @@ public class Hologram {
             line = wrappers.size();
         }
 
-        text = ChatColor.translateAlternateColorCodes('&', text);
+        text = LegacyColorUtils.translateAlternateColorCodes('&', text);
 
         if (Config.hologramFixedBottom) {
             for (int i = 0; i < line; i++) {
@@ -234,7 +234,7 @@ public class Hologram {
             return;
         }
 
-        text = ChatColor.translateAlternateColorCodes('&', text);
+        text = LegacyColorUtils.translateAlternateColorCodes('&', text);
 
         if (line >= wrappers.size()) {
             addLine(line, text, true);

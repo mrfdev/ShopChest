@@ -22,6 +22,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.ArrayList;
@@ -210,11 +211,7 @@ public class Shop {
             chests[0] = (Chest) ih;
         }
 
-        if (Utils.getMajorVersion() < 13) {
-            face = ((org.bukkit.material.Directional) chests[0].getData()).getFacing();
-        } else {
-            face = ((Directional) chests[0].getBlockData()).getFacing();
-        }
+        face = ((Directional) chests[0].getBlockData()).getFacing();
 
         return new PreCreateResult(ih.getInventory(), chests, face);
     }
@@ -275,10 +272,11 @@ public class Shop {
         // Create requirements base on the shop value
         // (As requirements are always the same, only set requirements to the shop value)
         Map<HologramFormat.Requirement, Object> requirements = new EnumMap<>(HologramFormat.Requirement.class);
+        final int damage = ItemUtils.getDamage(itemStack);
         requirements.put(HologramFormat.Requirement.VENDOR, getVendor().getName());
         requirements.put(HologramFormat.Requirement.AMOUNT, getProduct().getAmount());
-        requirements.put(HologramFormat.Requirement.ITEM_TYPE, itemStack.getType() + (itemStack.getDurability() > 0 ? ":" + itemStack.getDurability() : ""));
-        requirements.put(HologramFormat.Requirement.ITEM_NAME, itemStack.hasItemMeta() ? itemStack.getItemMeta().getDisplayName() : null);
+        requirements.put(HologramFormat.Requirement.ITEM_TYPE, itemStack.getType() + (damage > 0 ? ":" + damage : ""));
+        requirements.put(HologramFormat.Requirement.ITEM_NAME, getLegacyDisplayName(itemStack));
         //TODO Link it
         //requirements.put(HologramFormat.Requirement.HAS_ENCHANTMENT, !LanguageUtils.getEnchantmentString(ItemUtils.getEnchantments(itemStack)).isEmpty());
         requirements.put(HologramFormat.Requirement.BUY_PRICE, getBuyPrice());
@@ -293,7 +291,7 @@ public class Shop {
         requirements.put(HologramFormat.Requirement.IN_STOCK, Utils.getAmount(inventory, itemStack));
         requirements.put(HologramFormat.Requirement.MAX_STACK, itemStack.getMaxStackSize());
         requirements.put(HologramFormat.Requirement.CHEST_SPACE, Utils.getFreeSpaceForItem(inventory, itemStack));
-        requirements.put(HologramFormat.Requirement.DURABILITY, itemStack.getDurability());
+        requirements.put(HologramFormat.Requirement.DURABILITY, damage);
 
         // Same as requirements
         Map<Placeholder, Object> placeholders = new EnumMap<>(Placeholder.class);
@@ -314,7 +312,7 @@ public class Shop {
         placeholders.put(Placeholder.STOCK, Utils.getAmount(inventory, itemStack));
         placeholders.put(Placeholder.MAX_STACK, itemStack.getMaxStackSize());
         placeholders.put(Placeholder.CHEST_SPACE, Utils.getFreeSpaceForItem(inventory, itemStack));
-        placeholders.put(Placeholder.DURABILITY, itemStack.getDurability());
+        placeholders.put(Placeholder.DURABILITY, damage);
 
         int lineCount = plugin.getHologramFormat().getLineCount();
 
@@ -358,8 +356,8 @@ public class Shop {
         if (Config.hologramFixedBottom) deltaY = -0.85;
 
         if (chests[1] != null) {
-            Chest c1 = Utils.getMajorVersion() >= 13 && (face == BlockFace.NORTH || face == BlockFace.EAST) ? chests[1] : chests[0];
-            Chest c2 = Utils.getMajorVersion() >= 13 && (face == BlockFace.NORTH || face == BlockFace.EAST) ? chests[0] : chests[1];
+            Chest c1 = (face == BlockFace.NORTH || face == BlockFace.EAST) ? chests[1] : chests[0];
+            Chest c2 = (face == BlockFace.NORTH || face == BlockFace.EAST) ? chests[0] : chests[1];
 
             if (holoLocation.equals(c1.getLocation())) {
                 if (c1.getX() != c2.getX()) {
@@ -385,6 +383,15 @@ public class Shop {
         holoLocation.add(0, Config.hologramLift, 0);
 
         return holoLocation;
+    }
+
+    private static String getLegacyDisplayName(ItemStack itemStack) {
+        if (itemStack == null || !itemStack.hasItemMeta()) {
+            return null;
+        }
+
+        final ItemMeta itemMeta = itemStack.getItemMeta();
+        return itemMeta == null ? null : ItemUtils.serializePlainly(itemMeta.displayName());
     }
 
     /**

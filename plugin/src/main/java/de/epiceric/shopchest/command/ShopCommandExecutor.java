@@ -13,10 +13,10 @@ import de.epiceric.shopchest.shop.ShopProduct;
 import de.epiceric.shopchest.utils.*;
 import de.epiceric.shopchest.utils.ClickType.CreateClickType;
 import de.epiceric.shopchest.utils.ClickType.SelectClickType;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.HoverEvent;
-import net.md_5.bungee.api.chat.TextComponent;
-import net.md_5.bungee.api.chat.hover.content.Text;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -25,7 +25,6 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -37,24 +36,11 @@ class ShopCommandExecutor implements CommandExecutor {
 
     private ShopChest plugin;
     private ShopUtils shopUtils;
-    private final Enchantment UNBREAKING_ENCHANT;
+    private static final Enchantment UNBREAKING_ENCHANT = Enchantment.UNBREAKING;
 
     ShopCommandExecutor(ShopChest plugin) {
         this.plugin = plugin;
         this.shopUtils = plugin.getShopUtils();
-        UNBREAKING_ENCHANT = loadUnbreakingEnchant();
-    }
-
-    private Enchantment loadUnbreakingEnchant() {
-        // The constant name changed in 1.20.5
-        // Doing this ensure compatibility with older version when using older version
-        try {
-            final Field field = Enchantment.class.getDeclaredField("DURABILITY");
-            field.setAccessible(true);
-            return (Enchantment) field.get(null);
-        } catch (ReflectiveOperationException e) {
-            return Enchantment.UNBREAKING;
-        }
     }
 
     @Override
@@ -110,7 +96,7 @@ class ShopCommandExecutor implements CommandExecutor {
                     if (sender instanceof Player) {
                         info((Player) sender);
                     } else {
-                        sender.sendMessage(ChatColor.RED + "Only players can inspect a shop.");
+                        sender.sendMessage(Component.text("Only players can inspect a shop.", NamedTextColor.RED));
                     }
                 } else {
                     sendPluginInfo(sender);
@@ -165,22 +151,23 @@ class ShopCommandExecutor implements CommandExecutor {
         String command = Config.mainCommandName;
 
         sender.sendMessage(" ");
-        sender.sendMessage(ChatColor.GOLD + "ShopChest " + ChatColor.GRAY + "v" + plugin.getDescription().getVersion());
-        sender.sendMessage(ChatColor.YELLOW + "Create chest shops to buy and sell items with other players.");
-        sender.sendMessage(ChatColor.GREEN + "/" + command + " create <amount> <buy-price> <sell-price>"
-                + ChatColor.GRAY + " - Create a shop");
-        sender.sendMessage(ChatColor.GREEN + "/" + command + " limits" + ChatColor.GRAY + " - View your shop limit");
-        sender.sendMessage(ChatColor.GREEN + "/" + command + " inspect" + ChatColor.GRAY + " - Inspect a shop");
+        sender.sendMessage(Component.text("ShopChest ", NamedTextColor.GOLD)
+                .append(Component.text("v" + plugin.getPluginMeta().getVersion(), NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("Create chest shops to buy and sell items with other players.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("/" + command + " create <amount> <buy-price> <sell-price>", NamedTextColor.GREEN)
+                .append(Component.text(" - Create a shop", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("/" + command + " limits", NamedTextColor.GREEN)
+                .append(Component.text(" - View your shop limit", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("/" + command + " inspect", NamedTextColor.GREEN)
+                .append(Component.text(" - Inspect a shop", NamedTextColor.GRAY)));
 
-        if (sender instanceof Player) {
-            TextComponent docs = new TextComponent("View the ShopChest player guide");
-            docs.setColor(net.md_5.bungee.api.ChatColor.AQUA);
-            docs.setUnderlined(true);
-            docs.setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, DOCS_URL));
-            docs.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text("Open " + DOCS_URL)));
-            ((Player) sender).spigot().sendMessage(docs);
+        if (sender instanceof Player player) {
+            player.sendMessage(Component.text("View the ShopChest player guide", NamedTextColor.AQUA)
+                    .decorate(TextDecoration.UNDERLINED)
+                    .clickEvent(ClickEvent.openUrl(DOCS_URL))
+                    .hoverEvent(Component.text("Open " + DOCS_URL)));
         } else {
-            sender.sendMessage(ChatColor.AQUA + DOCS_URL);
+            sender.sendMessage(Component.text(DOCS_URL, NamedTextColor.AQUA));
         }
 
         sender.sendMessage(" ");
@@ -400,7 +387,7 @@ class ShopCommandExecutor implements CommandExecutor {
                 continue;
             }
 
-            if (is.getType().equals(itemStack.getType()) && is.getDurability() == itemStack.getDurability()) {
+            if (ItemUtils.isSameTypeAndDamage(is, itemStack)) {
                 p.sendMessage(messageRegistry.getMessage(Message.CANNOT_SELL_ITEM));
                 plugin.debug(p.getName() + "'s item is on the blacklist");
                 return;
@@ -418,7 +405,7 @@ class ShopCommandExecutor implements CommandExecutor {
                 continue;
             }
 
-            if (is.getType().equals(itemStack.getType()) && is.getDurability() == itemStack.getDurability()) {
+            if (ItemUtils.isSameTypeAndDamage(is, itemStack)) {
                 if (buyEnabled) {
                     if ((buyPrice < amount * minPrice) && (buyPrice > 0)) {
                         p.sendMessage(messageRegistry.getMessage(Message.BUY_PRICE_TOO_LOW, new Replacement(Placeholder.MIN_PRICE, String.valueOf(amount * minPrice))));
@@ -448,7 +435,7 @@ class ShopCommandExecutor implements CommandExecutor {
                 continue;
             }
 
-            if (is.getType().equals(itemStack.getType()) && is.getDurability() == itemStack.getDurability()) {
+            if (ItemUtils.isSameTypeAndDamage(is, itemStack)) {
                 if (buyEnabled) {
                     if ((buyPrice > amount * maxPrice) && (buyPrice > 0)) {
                         p.sendMessage(messageRegistry.getMessage(Message.BUY_PRICE_TOO_HIGH, new Replacement(Placeholder.MAX_PRICE, String.valueOf(amount * maxPrice))));
@@ -479,7 +466,7 @@ class ShopCommandExecutor implements CommandExecutor {
         }
 
         if (UNBREAKING_ENCHANT.canEnchantItem(itemStack)) {
-            if (itemStack.getDurability() > 0 && !Config.allowBrokenItems) {
+            if (ItemUtils.getDamage(itemStack) > 0 && !Config.allowBrokenItems) {
                 p.sendMessage(messageRegistry.getMessage(Message.CANNOT_SELL_BROKEN_ITEM));
                 plugin.debug(p.getName() + "'s item is broken");
                 return;

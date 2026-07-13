@@ -16,7 +16,6 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import de.epiceric.shopchest.ShopChest;
-import net.kyori.adventure.text.minimessage.Template;
 
 public class PlotSquaredShopFlag {
     public enum Group {
@@ -142,8 +141,9 @@ public class PlotSquaredShopFlag {
                     return this.flagOf(Group.NONE);
             }
 
-            throw new FlagParseException(this, input, TranslatableCaption.of("flags.flag_error_enum"),
-                    Template.of("list", String.join(", ", lowercaseValues)));
+            ShopChest.getInstance().debug("Invalid PlotSquared group flag value '" + input
+                    + "'. Expected one of: " + String.join(", ", lowercaseValues));
+            return this.flagOf(Group.NONE);
         }
 
         @Override

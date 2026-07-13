@@ -3,15 +3,20 @@ package de.epiceric.shopchest.utils;
 import java.util.Arrays;
 import java.util.Map;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.PotionMeta;
-import org.bukkit.potion.Potion;
 import org.bukkit.potion.PotionType;
 
 public class ItemUtils {
+
+    private static final LegacyComponentSerializer LEGACY_COMPONENT_SERIALIZER = LegacyComponentSerializer.legacySection();
 
     public static Map<Enchantment, Integer> getEnchantments(ItemStack itemStack) {
         if (itemStack.getItemMeta() instanceof EnchantmentStorageMeta) {
@@ -24,29 +29,14 @@ public class ItemUtils {
 
     public static PotionType getPotionEffect(ItemStack itemStack) {
         if (itemStack.getItemMeta() instanceof PotionMeta) {    
-            if (Utils.getMajorVersion() < 9) {
-                return Potion.fromItemStack(itemStack).getType();
-            } else {
-                // TODO Maybe save reimplement the old version
-                //return ((PotionMeta) itemStack.getItemMeta()).getBasePotionData().getType();
-                return ((PotionMeta)itemStack.getItemMeta()).getBasePotionType();
-            }
+            return ((PotionMeta)itemStack.getItemMeta()).getBasePotionType();
         }
 
         return null;
     }
 
     public static boolean isExtendedPotion(ItemStack itemStack) {
-        if (itemStack.getItemMeta() instanceof PotionMeta) {
-            if (Utils.getMajorVersion() < 9) {
-                return Potion.fromItemStack(itemStack).hasExtendedDuration();
-            } else {
-                // TODO Maybe save reimplement the old version
-                //return ((PotionMeta) itemStack.getItemMeta()).getBasePotionData().isExtended();
-                return false; // I have no idea how to get the base duration of a potion without loading it at startup
-            }
-        }
-
+        // Potion extension is represented by the selected base potion type on modern Paper.
         return false;
     }
 
@@ -56,6 +46,44 @@ public class ItemUtils {
 
     public static boolean isAir(Material type) {
         return Arrays.asList("AIR", "CAVE_AIR", "VOID_AIR").contains(type.name());
+    }
+
+    public static int getDamage(ItemStack itemStack) {
+        if (itemStack == null || !itemStack.hasItemMeta()) {
+            return 0;
+        }
+        final ItemMeta itemMeta = itemStack.getItemMeta();
+        if (itemMeta instanceof Damageable) {
+            final Damageable damageable = (Damageable) itemMeta;
+            return damageable.hasDamage() ? damageable.getDamage() : 0;
+        }
+        return 0;
+    }
+
+    public static void setDamage(ItemStack itemStack, int damage) {
+        if (itemStack == null || damage <= 0) {
+            return;
+        }
+        final ItemMeta itemMeta = itemStack.getItemMeta();
+        if (itemMeta == null) {
+            return;
+        }
+        if (itemMeta instanceof Damageable) {
+            final Damageable damageable = (Damageable) itemMeta;
+            damageable.setDamage(damage);
+            itemStack.setItemMeta(damageable);
+        }
+    }
+
+    public static boolean isSameTypeAndDamage(ItemStack first, ItemStack second) {
+        return first != null
+                && second != null
+                && first.getType() == second.getType()
+                && getDamage(first) == getDamage(second);
+    }
+
+    public static String serializePlainly(Component component) {
+        return component == null ? null : LEGACY_COMPONENT_SERIALIZER.serialize(component);
     }
 
     /**
@@ -69,7 +97,9 @@ public class ItemUtils {
         if (item.contains(":")) {
             Material mat = Material.getMaterial(item.split(":")[0]);
             if (mat == null) return null;
-            return new ItemStack(mat, 1, Short.parseShort(item.split(":")[1]));
+            final ItemStack itemStack = new ItemStack(mat, 1);
+            setDamage(itemStack, Integer.parseInt(item.split(":")[1]));
+            return itemStack;
         } else {
             Material mat = Material.getMaterial(item);
             if (mat == null) return null;

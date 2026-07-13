@@ -1,8 +1,9 @@
 package de.epiceric.shopchest.utils;
 
 import java.io.InputStreamReader;
-import java.net.URL;
+import java.net.URI;
 import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -31,12 +32,15 @@ public class UpdateChecker {
         try {
             plugin.debug("Checking for updates...");
 
-            URL url = new URL("https://api.spiget.org/v2/resources/11431/versions?size=1&page=1&sort=-releaseDate");
-            URLConnection conn = url.openConnection();
+            URLConnection conn = URI.create("https://api.spiget.org/v2/resources/11431/versions?size=1&page=1&sort=-releaseDate")
+                    .toURL()
+                    .openConnection();
             conn.setRequestProperty("User-Agent", "ShopChest/UpdateChecker");
 
-            InputStreamReader reader = new InputStreamReader(conn.getInputStream());
-            JsonElement element = new JsonParser().parse(reader);
+            JsonElement element;
+            try (InputStreamReader reader = new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8)) {
+                element = JsonParser.parseReader(reader);
+            }
 
             if (element.isJsonArray()) {
                 JsonObject result = element.getAsJsonArray().get(0).getAsJsonObject();
@@ -49,7 +53,7 @@ public class UpdateChecker {
                 return UpdateCheckerResult.ERROR;
             }
 
-            if (plugin.getDescription().getVersion().equals(version)) {
+            if (plugin.getPluginMeta().getVersion().equals(version)) {
                 plugin.debug("No update found");
                 return UpdateCheckerResult.FALSE;
             } else {

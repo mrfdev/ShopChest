@@ -22,4 +22,4 @@ Each line contains ordered options. The first option whose requirements pass is 
 
 Conditions support boolean logic and comparisons, for example `NORMAL_SHOP`, `BUY_PRICE > 0`, or `(IN_STOCK > 0) || ADMIN_SHOP`. Braced expressions can calculate numeric output from placeholders, such as `{%STOCK% / 64}`. Options are evaluated from top to bottom.
 
-Run `/shop reload` after editing `hologram-format.yml`. Invalid conditions or calculations are reported in the server log and should be corrected before relying on the display.
+Run `/shops reload` after editing `hologram-format.yml`. Invalid conditions or calculations are reported in the server log and should be corrected before relying on the display.

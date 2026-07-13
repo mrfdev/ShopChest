@@ -290,7 +290,7 @@ public class Config {
     public static int defaultLimit;
 
     /**
-     * The main command of ShopChest <i>(default: shop)</i>
+     * The main command of ShopChest <i>(default: shops)</i>
      **/
     public static String mainCommandName;
 
@@ -358,12 +358,13 @@ public class Config {
      * @param value    Value to add
      */
     public void add(String property, String value) {
-        List list = (plugin.getConfig().getList(property) == null) ? new ArrayList<>() : plugin.getConfig().getList(property);
+        List<Object> list = new ArrayList<>(plugin.getConfig().getList(property, new ArrayList<>()));
 
         try {
             int intValue = Integer.parseInt(value);
             list.add(intValue);
 
+            plugin.getConfig().set(property, list);
             plugin.saveConfig();
             reload(false, false, false);
 
@@ -374,6 +375,7 @@ public class Config {
             double doubleValue = Double.parseDouble(value);
             list.add(doubleValue);
 
+            plugin.getConfig().set(property, list);
             plugin.saveConfig();
             reload(false, false, false);
 
@@ -387,18 +389,20 @@ public class Config {
             list.add(value);
         }
 
+        plugin.getConfig().set(property, list);
         plugin.saveConfig();
 
         reload(false, false, false);
     }
 
     public void remove(String property, String value) {
-        List list = (plugin.getConfig().getList(property) == null) ? new ArrayList<>() : plugin.getConfig().getList(property);
+        List<Object> list = new ArrayList<>(plugin.getConfig().getList(property, new ArrayList<>()));
 
         try {
             int intValue = Integer.parseInt(value);
             list.remove(intValue);
 
+            plugin.getConfig().set(property, list);
             plugin.saveConfig();
             reload(false, false, false);
 
@@ -409,6 +413,7 @@ public class Config {
             double doubleValue = Double.parseDouble(value);
             list.remove(doubleValue);
 
+            plugin.getConfig().set(property, list);
             plugin.saveConfig();
             reload(false, false, false);
 
@@ -422,6 +427,7 @@ public class Config {
             list.remove(value);
         }
 
+        plugin.getConfig().set(property, list);
         plugin.saveConfig();
 
         reload(false, false, false);
