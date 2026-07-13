@@ -13,7 +13,7 @@ ShopChest's own classes target Java 25 bytecode for the supported Paper server.
 
 1. Stop the server cleanly.
 2. Install Vault and the chosen economy plugin in the top-level `plugins/` directory.
-3. Place `ShopChest-1.15.0-SNAPSHOT-all.jar` in `plugins/`. Remove older ShopChest jars so only one top-level jar remains.
+3. Place the generated `1MB-ShopChest-v1.15.1-<build>-j25-26.2.jar` in `plugins/`. Remove older ShopChest jars so only one top-level jar remains.
 4. Start the server and verify that ShopChest reports its version without disabling itself.
 5. Review `plugins/ShopChest/config.yml` and `hologram-format.yml`.
 6. Run `/shops info`, `/shops limits`, and a controlled create/buy/sell test.
@@ -38,7 +38,7 @@ From the repository root:
 JAVA_HOME=/path/to/jdk-25 ./gradlew build plugin:shadowJar
 ```
 
-The output is `plugin/build/libs/ShopChest-1.15.0-SNAPSHOT-all.jar`. Local `servers/`, Gradle output, logs, and test-server jars are ignored and must not be committed.
+The output is `plugin/build/libs/1MB-ShopChest-v1.15.1-<build>-j25-26.2.jar`, where `<build>` is the zero-padded Git commit count. Local `servers/`, Gradle output, logs, and test-server jars are ignored and must not be committed.
 
 ## Compatibility Policy
 

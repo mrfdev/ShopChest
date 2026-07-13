@@ -3,6 +3,13 @@ plugins {
     id("com.gradleup.shadow") version "9.0.0-rc1"
 }
 
+val pluginVersion = "1.15.1"
+val javaVersion = "25"
+val paperVersion = "26.2"
+val buildNumber = providers.exec {
+    commandLine("git", "rev-list", "--count", "HEAD")
+}.standardOutput.asText.get().trim().padStart(3, '0')
+
 repositories {
     mavenLocal {
         content {
@@ -33,6 +40,7 @@ configurations.configureEach {
 }
 
 tasks.shadowJar {
+    archiveFileName.set("1MB-ShopChest-v${pluginVersion}-${buildNumber}-j${javaVersion}-${paperVersion}.jar")
     dependencies {
         include(project(":nms:interface"))
         include(project(":nms:paper"))
@@ -74,7 +82,7 @@ dependencies {
 
 project.base.archivesName.set(rootProject.name)
 group = "de.epiceric"
-version = "1.15.0-SNAPSHOT"
+version = pluginVersion
 
 tasks.processResources {
     expand(Pair("version", version))

@@ -29,7 +29,7 @@ The shaded plugin jar is intended for Paper 26.2. Older Minecraft releases, incl
 
 ## Quick Start
 
-1. Install Vault, a Vault-compatible economy plugin, and `ShopChest-1.15.0-SNAPSHOT-all.jar`.
+1. Install Vault, a Vault-compatible economy plugin, and the generated `1MB-ShopChest-v1.15.1-<build>-j25-26.2.jar`.
 2. Start Paper once, then review `plugins/ShopChest/config.yml` and `hologram-format.yml`.
 3. Hold the item to sell, run `/shops create <amount> <buy-price> <sell-price>`, and click a chest within 15 seconds.
 4. Run `/shops info` for the installed version, starting commands, and the canonical player guide.
@@ -56,7 +56,7 @@ The normal build is:
 JAVA_HOME=/path/to/jdk-25 ./gradlew build plugin:shadowJar
 ```
 
-The deployable jar is written to `plugin/build/libs/ShopChest-1.15.0-SNAPSHOT-all.jar`. Gradle includes the Paper NMS module automatically; legacy Spigot NMS aggregates are not part of this branch's supported build.
+The deployable jar is written to `plugin/build/libs/1MB-ShopChest-v1.15.1-<build>-j25-26.2.jar`, where `<build>` is the zero-padded Git commit count. Gradle includes the Paper NMS module automatically; legacy Spigot NMS aggregates are not part of this branch's supported build.
 
 ## Persistence and Updates
 
