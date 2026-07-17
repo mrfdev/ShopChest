@@ -86,4 +86,4 @@ ShopChest uses the server's Vault economy and can respect region, plot, island, 
 ## Technical Documentation
 
 For command syntax, permissions, configuration, and troubleshooting, see the
-[ShopChest technical documentation](https://docs.1moreblock.com/custom-server-plugins/shopchest/).
+[ShopChest technical documentation](https://github.com/mrfdev/1MB-Plugins-Docs/tree/main/project-docs/shopchest/).
