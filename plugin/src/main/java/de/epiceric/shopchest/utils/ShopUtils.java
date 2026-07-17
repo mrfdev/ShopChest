@@ -15,10 +15,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
-import org.bukkit.block.Chest;
-import org.bukkit.block.DoubleChest;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.permissions.PermissionAttachmentInfo;
 import org.bukkit.util.Vector;
 
@@ -69,7 +66,7 @@ public class ShopUtils {
      * <p>
      * This collection is safe to use for looping over and removing shops.
      *
-     * @return Read-only collection of all shops, may contain duplicates for double chests
+     * @return Read-only collection of all shops, may contain duplicates for multi-block containers
      */
     public Collection<Shop> getShops() {
         return Collections.unmodifiableCollection(new ArrayList<>(shopLocationValues));
@@ -94,23 +91,11 @@ public class ShopUtils {
      * @param callback Callback that - if succeeded - returns the ID the shop had or was given (as {@code int})
      */
     public void addShop(Shop shop, boolean addToDatabase, Callback<Integer> callback) {
-        InventoryHolder ih = shop.getInventoryHolder();
         plugin.debug("Adding shop... (#" + shop.getID() + ")");
 
-        if (ih instanceof DoubleChest) {
-            DoubleChest dc = (DoubleChest) ih;
-            Chest r = (Chest) dc.getRightSide();
-            Chest l = (Chest) dc.getLeftSide();
-
-            plugin.debug("Added shop as double chest. (#" + shop.getID() + ")");
-
-            shopLocation.put(r.getLocation(), shop);
-            shopLocation.put(l.getLocation(), shop);
-        } else {
-            plugin.debug("Added shop as single chest. (#" + shop.getID() + ")");
-
-            shopLocation.put(shop.getLocation(), shop);
-        }
+        Set<Location> locations = shop.getContainerLocations();
+        plugin.debug("Added shop using " + locations.size() + " container block(s). (#" + shop.getID() + ")");
+        locations.forEach(location -> shopLocation.put(location, shop));
 
         if (addToDatabase) {
             if (shop.getShopType() != ShopType.ADMIN) {
@@ -160,7 +145,7 @@ public class ShopUtils {
         shops.forEach(Shop::unloadDisplays);
     }
 
-    /** Remove a shop. May not work properly if double chest doesn't exist!
+    /** Remove a shop.
      * @param shop Shop to remove
      * @param removeFromDatabase Whether the shop should also be removed from the database
      * @param callback Callback that - if succeeded - returns null
@@ -170,19 +155,7 @@ public class ShopUtils {
         plugin.debug("Removing shop (#" + shop.getID() + ")");
 
         if (shop.isCreated()) {
-            InventoryHolder ih = shop.getInventoryHolder();
-
-            if (ih instanceof DoubleChest) {
-                DoubleChest dc = (DoubleChest) ih;
-                Chest r = (Chest) dc.getRightSide();
-                Chest l = (Chest) dc.getLeftSide();
-
-                shopLocation.remove(r.getLocation());
-                shopLocation.remove(l.getLocation());
-            } else {
-                shopLocation.remove(shop.getLocation());
-            }
-
+            shopLocation.entrySet().removeIf(entry -> entry.getValue() == shop);
             shop.removeItem();
             shop.removeHologram();
         }
@@ -198,7 +171,7 @@ public class ShopUtils {
     }
 
     /**
-     * Remove a shop. May not work properly if double chest doesn't exist!
+     * Remove a shop.
      * @param shop Shop to remove
      * @param removeFromDatabase Whether the shop should also be removed from the database
      * @see ShopUtils#removeShopById(int, boolean)

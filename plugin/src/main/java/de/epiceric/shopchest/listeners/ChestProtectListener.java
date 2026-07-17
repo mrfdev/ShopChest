@@ -8,16 +8,14 @@ import de.epiceric.shopchest.language.Message;
 import de.epiceric.shopchest.language.MessageRegistry;
 import de.epiceric.shopchest.language.Replacement;
 import de.epiceric.shopchest.shop.Shop;
+import de.epiceric.shopchest.shop.ShopContainer;
 import de.epiceric.shopchest.shop.Shop.ShopType;
 import de.epiceric.shopchest.utils.*;
 import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.block.Chest;
-import org.bukkit.block.DoubleChest;
 import org.bukkit.block.data.type.Chest.Type;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -30,6 +28,7 @@ import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.inventory.InventoryType;
 
 import java.util.ArrayList;
+import java.util.Set;
 
 public class ChestProtectListener implements Listener {
 
@@ -43,12 +42,16 @@ public class ChestProtectListener implements Listener {
 
     private void remove(final Shop shop, final Block b, final Player p) {
         final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
-        if (shop.getInventoryHolder() instanceof DoubleChest) {
-            DoubleChest dc = (DoubleChest) shop.getInventoryHolder();
-            final Chest l = (Chest) dc.getLeftSide();
-            final Chest r = (Chest) dc.getRightSide();
-
-            Location loc = (b.getLocation().equals(l.getLocation()) ? r.getLocation() : l.getLocation());
+        Set<Location> containerLocations = shop.getContainerLocations();
+        if (containerLocations.size() > 1) {
+            Location loc = containerLocations.stream()
+                    .filter(location -> !location.equals(b.getLocation()))
+                    .findFirst()
+                    .orElse(null);
+            if (loc == null) {
+                plugin.debug("Could not find the remaining container block for shop #" + shop.getID());
+                return;
+            }
             final Shop newShop = new Shop(shop.getID(), plugin, shop.getVendor(), shop.getProduct(), loc, shop.getBuyPrice(), shop.getSellPrice(), shop.getShopType());
 
             shopUtils.removeShop(shop, true, new Callback<Void>(plugin) {
@@ -58,27 +61,28 @@ public class ChestProtectListener implements Listener {
                     shopUtils.addShop(newShop, true);
                 }
             });
-        } else {
-            double creationPrice = shop.getShopType() == ShopType.ADMIN ? Config.shopCreationPriceAdmin : Config.shopCreationPriceNormal;
-            if (creationPrice > 0 && Config.refundShopCreation && p.getUniqueId().equals(shop.getVendor().getUniqueId())) {
-                EconomyResponse r = plugin.getEconomy().depositPlayer(p, shop.getLocation().getWorld().getName(), creationPrice);
-                if (!r.transactionSuccess()) {
-                    plugin.debug("Economy transaction failed: " + r.errorMessage);
-                    p.sendMessage(messageRegistry.getMessage(Message.ERROR_OCCURRED,
-                            new Replacement(Placeholder.ERROR, r.errorMessage)));
-                    p.sendMessage(messageRegistry.getMessage(Message.SHOP_REMOVED_REFUND,
-                            new Replacement(Placeholder.CREATION_PRICE, 0)));
-                } else {
-                    p.sendMessage(messageRegistry.getMessage(Message.SHOP_REMOVED_REFUND,
-                            new Replacement(Placeholder.CREATION_PRICE, creationPrice)));
-                }
-            } else {
-                p.sendMessage(messageRegistry.getMessage(Message.SHOP_REMOVED));
-            }   
-
-            shopUtils.removeShop(shop, true);
-            plugin.debug(String.format("%s broke %s's shop (#%d)", p.getName(), shop.getVendor().getName(), shop.getID()));
+            return;
         }
+
+        double creationPrice = shop.getShopType() == ShopType.ADMIN ? Config.shopCreationPriceAdmin : Config.shopCreationPriceNormal;
+        if (creationPrice > 0 && Config.refundShopCreation && p.getUniqueId().equals(shop.getVendor().getUniqueId())) {
+            EconomyResponse r = plugin.getEconomy().depositPlayer(p, shop.getLocation().getWorld().getName(), creationPrice);
+            if (!r.transactionSuccess()) {
+                plugin.debug("Economy transaction failed: " + r.errorMessage);
+                p.sendMessage(messageRegistry.getMessage(Message.ERROR_OCCURRED,
+                        new Replacement(Placeholder.ERROR, r.errorMessage)));
+                p.sendMessage(messageRegistry.getMessage(Message.SHOP_REMOVED_REFUND,
+                        new Replacement(Placeholder.CREATION_PRICE, 0)));
+            } else {
+                p.sendMessage(messageRegistry.getMessage(Message.SHOP_REMOVED_REFUND,
+                        new Replacement(Placeholder.CREATION_PRICE, creationPrice)));
+            }
+        } else {
+            p.sendMessage(messageRegistry.getMessage(Message.SHOP_REMOVED));
+        }
+
+        shopUtils.removeShop(shop, true);
+        plugin.debug(String.format("%s broke %s's shop (#%d)", p.getName(), shop.getVendor().getName(), shop.getID()));
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -119,7 +123,7 @@ public class ChestProtectListener implements Listener {
     public void onEntityExplode(EntityExplodeEvent e) {
         ArrayList<Block> bl = new ArrayList<>(e.blockList());
         for (Block b : bl) {
-            if (b.getType().equals(Material.CHEST) || b.getType().equals(Material.TRAPPED_CHEST)) {
+            if (ShopContainer.isSupported(b.getType())) {
                 if (shopUtils.isShop(b.getLocation())) e.blockList().remove(b);
             }
         }
@@ -130,17 +134,15 @@ public class ChestProtectListener implements Listener {
         final Player p = e.getPlayer();
         final Block b = e.getBlockPlaced();
 
-        if (!b.getType().equals(Material.CHEST) && !b.getType().equals(Material.TRAPPED_CHEST)) {
+        if (!ShopContainer.isSupported(b.getType())
+                || !(b.getBlockData() instanceof org.bukkit.block.data.type.Chest data)) {
             return;
         }
-        
-        Chest c = (Chest) b.getState();
+
         Block b2;
 
         // Can't use Utils::getChestLocations since inventory holder
         // has not been updated yet in this event (for 1.13+)
-
-        org.bukkit.block.data.type.Chest data = (org.bukkit.block.data.type.Chest) c.getBlockData();
 
         if (data.getType() == Type.SINGLE) {
             return;
@@ -179,7 +181,8 @@ public class ChestProtectListener implements Listener {
             return;
         }
 
-        if (!ItemUtils.isAir(b.getRelative(BlockFace.UP).getType())) {
+        ShopContainer container = ShopContainer.resolve(plugin, b);
+        if (container == null || !container.hasDisplaySpace()) {
             e.setCancelled(true);
             p.sendMessage(messageRegistry.getMessage(Message.CHEST_BLOCKED));
             return;
@@ -199,19 +202,14 @@ public class ChestProtectListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onItemMove(InventoryMoveItemEvent e) {
-        if ((e.getSource().getType().equals(InventoryType.CHEST)) && (!e.getInitiator().getType().equals(InventoryType.PLAYER))) {
+        if (e.getInitiator().getType().equals(InventoryType.PLAYER)) {
+            return;
+        }
 
-            if (e.getSource().getHolder() instanceof DoubleChest) {
-                DoubleChest dc = (DoubleChest) e.getSource().getHolder();
-                Chest r = (Chest) dc.getRightSide();
-                Chest l = (Chest) dc.getLeftSide();
-
-                if (shopUtils.isShop(r.getLocation()) || shopUtils.isShop(l.getLocation())) e.setCancelled(true);
-
-            } else if (e.getSource().getHolder() instanceof Chest) {
-                Chest c = (Chest) e.getSource().getHolder();
-
-                if (shopUtils.isShop(c.getLocation())) e.setCancelled(true);
+        for (Location location : ShopContainer.locationsOf(e.getSource().getHolder())) {
+            if (shopUtils.isShop(location)) {
+                e.setCancelled(true);
+                return;
             }
         }
     }

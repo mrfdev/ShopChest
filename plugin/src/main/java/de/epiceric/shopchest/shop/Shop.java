@@ -26,9 +26,6 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.block.Chest;
-import org.bukkit.block.DoubleChest;
-import org.bukkit.block.data.Directional;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
@@ -48,14 +45,10 @@ public class Shop {
     }
 
     private static class PreCreateResult {
-        private final Inventory inventory;
-        private final Chest[] chests;
-        private final BlockFace face;
+        private final ShopContainer container;
 
-        private PreCreateResult(Inventory inventory, Chest[] chests, BlockFace face) {
-            this.inventory = inventory;
-            this.chests = chests;
-            this.face = face;
+        private PreCreateResult(ShopContainer container) {
+            this.container = container;
         }
     }
 
@@ -134,16 +127,17 @@ public class Shop {
         plugin.debug("Creating shop (#" + id + ")");
 
         Block b = location.getBlock();
-        if (b.getType() != Material.CHEST && b.getType() != Material.TRAPPED_CHEST) {
-            ChestNotFoundException ex = new ChestNotFoundException(String.format("No Chest found in world '%s' at location: %d; %d; %d",
+        ShopContainer container = ShopContainer.resolve(plugin, b);
+        if (container == null) {
+            ChestNotFoundException ex = new ChestNotFoundException(String.format("No supported shop container found in world '%s' at location: %d; %d; %d",
                     b.getWorld().getName(), b.getX(), b.getY(), b.getZ()));
             plugin.getShopUtils().removeShop(this, Config.removeShopOnError);
             if (showConsoleMessages) plugin.getLogger().severe(ex.getMessage());
             plugin.debug("Failed to create shop (#" + id + ")");
             plugin.debug(ex);
             return false;
-        } else if ((!ItemUtils.isAir(b.getRelative(BlockFace.UP).getType()))) {
-            NotEnoughSpaceException ex = new NotEnoughSpaceException(String.format("No space above chest in world '%s' at location: %d; %d; %d",
+        } else if (!container.hasDisplaySpace()) {
+            NotEnoughSpaceException ex = new NotEnoughSpaceException(String.format("No display space above shop container in world '%s' at location: %d; %d; %d",
                     b.getWorld().getName(), b.getX(), b.getY(), b.getZ()));
             plugin.getShopUtils().removeShop(this, Config.removeShopOnError);
             if (showConsoleMessages) plugin.getLogger().severe(ex.getMessage());
@@ -152,11 +146,7 @@ public class Shop {
             return false;
         }
 
-        PreCreateResult preResult = preCreateHologram();
-
-        if (preResult == null) {
-            return false;
-        }
+        PreCreateResult preResult = new PreCreateResult(container);
 
         if (hologram == null || !hologram.exists()) createHologram(preResult);
         if (item == null) createItem();
@@ -236,7 +226,7 @@ public class Shop {
             removeHologram();
             createHologram(preResult);
         } else {
-            holoLocation = getHologramLocation(preResult.chests, preResult.face);
+            holoLocation = getHologramLocation(preResult.container);
         }
         if (restoreItem) {
             removeItem();
@@ -271,35 +261,16 @@ public class Shop {
     private PreCreateResult preCreateHologram() {
         plugin.debug("Creating hologram (#" + id + ")");
 
-        InventoryHolder ih = getInventoryHolder();
-
-        if (ih == null) return null;
-
-        Chest[] chests = new Chest[2];
-        BlockFace face;
-
-        if (ih instanceof DoubleChest) {
-            DoubleChest dc = (DoubleChest) ih;
-            Chest r = (Chest) dc.getRightSide();
-            Chest l = (Chest) dc.getLeftSide();
-
-            chests[0] = r;
-            chests[1] = l;
-        } else {
-            chests[0] = (Chest) ih;
-        }
-
-        face = ((Directional) chests[0].getBlockData()).getFacing();
-
-        return new PreCreateResult(ih.getInventory(), chests, face);
+        ShopContainer container = getContainer();
+        return container == null ? null : new PreCreateResult(container);
     }
 
     /**
      * Creates the hologram on the server thread.
      */
     private void createHologram(PreCreateResult preResult) {
-        Component[] holoText = getHologramText(preResult.inventory);
-        holoLocation = getHologramLocation(preResult.chests, preResult.face);
+        Component[] holoText = getHologramText(preResult.container.getInventory());
+        holoLocation = getHologramLocation(preResult.container);
         hologram = new Hologram(plugin, holoText, holoLocation);
     }
 
@@ -327,7 +298,7 @@ public class Shop {
         PreCreateResult preResult = preCreateHologram();
         if (preResult == null) return;
 
-        holoLocation = getHologramLocation(preResult.chests, preResult.face);
+        holoLocation = getHologramLocation(preResult.container);
         hologram.setLocation(holoLocation);
     }
 
@@ -460,44 +431,14 @@ public class Shop {
         return lines.toArray(new Component[0]);
     }
 
-    private Location getHologramLocation(Chest[] chests, BlockFace face) {
-        World w = location.getWorld();
-        int x = location.getBlockX();
-        int y  = location.getBlockY();
-        int z = location.getBlockZ();
-
-        Location holoLocation = new Location(w, x, y, z);
-
+    private Location getHologramLocation(ShopContainer container) {
+        Location holoLocation = container.getCenter();
         double deltaY = -0.6;
 
         if (Config.hologramFixedBottom) deltaY = -0.85;
 
-        if (chests[1] != null) {
-            Chest c1 = (face == BlockFace.NORTH || face == BlockFace.EAST) ? chests[1] : chests[0];
-            Chest c2 = (face == BlockFace.NORTH || face == BlockFace.EAST) ? chests[0] : chests[1];
-
-            if (holoLocation.equals(c1.getLocation())) {
-                if (c1.getX() != c2.getX()) {
-                    holoLocation.add(0, deltaY, 0.5);
-                } else if (c1.getZ() != c2.getZ()) {
-                    holoLocation.add(0.5, deltaY, 0);
-                } else {
-                    holoLocation.add(0.5, deltaY, 0.5);
-                }
-            } else {
-                if (c1.getX() != c2.getX()) {
-                    holoLocation.add(1, deltaY, 0.5);
-                } else if (c1.getZ() != c2.getZ()) {
-                    holoLocation.add(0.5, deltaY, 1);
-                } else {
-                    holoLocation.add(0.5, deltaY, 0.5);
-                }
-            }
-        } else {
-            holoLocation.add(0.5, deltaY, 0.5);
-        }
-
-        holoLocation.add(0, Config.hologramLift, 0);
+        holoLocation.add(0, deltaY + Config.hologramLift, 0);
+        BlockFace face = container.getFacing();
         holoLocation.setYaw(HologramOrientation.yawForDirection(face.getModX(), face.getModZ()));
         holoLocation.setPitch(0f);
 
@@ -560,7 +501,7 @@ public class Shop {
     }
 
     /**
-     * @return Location of (one of) the shop's chest
+     * @return Location of (one of) the shop's container blocks
      */
     public Location getLocation() {
         return location;
@@ -610,17 +551,34 @@ public class Shop {
     }
 
     /**
-     * @return {@link InventoryHolder} of the shop or <b>null</b> if the shop has no chest.
+     * @return resolved shop container or <b>null</b> if the block is unavailable or unsupported
+     */
+    public ShopContainer getContainer() {
+        return ShopContainer.resolve(plugin, getLocation().getBlock());
+    }
+
+    /**
+     * @return {@link InventoryHolder} of the shop or <b>null</b> if the shop has no supported container
      */
     public InventoryHolder getInventoryHolder() {
-        Block b = getLocation().getBlock();
+        ShopContainer container = getContainer();
+        return container == null ? null : container.getInventoryHolder();
+    }
 
-        if (b.getType() == Material.CHEST || b.getType() == Material.TRAPPED_CHEST) {
-            Chest chest = (Chest) b.getState();
-            return chest.getInventory().getHolder();
-        }
+    /**
+     * @return inventory of the shop or <b>null</b> if the shop container is unavailable
+     */
+    public Inventory getInventory() {
+        ShopContainer container = getContainer();
+        return container == null ? null : container.getInventory();
+    }
 
-        return null;
+    /**
+     * @return physical block locations currently backing the shop
+     */
+    public java.util.Set<Location> getContainerLocations() {
+        ShopContainer container = getContainer();
+        return container == null ? java.util.Set.of(getLocation().getBlock().getLocation()) : container.getLocations();
     }
 
 }

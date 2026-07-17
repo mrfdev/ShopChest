@@ -3,9 +3,7 @@ package de.epiceric.shopchest.listeners;
 import java.util.Optional;
 
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.block.Chest;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event.Result;
 import org.bukkit.event.EventHandler;
@@ -21,6 +19,7 @@ import org.codemc.worldguardwrapper.flag.WrappedState;
 import de.epiceric.shopchest.ShopChest;
 import de.epiceric.shopchest.config.Config;
 import de.epiceric.shopchest.shop.Shop;
+import de.epiceric.shopchest.shop.ShopContainer;
 import de.epiceric.shopchest.utils.ClickType;
 import de.epiceric.shopchest.utils.ClickType.EnumClickType;
 
@@ -67,9 +66,8 @@ public class WorldGuardListener implements Listener {
 
             if (event.getOriginalEvent() instanceof PlayerInteractEvent) {
                 Block block = event.getBlocks().get(0);
-                Material type = block.getType();
-                
-                if (type == Material.CHEST || type == Material.TRAPPED_CHEST) {
+
+                if (ShopContainer.isSupported(block.getType())) {
                     if (isAllowed(player, block.getLocation())) {
                         event.setResult(Result.ALLOW);
                     }
@@ -77,10 +75,10 @@ public class WorldGuardListener implements Listener {
             } else if (event.getOriginalEvent() instanceof InventoryOpenEvent) {
                 InventoryOpenEvent orig = (InventoryOpenEvent) event.getOriginalEvent();
 
-                if (orig.getInventory().getHolder() instanceof Chest) {
-                    if (isAllowed(player, ((Chest) orig.getInventory().getHolder()).getLocation())) {
-                        event.setResult(Result.ALLOW);
-                    }
+                boolean allowed = ShopContainer.locationsOf(orig.getInventory().getHolder()).stream()
+                        .anyMatch(location -> isAllowed(player, location));
+                if (allowed) {
+                    event.setResult(Result.ALLOW);
                 }
             }
         }

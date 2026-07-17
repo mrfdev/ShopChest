@@ -74,18 +74,21 @@ shelved.
 
 ## Supported containers
 
-- [ ] Generalize the current chest-specific storage logic into a supported
+- [x] Generalize the current chest-specific storage logic into a supported
   container abstraction.
   - [x] Chest (supported by the existing chest-specific implementation).
   - [x] Trapped chest (supported by the existing chest-specific implementation).
-  - [ ] Barrel.
-  - [ ] Every dyed and undyed shulker box color.
-  - [ ] Every vanilla copper chest type and oxidation/waxed variant.
+  - [x] Barrel.
+  - [x] Every dyed and undyed shulker box color.
+  - [x] Every vanilla copper chest type and oxidation/waxed variant.
   - Preserve inventory-space checks, stock accounting, protection hooks,
     hologram orientation, shop lookup, and removal behavior for every supported
     container.
-  - Audit status: storage, events, and orientation still use `Chest` and
-    `DoubleChest` directly; no generalized container layer exists yet.
+  - Implemented through an explicit Paper 26.2 allowlist and one container
+    resolver. Storage, click handling, hopper protection, dynamic stock updates,
+    explosions, protection integrations, multi-block lookup/removal, display
+    centering, and horizontal orientation now share that resolver. Ender chests
+    and unrelated inventory blocks remain unsupported.
 
 ## Player commands
 

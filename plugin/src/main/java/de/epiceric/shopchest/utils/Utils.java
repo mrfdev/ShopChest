@@ -4,13 +4,10 @@ import de.epiceric.shopchest.ShopChest;
 import de.epiceric.shopchest.shop.Shop;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.block.Chest;
-import org.bukkit.block.DoubleChest;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.BookMeta;
@@ -229,21 +226,22 @@ public class Utils {
     }
 
     /**
-     * Get a set for the location(s) of the shop's chest(s)
+     * Get the physical location(s) of the shop's supported container.
      * @param shop The shop
-     * @return A set of 1 or 2 locations
+     * @return A set of one or more container block locations
+     */
+    public static Set<Location> getContainerLocations(Shop shop) {
+        return shop.getContainerLocations();
+    }
+
+    /**
+     * Backwards-compatible alias for integrations built around the original chest-only API.
+     *
+     * @param shop The shop
+     * @return A set of one or more container block locations
      */
     public static Set<Location> getChestLocations(Shop shop) {
-        Set<Location> chestLocations = new HashSet<>();
-        InventoryHolder ih = shop.getInventoryHolder();
-        if (ih instanceof DoubleChest) {
-            DoubleChest dc = (DoubleChest) ih;
-            chestLocations.add(((Chest) dc.getLeftSide()).getLocation());
-            chestLocations.add(((Chest) dc.getRightSide()).getLocation());
-        } else {
-            chestLocations.add(shop.getLocation());
-        }
-        return chestLocations;
+        return getContainerLocations(shop);
     }
 
     /**

@@ -9,16 +9,16 @@ The main command is created from `main-command-name` in `config.yml`; its defaul
 | `/shops` | Shows the commands available to the sender, grouped into player and permitted staff actions. | None |
 | `/shops help` | Explicit alias for the same permission-aware command index. | None |
 | `/shops info` | Shows a short introduction, numbered shop-creation instructions, installed version, and clickable player-guide link. | None |
-| `/shops create <amount> <buy-price> <sell-price> [normal]` | Selects the held product and starts a 15-second chest selection. A `0` price disables that trade direction. | `shopchest.create`, or the applicable directional/material permissions |
+| `/shops create <amount> <buy-price> <sell-price> [normal]` | Selects the held product and starts a 15-second supported-container selection. A `0` price disables that trade direction. | `shopchest.create`, or the applicable directional/material permissions |
 | `/shops limits` | Shows used slots and the effective normal-shop limit. | None |
 | `/shops list [page]` | Lists every shop owned by the player using compact rows. Hover a row for prices, stock, type, world, and coordinates. Shop rows do not teleport the player. | None |
 | `/shops recent [page]` | Shows recent purchases and sales made by the player, plus trades completed at the player's normal shops. Each page includes money earned, spent, and net change. | `shopchest.recent` (granted by default) |
 | `/shops inspect` | Starts a 15-second shop inspection selection. | None |
 | `/shops info shop` | Compatibility alias for `/shops inspect`. | None |
-| `/shops open` | Starts a 15-second selection to open a shop chest. Owners need no extra permission. | `shopchest.openOther` for another player's shop |
+| `/shops open` | Starts a 15-second selection to open a shop container. Owners need no extra permission. | `shopchest.openOther` for another player's shop |
 | `/shops remove` | Starts a 15-second selection to remove a shop. Owners need no extra permission. | Elevated permissions apply to other players' and admin shops |
 
-Creation arguments are the number of items per normal trade, the price paid by a buyer, and the price paid to a seller. Prices may be decimal values when enabled. The command validates configured price floors, ceilings, blacklist entries, broken-item policy, shop limit, and creation funds before asking for a chest click.
+Creation arguments are the number of items per normal trade, the price paid by a buyer, and the price paid to a seller. Prices may be decimal values when enabled. The command validates configured price floors, ceilings, blacklist entries, broken-item policy, shop limit, and creation funds before asking for a supported-container click.
 
 Help output and top-level tab completion use the same visibility rules. Player-only commands are omitted for console senders, and staff commands appear only when the sender has their required permission. Staff help lines include the relevant permission node.
 

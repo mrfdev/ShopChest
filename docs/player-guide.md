@@ -2,15 +2,20 @@
 
 ## Introduction
 
-ShopChest lets players turn ordinary chests into shops. A shop can sell items to other players, buy items from them, or do both. The floating item shows the product, while the hologram shows the owner, quantity, active prices, and useful enchantment or potion details.
+ShopChest lets players turn supported storage containers into shops. A shop can sell items to other players, buy items from them, or do both. The floating item shows the product, while the hologram shows the owner, quantity, active prices, and useful enchantment or potion details.
 
 ## Quick Start
 
-1. Place a chest with open space directly above it.
+1. Place a supported container with open space directly above it.
 2. Hold the exact item you want the shop to trade.
 3. Run `/shops create <amount> <buy-price> <sell-price>`.
-4. Click the chest within 15 seconds.
-5. Put stock in the chest when players should be able to buy from you. Leave room in it when players should be able to sell to you.
+4. Click the container within 15 seconds.
+5. Put stock in the container when players should be able to buy from you. Leave room in it when players should be able to sell to you.
+
+Supported containers are normal and trapped chests, barrels, undyed and dyed
+shulker boxes, and every copper chest oxidation and waxed variant available in
+Paper 26.2. Ender chests, hoppers, furnaces, and other inventory blocks are not
+shop containers.
 
 When an enabled buy side cannot supply the full configured purchase amount, its
 hologram price changes to `[Out of stock]`. A separately enabled sell side
@@ -34,7 +39,7 @@ your entered price is unchanged and you can continue creating the shop.
 
 ## How Players Use It
 
-By default, right-click buys from a shop and left-click sells to it. The server can invert those controls. Sneak while clicking to trade up to one full item stack instead of the shop's normal bundle size. A shop cannot complete a trade when the buyer, vendor, chest, or inventory lacks the required money, items, or space.
+By default, right-click buys from a shop and left-click sells to it. The server can invert those controls. Sneak while clicking to trade up to one full item stack instead of the shop's normal bundle size. A shop cannot complete a trade when the buyer, vendor, container, or inventory lacks the required money, items, or space.
 
 The default setup charges 5 economy units to create a normal shop and allows 5 normal shops per player. Server ranks and configuration may change both values. Admin shops are not counted toward player limits and have unlimited stock and funds.
 
@@ -42,7 +47,7 @@ The default setup charges 5 economy units to create a normal shop and allows 5 n
 
 - `/shops` or `/shops help` - Show the player commands available to you. Permitted staff actions appear in a separate section.
 - `/shops info` - Show a short introduction, numbered creation instructions, the installed version, and a clickable link to this guide.
-- `/shops create <amount> <buy-price> <sell-price>` - Prepare a shop using the held item, then click a chest within 15 seconds.
+- `/shops create <amount> <buy-price> <sell-price>` - Prepare a shop using the held item, then click a supported container within 15 seconds.
 - `/shops limits` - Show used and available normal-shop slots.
 - `/shops list [page]` - List every shop you created. Hover a compact row for its prices, stock, type, world, and coordinates. Loaded shops that cannot fill one complete purchase are marked `[Out of stock]`; the locations are informational and do not teleport you.
 - `/shops recent [page]` - Review recent purchases and sales, including trades at your normal shops and the money you earned or spent. Hover a compact trade row for its date, per-item price, and shop location. History is available only for trades recorded by the server.
@@ -67,9 +72,9 @@ Shop creation, buying, and selling are available to everyone by default. Opening
 
 ## Important Notes
 
-- The chest must have air directly above it so ShopChest can display the product and hologram.
+- Every block occupied by the shop container must have air directly above it so ShopChest can display the product and hologram.
 - Shop products retain their item metadata. Hold the exact item variant you intend to trade.
-- Keep sale stock in the chest and leave enough empty capacity for purchases from players.
+- Keep sale stock in the container and leave enough empty capacity for purchases from players.
 - Protection plugins may prevent creation or trading in a region, plot, island, or claim.
 - Creative-mode trading is blocked. Creative players can still use the configured item-selection workflow when creating a shop.
 - Holding the configured information item, a stick by default, and clicking a shop shows its details.

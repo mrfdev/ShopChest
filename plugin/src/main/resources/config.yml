@@ -173,7 +173,7 @@ append-potion-level-to-item-name: false
 
 # Set whether shops should automatically be removed from the database if
 # an error occurred while loading.
-# (e.g. no chest, no space above chest, or unknown world)
+# (e.g. no supported container, no display space above it, or unknown world)
 remove-shop-on-error: false
 
 # Set whether the mouse buttons should be inverted.

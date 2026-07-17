@@ -11,6 +11,7 @@ import de.epiceric.shopchest.language.MessageRegistry;
 import de.epiceric.shopchest.language.Replacement;
 import de.epiceric.shopchest.display.TextComponentHelper;
 import de.epiceric.shopchest.shop.Shop;
+import de.epiceric.shopchest.shop.ShopContainer;
 import de.epiceric.shopchest.shop.Shop.ShopType;
 import de.epiceric.shopchest.shop.ShopProduct;
 import de.epiceric.shopchest.sql.Database;
@@ -24,9 +25,6 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
-import org.bukkit.block.Chest;
-import org.bukkit.block.DoubleChest;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
@@ -71,18 +69,11 @@ public class ShopInteractListener implements Listener {
 
         Inventory chestInv = e.getInventory();
 
-        if (!(chestInv.getHolder() instanceof Chest || chestInv.getHolder() instanceof DoubleChest)) {
-            return;
-        }
-
-        Location loc = null;
-        if (chestInv.getHolder() instanceof Chest) {
-            loc = ((Chest) chestInv.getHolder()).getLocation();
-        } else if (chestInv.getHolder() instanceof DoubleChest) {
-            loc = ((DoubleChest) chestInv.getHolder()).getLocation();
-        }
-
-        final Shop shop = plugin.getShopUtils().getShop(loc);
+        final Shop shop = ShopContainer.locationsOf(chestInv.getHolder()).stream()
+                .map(plugin.getShopUtils()::getShop)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
         if (shop == null) return;
 
         new BukkitRunnable() {
@@ -106,7 +97,8 @@ public class ShopInteractListener implements Listener {
         if (!(ClickType.getPlayerClickType(p) instanceof CreateClickType))
             return;
 
-        if (b.getType() != Material.CHEST && b.getType() != Material.TRAPPED_CHEST)
+        ShopContainer container = ShopContainer.resolve(plugin, b);
+        if (container == null)
             return;
 
         if (ClickType.getPlayerClickType(p).getClickType() != ClickType.EnumClickType.CREATE)
@@ -121,7 +113,7 @@ public class ShopInteractListener implements Listener {
         } else if (shopUtils.isShop(b.getLocation())) {
             p.sendMessage(messageRegistry.getMessage(Message.CHEST_ALREADY_SHOP));
             plugin.debug("Chest is already a shop");
-        } else if (!ItemUtils.isAir(b.getRelative(BlockFace.UP).getType())) {
+        } else if (!container.hasDisplaySpace()) {
             p.sendMessage(messageRegistry.getMessage(Message.CHEST_BLOCKED));
             plugin.debug("Chest is blocked");
         } else {
@@ -153,7 +145,7 @@ public class ShopInteractListener implements Listener {
         if (e.getAction() != Action.RIGHT_CLICK_BLOCK && e.getAction() != Action.LEFT_CLICK_BLOCK)
             return;
         
-        if (b.getType() != Material.CHEST && b.getType() != Material.TRAPPED_CHEST)
+        if (!ShopContainer.isSupported(b.getType()))
             return;
         
         ClickType clickType = ClickType.getPlayerClickType(p);
@@ -299,11 +291,14 @@ public class ShopInteractListener implements Listener {
                                 }
                             } else {
                                 if (externalPluginsAllowed || p.hasPermission(Permissions.BYPASS_EXTERNAL_PLUGIN)) {
-                                    Chest c = (Chest) b.getState();
+                                    Inventory shopInventory = getShopInventory(p, shop);
+                                    if (shopInventory == null) {
+                                        return;
+                                    }
                                     ItemStack itemStack = shop.getProduct().getItemStack();
                                     int amount = (p.isSneaking() ? itemStack.getMaxStackSize() : shop.getProduct().getAmount());
 
-                                    if (Utils.getAmount(c.getInventory(), itemStack) >= amount) {
+                                    if (Utils.getAmount(shopInventory, itemStack) >= amount) {
                                         if (confirmed || !Config.confirmShopping) {
                                             buy(p, shop, p.isSneaking());
                                             if (Config.confirmShopping) {
@@ -320,7 +315,7 @@ public class ShopInteractListener implements Listener {
                                             needsConfirmation.put(p.getUniqueId(), ids);
                                         }
                                     } else {
-                                        if (Config.autoCalculateItemAmount && Utils.getAmount(c.getInventory(), itemStack) > 0) {
+                                        if (Config.autoCalculateItemAmount && Utils.getAmount(shopInventory, itemStack) > 0) {
                                             if (confirmed || !Config.confirmShopping) {
                                                 buy(p, shop, p.isSneaking());
                                                 if (Config.confirmShopping) {
@@ -522,6 +517,10 @@ public class ShopInteractListener implements Listener {
             }
         }
 
+        ShopContainer.rememberVerticalDisplayFacing(
+                plugin,
+                location.getBlock(),
+                executor.getFacing().getOppositeFace());
         shop.create(true);
 
         plugin.debug("Shop created");
@@ -579,6 +578,19 @@ public class ShopInteractListener implements Listener {
         plugin.debug("Removed shop (#" + shop.getID() + ")");
     }
 
+    private Inventory getShopInventory(Player executor, Shop shop) {
+        Inventory inventory = shop.getInventory();
+        if (inventory != null) {
+            return inventory;
+        }
+
+        plugin.debug("Shop container is unavailable (#" + shop.getID() + ")");
+        executor.sendMessage(plugin.getLanguageManager().getMessageRegistry().getMessage(
+                Message.ERROR_OCCURRED,
+                new Replacement(Placeholder.ERROR, "Shop container is unavailable")));
+        return null;
+    }
+
     /**
      * Open a shop
      * @param executor Player, who executed the command and will receive the message
@@ -601,7 +613,11 @@ public class ShopInteractListener implements Listener {
             return;
         }
 
-        executor.openInventory(shop.getInventoryHolder().getInventory());
+        Inventory inventory = getShopInventory(executor, shop);
+        if (inventory == null) {
+            return;
+        }
+        executor.openInventory(inventory);
         plugin.debug("Opened shop (#" + shop.getID() + ")");
         if (message) executor.sendMessage(messageRegistry.getMessage(Message.OPENED_SHOP,
                 new Replacement(Placeholder.VENDOR, shop.getVendor().getName())));
@@ -624,10 +640,13 @@ public class ShopInteractListener implements Listener {
             return;
         }
 
-        Chest c = (Chest) shop.getLocation().getBlock().getState();
+        Inventory inventory = getShopInventory(executor, shop);
+        if (inventory == null) {
+            return;
+        }
         ItemStack itemStack = shop.getProduct().getItemStack();
-        int amount = Utils.getAmount(c.getInventory(), itemStack);
-        int space = Utils.getFreeSpaceForItem(c.getInventory(), itemStack);
+        int amount = Utils.getAmount(inventory, itemStack);
+        int space = Utils.getFreeSpaceForItem(inventory, itemStack);
 
         String vendorName = (shop.getVendor().getName() == null ?
                 shop.getVendor().getUniqueId().toString() : shop.getVendor().getName());
@@ -702,10 +721,12 @@ public class ShopInteractListener implements Listener {
 
             plugin.debug(executor.getName() + " has enough money for " + amountForMoney + " item(s) (#" + shop.getID() + ")");
 
-            Block b = shop.getLocation().getBlock();
-            Chest c = (Chest) b.getState();
+            Inventory shopInventory = getShopInventory(executor, shop);
+            if (shopInventory == null) {
+                return;
+            }
 
-            int amountForChestItems = Utils.getAmount(c.getInventory(), itemStack);
+            int amountForChestItems = Utils.getAmount(shopInventory, itemStack);
 
             if (amountForChestItems == 0 && shop.getShopType() != ShopType.ADMIN) {
                 executor.sendMessage(messageRegistry.getMessage(Message.OUT_OF_STOCK));
@@ -764,7 +785,7 @@ public class ShopInteractListener implements Listener {
                             database.logEconomy(executor, shop, newProduct, newPrice, ShopBuySellEvent.Type.BUY, null);
 
                             addToInventory(inventory, newProduct);
-                            removeFromInventory(c.getInventory(), newProduct);
+                            removeFromInventory(shopInventory, newProduct);
                             executor.updateInventory();
 
                             new BukkitRunnable() {
@@ -883,8 +904,10 @@ public class ShopInteractListener implements Listener {
                 return;
             }
 
-            Block block = shop.getLocation().getBlock();
-            Chest chest = (Chest) block.getState();
+            Inventory shopInventory = getShopInventory(executor, shop);
+            if (shopInventory == null) {
+                return;
+            }
 
             int amountForItemCount = Utils.getAmount(executor.getInventory(), itemStack);
 
@@ -897,7 +920,7 @@ public class ShopInteractListener implements Listener {
             ItemStack product = new ItemStack(itemStack);
             if (stack) product.setAmount(amount);
 
-            Inventory inventory = chest.getInventory();
+            Inventory inventory = shopInventory;
 
             int freeSpace = Utils.getFreeSpaceForItem(inventory, product);
 

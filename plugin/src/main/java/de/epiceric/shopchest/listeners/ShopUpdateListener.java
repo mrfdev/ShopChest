@@ -5,8 +5,6 @@ import java.util.Set;
 
 import org.bukkit.Chunk;
 import org.bukkit.Location;
-import org.bukkit.block.Chest;
-import org.bukkit.block.DoubleChest;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -21,6 +19,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import de.epiceric.shopchest.ShopChest;
 import de.epiceric.shopchest.shop.Shop;
+import de.epiceric.shopchest.shop.ShopContainer;
 import de.epiceric.shopchest.utils.Callback;
 
 public class ShopUpdateListener implements Listener {
@@ -37,8 +36,8 @@ public class ShopUpdateListener implements Listener {
         if (!plugin.getHologramFormat().isDynamic()) return;
 
         final Set<Shop> shops = new HashSet<>();
-        addShop(shops, getLocation(e.getSource().getHolder()));
-        addShop(shops, getLocation(e.getDestination().getHolder()));
+        ShopContainer.locationsOf(e.getSource().getHolder()).forEach(location -> addShop(shops, location));
+        ShopContainer.locationsOf(e.getDestination().getHolder()).forEach(location -> addShop(shops, location));
         if (!shops.isEmpty()) {
             new BukkitRunnable() {
                 @Override
@@ -47,16 +46,6 @@ public class ShopUpdateListener implements Listener {
                 }
             }.runTaskLater(plugin, 1L);
         }
-    }
-
-    private Location getLocation(Object holder) {
-        if (holder instanceof Chest) {
-            return ((Chest) holder).getLocation();
-        }
-        if (holder instanceof DoubleChest) {
-            return ((DoubleChest) holder).getLocation();
-        }
-        return null;
     }
 
     private void addShop(Set<Shop> shops, Location location) {

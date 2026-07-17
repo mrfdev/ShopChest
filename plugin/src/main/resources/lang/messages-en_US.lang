@@ -7,14 +7,14 @@ message.shop-created=&6You were withdrawn &c%CREATION-PRICE% &6to create this sh
 message.admin-shop-created=&6You were withdrawn &c%CREATION-PRICE% &6to create this admin shop.
 
 # Set the message when the clicked chest already is a shop.
-message.chest-already-shop=&cChest already is shop.
+message.chest-already-shop=&cContainer is already a shop.
 
 # Set the message when there is a block above the clicked chest.
-message.chest-blocked=&cThere must not be a block above the chest.
+message.chest-blocked=&cThere must be open space above the shop container.
 
 # Set the message when a player tries to place a chest next to a shop's chest
 # to create a double chest shop, but there is a block above the placed chest.
-message.double-chest-blocked=&cThere must not be a block above the chest.
+message.double-chest-blocked=&cThere must be open space above the shop container.
 
 # Set the message when the clicked shop is removed but no refund was given.
 message.shop-removed=&6Shop removed.
@@ -29,7 +29,7 @@ message.shop-removed-refund=&6Shop removed. You were refunded &c%CREATION-PRICE%
 message.all-shops-removed=&6Removed all (&c%AMOUNT%&6) shops of &c%VENDOR%&6.
 
 # Set the message when the clicked chest is not a shop.
-message.chest-no-shop=&cChest is not a shop.
+message.chest-no-shop=&cContainer is not a shop.
 
 # Set the message when the player doesn't have enough money to create a shop
 # Usable Placeholders: %CREATION-PRICE%
@@ -49,7 +49,7 @@ message.shopInfo.stock=&6In Stock: &e%STOCK%
 
 # Set the chest-space message the player after entering '/shops info'.
 # Usable Placeholders=%CHEST-SPACE%
-message.shopInfo.chest-space=&6Space in chest: &e%CHEST-SPACE%
+message.shopInfo.chest-space=&6Space in shop: &e%CHEST-SPACE%
 
 # Set the price message the player gets after entering '/shops info'.
 # Usable Placeholders: %BUY-PRICE%, %SELL-PRICE%
@@ -140,7 +140,7 @@ message.prices-contain-decimals=&cPrices must not contain decimals.
 message.no-item-in-hand=&cNo item in hand
 
 # Set the message when the player must click a chest to create a shop.
-message.click-chest-to-create-shop=&aClick a chest within 15 seconds to create a shop.
+message.click-chest-to-create-shop=&aClick a supported container within 15 seconds to create a shop.
 
 # Set the message when the player must click a shop to remove it.
 message.click-chest-to-remove-shop=&aClick a shop within 15 seconds to remove it.
@@ -228,7 +228,7 @@ message.noPermission.create-admin=&cYou don't have permission to create an admin
 message.noPermission.create-protected=&cYou don't have permission to create a shop here.
 
 # Set the message when a not permitted player tries to open another player's shop.
-message.noPermission.open-others=&cYou don't have permission to open this chest.
+message.noPermission.open-others=&cYou don't have permission to open this shop container.
 
 # Set the message when a not permitted player tries to buy something.
 message.noPermission.buy=&cYou don't have permission to buy something.
@@ -330,17 +330,17 @@ message.help.command.remove=&a/%COMMAND% remove &7- Click one of your shops to r
 message.help.command.info=&a/%COMMAND% info &7- Learn how ShopChest works and open the player guide.
 message.help.command.inspect=&a/%COMMAND% inspect &7- Click a shop to view its details.
 message.help.command.limits=&a/%COMMAND% limits &7- View your used and available shop slots.
-message.help.command.open=&a/%COMMAND% open &7- Click one of your shops to open its chest.
+message.help.command.open=&a/%COMMAND% open &7- Click one of your shops to open its inventory.
 message.help.command.removeall=&a/%COMMAND% removeall <player> &7- Remove all shops owned by a player. &8[shopchest.remove.other]
 message.help.command.reload=&a/%COMMAND% reload &7- Reload configuration, data, and loaded shops. &8[shopchest.reload]
 message.help.command.config=&a/%COMMAND% config <set|add|remove> <property> <value> &7- Change global settings. &8[shopchest.config]
 
 # Short player onboarding shown by '/shops info'.
 message.info.header=&6ShopChest &7v%VERSION%
-message.info.intro=&fCreate persistent chest shops where players can buy from you or sell items to you.
-message.info.step-place=&e1. &fPlace a chest and hold the exact item you want to trade.
+message.info.intro=&fCreate persistent container shops where players can buy from you or sell items to you.
+message.info.step-place=&e1. &fPlace a chest, barrel, shulker box, or copper chest and hold the exact item you want to trade.
 message.info.step-create=&e2. &fRun &a/%COMMAND% create <amount> <buy-price> <sell-price>&f.
-message.info.step-chest=&e3. &fClick the chest within 15 seconds, then add sale stock or leave room for purchases.
+message.info.step-chest=&e3. &fClick the container within 15 seconds, then add sale stock or leave room for purchases.
 message.info.price-hint=&7Set either price to &f0 &7to disable that trade direction. Use &f/%COMMAND% help &7for every available command.
 message.info.guide=&b&nOpen the ShopChest player guide
 

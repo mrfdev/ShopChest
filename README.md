@@ -1,6 +1,6 @@
 # ShopChest
 
-ShopChest is 1MoreBlock's chest-shop plugin. Players can attach a persistent shop to a chest, display its product and prices in a hologram, and trade through a Vault-compatible economy.
+ShopChest is 1MoreBlock's container-shop plugin. Players can attach a persistent shop to a supported container, display its product and prices in a hologram, and trade through a Vault-compatible economy.
 
 This repository is a maintained fork of [EpicEricEE/ShopChest](https://github.com/EpicEricEE/ShopChest), based on later compatibility work from [Flowsqy/ShopChest](https://github.com/Flowsqy/ShopChest). The custom build focuses on the current 1MoreBlock Paper targets.
 
@@ -21,7 +21,7 @@ must pass the build and test-server checks before deployment.
 
 ## Features
 
-- Player and unlimited-stock admin chest shops
+- Player and unlimited-stock admin shops on chests, trapped chests, barrels, shulker boxes, and copper chests
 - Separate buy and sell prices, with either direction disabled by setting its price to `0`
 - Floating product item and configurable hologram text
 - Per-player shop limits and per-material creation permissions
@@ -35,7 +35,7 @@ must pass the build and test-server checks before deployment.
 
 1. Install Vault, a Vault-compatible economy plugin, and the generated `1MB-ShopChest-v1.15.1-<build>-j25-26.2.jar`.
 2. Start Paper once, then review `plugins/ShopChest/config.yml` and `hologram-format.yml`.
-3. Hold the item to sell, run `/shops create <amount> <buy-price> <sell-price>`, and click a chest within 15 seconds.
+3. Hold the item to sell, run `/shops create <amount> <buy-price> <sell-price>`, and click a supported container within 15 seconds.
 4. Run `/shops info` for the installed version, starting commands, and the canonical player guide.
 
 See the [player guide](docs/player-guide.md) for normal use and [installation](docs/installation.md) for the complete server setup.

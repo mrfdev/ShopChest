@@ -12,14 +12,14 @@ Check the first ShopChest error in `logs/latest.log`.
 
 ## Shop Creation Does Not Finish
 
-After `/shops create`, the player must click a chest within 15 seconds. Confirm that:
+After `/shops create`, the player must click a supported container within 15 seconds. Confirm that:
 
 - The player is holding the intended item.
 - The amount is positive and at least one price is above zero.
 - The price respects decimal, minimum, maximum, and buy-versus-sell settings.
 - The item is not blacklisted or disallowed because it is damaged.
 - The player has available shop slots and enough money for the creation fee.
-- The chest has air directly above it and is not already a shop.
+- Every block occupied by the container has air directly above it and is not already a shop.
 - A protection integration did not deny the location.
 
 Start with `/shops admin debug` and copy its support report. This snapshot does
@@ -59,14 +59,14 @@ Blue entity outlines or direction lines are normally the client's entity-hitbox 
 - Creative-mode trading is blocked.
 - The relevant price may be `0`, which disables that direction.
 - The buyer may lack funds or inventory space.
-- A normal shop may lack stock, chest space, or vendor funds.
+- A normal shop may lack stock, container space, or vendor funds.
 - The player may lack `shopchest.buy` or `shopchest.sell`.
 - A WorldGuard, PlotSquared, BentoBox, Towny, island, or claim rule may deny use.
 - When confirmation is enabled, repeat the click.
 
 ## Database and World Problems
 
-Keep `remove-shop-on-error: false` while recovering temporarily unavailable worlds or blocked chests; otherwise failed records may be deleted. Stop the server before moving databases. ShopChest migrates known legacy schemas but does not transfer data between SQLite and MySQL automatically.
+Keep `remove-shop-on-error: false` while recovering temporarily unavailable worlds or blocked containers; otherwise failed records may be deleted. Stop the server before moving databases. ShopChest migrates known legacy schemas but does not transfer data between SQLite and MySQL automatically.
 
 For a report, run `/shops admin debug`, click **Copy full support report**, and
 include the result with exact reproduction steps and the complete first
