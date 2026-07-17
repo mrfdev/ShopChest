@@ -12,7 +12,7 @@ compatibility work from
 Paper-first 1MoreBlock build.
 
 Player-facing documentation is published at
-<https://docs.1moreblock.com/custom-server-plugins/shopchest/>.
+<https://docs.1moreblock.com/player-guides/custom-server-plugins/shopchest/>.
 
 ## Compatibility
 

@@ -43,7 +43,8 @@ import java.util.stream.Stream;
 
 class ShopCommandExecutor implements CommandExecutor {
 
-    private static final String DOCS_URL = "https://docs.1moreblock.com/custom-server-plugins/shopchest/";
+    private static final String DOCS_URL =
+            "https://docs.1moreblock.com/player-guides/custom-server-plugins/shopchest/";
     private static final int SHOP_LIST_PAGE_SIZE = 8;
     private static final int SHOP_LIST_ITEM_NAME_LENGTH = 36;
     private static final int RECENT_PAGE_SIZE = 8;
