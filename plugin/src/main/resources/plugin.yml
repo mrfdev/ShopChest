@@ -4,7 +4,7 @@ name: ShopChest
 main: de.epiceric.shopchest.ShopChest
 version: ${version}
 author: EpicEric
-description: Create your own nice-looking chest shops and sell your stuff to other players!
+description: Create persistent container shops and trade items with other players.
 softdepend: [CMI, WorldGuard, Towny, AuthMe, PlotSquared, uSkyBlock, ASkyBlock, IslandWorld, GriefPrevention, AreaShop, Multiverse-Core, MultiWorld, BentoBox]
 depend: [Vault]
 api-version: '26.2'
@@ -50,7 +50,7 @@ permissions:
       shopchest.create: true
     default: op
   shopchest.create.protected:
-    description: Allows you to create a shop on a protected chest or in a protected region.
+    description: Allows you to create a shop on a protected container or in a protected region.
     children:
       shopchest.create: true
     default: op

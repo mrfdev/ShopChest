@@ -46,7 +46,7 @@ integration and thresholds.
 
 ### Trade Feedback
 
-Completed and failed trade attempts use separate, chest-local effects. Both the
+Completed and failed trade attempts use separate, container-local effects. Both the
 sound and particles are sent only to the player making the attempt, so nearby
 players do not receive noise or effects from unrelated shops.
 
@@ -57,12 +57,13 @@ players do not receive noise or effects from unrelated shops.
 | `volume` | `0.45` | `0.35` | Player-local sound volume, clamped from `0` through `2`. |
 | `pitch` | `1.20` | `0.70` | Sound pitch, clamped from `0.50` through `2`. |
 | `particle` | `minecraft:happy_villager` | `minecraft:smoke` | Data-free namespaced particle; use `none` to disable particles. |
-| `particle-count` | `4` | `3` | Particles emitted immediately above the chest, clamped from `0` through `16`. |
+| `particle-count` | `4` | `3` | Particles emitted immediately above the container, clamped from `0` through `16`. |
 
 These settings reload immediately through `/shops config set`, for example
 `/shops config set trade-feedback.failure.enabled false`. Confirmation prompts
 remain silent; feedback is emitted only after a terminal success or failure.
-Missing settings are added to existing configuration files automatically.
+Modern display, feedback, cooldown, palette, and CMI advisory settings managed
+by the built-in config migration are added to existing files automatically.
 
 ## Display and Messages
 
@@ -88,7 +89,7 @@ Missing settings are added to existing configuration files automatically.
 | `hologram-max-item-name-length` | `48` | Maximum visible characters for literal custom or overridden item names before the panel uses `...`; `0` disables truncation. Vanilla translatable names remain client-resolved and wrap to the configured panel width. |
 | `hologram-max-item-detail-entries` | `7` | Maximum enchantments and potion effects shown before a localized `+N more` summary. Values are clamped from `1` through `32`. |
 | `hologram-item-details-per-line` | `2` | Enchantment and potion detail entries placed on each panel line. Values are clamped from `1` through `4`. |
-| `hologram-fixed-facing` | `true` | Keeps the panel aligned with the front of its chest. Set to `false` to restore center billboarding toward each viewer. |
+| `hologram-fixed-facing` | `true` | Keeps the panel aligned with the front of its container. Set to `false` to restore center billboarding toward each viewer. |
 | `maximal-distance` | `2` | Hologram visibility radius in blocks. |
 | `maximal-item-distance` | `40` | Floating product visibility radius in blocks. |
 | `append-potion-level-to-item-name` | `false` | Adds a Roman-numeral potion level when the product has no custom name. |
@@ -131,7 +132,7 @@ count.
 | `enable-economy-log` | `false` | Stores completed buy/sell transactions for `/shops recent` and vendor revenue reporting. Disabling it stops new history without deleting existing rows. |
 | `cleanup-economy-log-days` | `30` | Deletes older economy logs at startup; `0` disables cleanup. This also controls how far back `/shops recent` can report. |
 | `enable-debug-log` | `false` | Writes verbose diagnostics to `plugins/ShopChest/debug.txt`; restart after changing. |
-| `remove-shop-on-error` | `false` | Deletes a database record when its world, chest, or display space cannot be loaded. Keep disabled while diagnosing recoverable world-loading issues. |
+| `remove-shop-on-error` | `false` | Deletes a database record when its world, container, or display space cannot be loaded. Keep disabled while diagnosing recoverable world-loading issues. |
 
 The former `enable-update-checker` key is obsolete. Existing configuration
 files may retain it harmlessly, but new files omit it and ShopChest never makes

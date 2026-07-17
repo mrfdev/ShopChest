@@ -33,7 +33,7 @@ Example: `/shops create 8 40 20` creates a shop that trades 8 held items at a ti
 Set either price to `0` to disable that direction. For example, `/shops create 16 100 0` only sells items to players.
 
 When the server uses CMI, ShopChest may show a brief price-check warning before
-you choose the chest. It can point out a direct `/sell` resale opportunity or a
+you choose the container. It can point out a direct `/sell` resale opportunity or a
 price far outside the server's configured worth. The warning is informational:
 your entered price is unchanged and you can continue creating the shop.
 

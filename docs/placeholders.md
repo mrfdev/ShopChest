@@ -12,9 +12,9 @@ ShopChest does not register a PlaceholderAPI expansion. The placeholders below b
 | `%POTION-EFFECT%` | Multiline base and custom potion effects with amplifier and duration where applicable, using `hologram-colors.details`. |
 | `%BUY-PRICE%` | Vault-formatted price a player pays to buy, or the localized `[Out of stock]` state when an enabled normal shop cannot supply the configured amount. |
 | `%SELL-PRICE%` | Vault-formatted amount a player receives for selling. |
-| `%STOCK%` | Matching product items currently in a normal shop chest. |
+| `%STOCK%` | Matching product items currently in a normal shop container. |
 | `%MAX-STACK%` | Product's maximum stack size. |
-| `%CHEST-SPACE%` | Number of matching product items that can still fit in the chest. |
+| `%CHEST-SPACE%` | Number of matching product items that can still fit in the shop container. |
 | `%DURABILITY%` | Legacy durability value stored for the product. |
 | `%COLOR-OWNER%` | Global `hologram-colors.owner` RGB color. |
 | `%COLOR-QUANTITY%` | Global `hologram-colors.quantity` RGB color. |

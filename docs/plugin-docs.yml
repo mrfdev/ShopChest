@@ -1,7 +1,7 @@
 id: shopchest
 name: ShopChest
 category: custom-server-plugin
-summary: Create persistent player chest shops with holograms and Vault economy trading.
+summary: Create persistent container shops with holograms and Vault economy trading.
 main_command: /shops
 docs_url: https://docs.1moreblock.com/custom-server-plugins/shopchest/
 player_guide: player-guide.md

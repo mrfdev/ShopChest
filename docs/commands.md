@@ -26,9 +26,9 @@ Help output and top-level tab completion use the same visibility rules. Player-o
 
 | Command | Description | Permission |
 | --- | --- | --- |
-| `/shops create <amount> <buy-price> <sell-price> admin` | Creates an unlimited-stock admin shop after chest selection. | `shopchest.create.admin` |
+| `/shops create <amount> <buy-price> <sell-price> admin` | Creates an unlimited-stock admin shop after supported-container selection. | `shopchest.create.admin` |
 | `/shops admin` | Shows the ShopChest administration commands permitted for the sender. | `shopchest.admin.list` or `shopchest.admin.debug` |
-| `/shops admin list <player> [page]` | Lists every normal and admin shop registered to a cached player profile. In-game staff get the same detailed hover and can click a row to teleport onto the block above its chest; console rows retain plain-text coordinates. | `shopchest.admin.list` |
+| `/shops admin list <player> [page]` | Lists every normal and admin shop registered to a cached player profile. In-game staff get the same detailed hover and can click a row to teleport onto the block above its container; console rows retain plain-text coordinates. | `shopchest.admin.list` |
 | `/shops admin debug` | Collects a support snapshot covering the artifact target, Paper/Java runtime, platform, dependencies and hooks, database health and counts, runtime item translation-key coverage, loaded shop displays, stock state, and relevant configuration. Players can click to copy the full report; console receives plain text. | `shopchest.admin.debug` |
 | `/shops removeall <player>` | Removes every normal and admin shop owned by the named player. | `shopchest.remove.other` |
 | `/shops reload` | Reloads config, language, hologram format, shop visibility tasks, database connection, and shops in loaded chunks. | `shopchest.reload` |
