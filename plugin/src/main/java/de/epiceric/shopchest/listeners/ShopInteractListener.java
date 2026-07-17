@@ -9,6 +9,7 @@ import de.epiceric.shopchest.external.PlotSquaredShopFlag;
 import de.epiceric.shopchest.language.Message;
 import de.epiceric.shopchest.language.MessageRegistry;
 import de.epiceric.shopchest.language.Replacement;
+import de.epiceric.shopchest.display.TextComponentHelper;
 import de.epiceric.shopchest.shop.Shop;
 import de.epiceric.shopchest.shop.Shop.ShopType;
 import de.epiceric.shopchest.shop.ShopProduct;
@@ -34,6 +35,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -54,6 +56,7 @@ public class ShopInteractListener implements Listener {
     private Economy econ;
     private Database database;
     private ShopUtils shopUtils;
+    private final ShopInteractionCooldown tradeInteractionCooldown = new ShopInteractionCooldown();
 
     public ShopInteractListener(ShopChest plugin) {
         this.plugin = plugin;
@@ -144,7 +147,7 @@ public class ShopInteractListener implements Listener {
         Player p = e.getPlayer();
         boolean inverted = Config.invertMouseButtons;
 
-        if (Utils.getMajorVersion() >= 9 && e.getHand() == EquipmentSlot.OFF_HAND)
+        if (e.getHand() == EquipmentSlot.OFF_HAND)
             return;
 
         if (e.getAction() != Action.RIGHT_CLICK_BLOCK && e.getAction() != Action.LEFT_CLICK_BLOCK)
@@ -220,6 +223,13 @@ public class ShopInteractListener implements Listener {
             }
 
             if (e.getAction() == Action.RIGHT_CLICK_BLOCK && p.getUniqueId().equals(shop.getVendor().getUniqueId()) && shop.getShopType() != ShopType.ADMIN) {
+                return;
+            }
+
+            if ((shop.getShopType() == ShopType.ADMIN || !p.getUniqueId().equals(shop.getVendor().getUniqueId()))
+                    && !tradeInteractionCooldown.tryAcquire(
+                            p.getUniqueId(), Config.tradeInteractionCooldownMillis)) {
+                e.setCancelled(true);
                 return;
             }
 
@@ -466,6 +476,11 @@ public class ShopInteractListener implements Listener {
         handleInteractEvent(e);
     }
 
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent e) {
+        tradeInteractionCooldown.clear(e.getPlayer().getUniqueId());
+    }
+
     /**
      * Create a new shop
      *
@@ -622,7 +637,7 @@ public class ShopInteractListener implements Listener {
 
         // Make JSON message with item preview
         final ShopProduct product = shop.getProduct();
-        Consumer<Player> productMessage = plugin.getPlatform().getTextComponentHelper().getSendableItemInfo(
+        Consumer<Player> productMessage = TextComponentHelper.getSendableItemInfo(
                 messageRegistry.getMessage(Message.SHOP_INFO_PRODUCT,
                         new Replacement(Placeholder.AMOUNT, String.valueOf(product.getAmount()))),
                 Placeholder.ITEM_NAME.toString(),
@@ -1034,9 +1049,7 @@ public class ShopInteractListener implements Listener {
         int added = 0;
 
         if (inventory instanceof PlayerInventory) {
-            if (Utils.getMajorVersion() >= 9) {
-                inventoryItems.put(40, inventory.getItem(40));
-            }
+            inventoryItems.put(40, inventory.getItem(40));
 
             for (int i = 0; i < 36; i++) {
                 inventoryItems.put(i, inventory.getItem(i));
@@ -1093,9 +1106,7 @@ public class ShopInteractListener implements Listener {
         int removed = 0;
 
         if (inventory instanceof PlayerInventory) {
-            if (Utils.getMajorVersion() >= 9) {
-                inventoryItems.put(40, inventory.getItem(40));
-            }
+            inventoryItems.put(40, inventory.getItem(40));
 
             for (int i = 0; i < 36; i++) {
                 inventoryItems.put(i, inventory.getItem(i));

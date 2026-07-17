@@ -28,7 +28,6 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.inventory.InventoryType;
-import org.bukkit.inventory.InventoryHolder;
 
 import java.util.ArrayList;
 
@@ -141,49 +140,21 @@ public class ChestProtectListener implements Listener {
         // Can't use Utils::getChestLocations since inventory holder
         // has not been updated yet in this event (for 1.13+)
 
-        if (Utils.getMajorVersion() < 13) {
-            InventoryHolder ih = c.getInventory().getHolder();
-            if (!(ih instanceof DoubleChest)) {
-                return;
-            }
+        org.bukkit.block.data.type.Chest data = (org.bukkit.block.data.type.Chest) c.getBlockData();
 
-            DoubleChest dc = (DoubleChest) ih;
-            Chest l = (Chest) dc.getLeftSide();
-            Chest r = (Chest) dc.getRightSide();
-
-            if (b.getLocation().equals(l.getLocation())) {
-                b2 = r.getBlock();
-            } else {
-                b2 = l.getBlock();
-            }
-        } else {
-            org.bukkit.block.data.type.Chest data = (org.bukkit.block.data.type.Chest) c.getBlockData();
-
-            if (data.getType() == Type.SINGLE) {
-                return;
-            }
-
-            BlockFace neighborFacing;
-
-            switch (data.getFacing()) {
-                case NORTH:
-                    neighborFacing = data.getType() == Type.LEFT ? BlockFace.EAST : BlockFace.WEST;
-                    break;
-                case EAST:
-                    neighborFacing = data.getType() == Type.LEFT ? BlockFace.SOUTH : BlockFace.NORTH;
-                    break;
-                case SOUTH:
-                    neighborFacing = data.getType() == Type.LEFT ? BlockFace.WEST : BlockFace.EAST;
-                    break;
-                case WEST:
-                    neighborFacing = data.getType() == Type.LEFT ? BlockFace.NORTH : BlockFace.SOUTH;
-                    break;
-                default:
-                    neighborFacing = null;
-            }
-
-            b2 = b.getRelative(neighborFacing);
+        if (data.getType() == Type.SINGLE) {
+            return;
         }
+
+        BlockFace neighborFacing = switch (data.getFacing()) {
+            case NORTH -> data.getType() == Type.LEFT ? BlockFace.EAST : BlockFace.WEST;
+            case EAST -> data.getType() == Type.LEFT ? BlockFace.SOUTH : BlockFace.NORTH;
+            case SOUTH -> data.getType() == Type.LEFT ? BlockFace.WEST : BlockFace.EAST;
+            case WEST -> data.getType() == Type.LEFT ? BlockFace.NORTH : BlockFace.SOUTH;
+            default -> throw new IllegalStateException("Unsupported chest facing: " + data.getFacing());
+        };
+
+        b2 = b.getRelative(neighborFacing);
 
         final Shop shop = shopUtils.getShop(b2.getLocation());
         if (shop == null)

@@ -22,11 +22,27 @@ After `/shops create`, the player must click a chest within 15 seconds. Confirm 
 - The chest has air directly above it and is not already a shop.
 - A protection integration did not deny the location.
 
-Enable `enable-debug-log` and restart only while collecting diagnostics; `debug.txt` can grow quickly.
+Start with `/shops admin debug` and copy its support report. This snapshot does
+not require verbose logging and excludes credentials, filesystem paths, player
+names, world names, and individual shop locations. Enable `enable-debug-log`
+and restart only when the snapshot is insufficient; `debug.txt` can grow
+quickly.
 
 ## Hologram or Product Name Is Wrong
 
-Run `/shops reload` after editing `hologram-format.yml` or language files. Item names are read from `lang/items-<locale>.lang`; missing modern item translations fall back to a readable generated name. An `ERROR` name or a `craftDelegate` translation exception indicates an outdated jar, so replace duplicate jars and confirm the installed version with `/shops info`.
+Run `/shops reload` after editing `hologram-format.yml` or language files.
+Vanilla names normally come from the runtime item's Paper translation key and
+are localized by the Minecraft client. `lang/items-<locale>.lang` is only an
+optional administrator override layer; a missing entry is expected and does
+not mean the item is unsupported. Custom and renamed items keep their own
+display name.
+
+Run `/shops admin debug` and inspect `Item naming`. Runtime translation-key
+coverage should match the total runtime item count. The report also identifies
+invalid overrides, while known failure values such as `ERROR`, `unknown item`,
+and `not configured` are ignored instead of reaching a hologram. A
+`craftDelegate` exception indicates an outdated jar, so remove duplicate jars
+and confirm the installed version with `/shops info`.
 
 Use `/shops config set hologram-lift 0.35` to test a higher hologram position live. The default is `0.25`. Adjust in small increments, then keep the final value in `config.yml`.
 
@@ -52,4 +68,8 @@ Blue entity outlines or direction lines are normally the client's entity-hitbox 
 
 Keep `remove-shop-on-error: false` while recovering temporarily unavailable worlds or blocked chests; otherwise failed records may be deleted. Stop the server before moving databases. ShopChest migrates known legacy schemas but does not transfer data between SQLite and MySQL automatically.
 
-For a report, include the ShopChest version from `/shops info`, Paper version/build, Java version, exact reproduction steps, relevant non-secret configuration, and the complete first exception with its `Caused by` chain. Never publish database passwords.
+For a report, run `/shops admin debug`, click **Copy full support report**, and
+include the result with exact reproduction steps and the complete first
+exception with its `Caused by` chain. Console can run the same command and gets
+the full report as plain text. Never publish database passwords or verbose
+debug logs without reviewing them first.

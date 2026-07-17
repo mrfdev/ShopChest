@@ -4,18 +4,20 @@ import de.epiceric.shopchest.ShopChest;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitTask;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class ShopUpdater {
 
     private final static int MAX_QUEUE_SIZE = 10_000;
+    private static final int MAX_TASKS_PER_TICK = 1_000;
 
     private final ShopChest plugin;
-    private final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<>();
+    private final Queue<Runnable> queue = new ConcurrentLinkedQueue<>();
 
-    private volatile Thread thread;
+    private BukkitTask task;
 
     public ShopUpdater(ShopChest plugin) {
         this.plugin = plugin;
@@ -26,19 +28,7 @@ public class ShopUpdater {
      */
     public void start() {
         if (!isRunning()) {
-            thread = new Thread(() -> {
-                while (!Thread.interrupted()) {
-                    try {
-                        if (queue.size() > MAX_QUEUE_SIZE) {
-                            queue.clear();
-                        }
-                        queue.take().run();
-                    } catch (InterruptedException e) {
-                        break;
-                    }
-                }
-            }, "Shop Updater");
-            thread.start();
+            task = Bukkit.getScheduler().runTaskTimer(plugin, this::runQueuedTasks, 1L, 1L);
         }
     }
 
@@ -54,17 +44,18 @@ public class ShopUpdater {
      * Stop task properly
      */
     public void stop() {
-        if (thread != null) {
-            thread.interrupt();
-            thread = null;
+        if (task != null) {
+            task.cancel();
+            task = null;
         }
+        queue.clear();
     }
 
     /**
      * @return whether task is running or not
      */
     public boolean isRunning() {
-        return thread != null;
+        return task != null && !task.isCancelled();
     }
 
     /**
@@ -107,5 +98,26 @@ public class ShopUpdater {
      */
     public void queue(Runnable runnable) {
         queue.add(runnable);
+    }
+
+    private void runQueuedTasks() {
+        if (queue.size() > MAX_QUEUE_SIZE) {
+            plugin.getLogger().warning("Discarding an excessive ShopChest display-update backlog.");
+            queue.clear();
+            return;
+        }
+
+        int processed = 0;
+        Runnable runnable;
+        while (processed < MAX_TASKS_PER_TICK && (runnable = queue.poll()) != null) {
+            try {
+                runnable.run();
+            } catch (RuntimeException exception) {
+                plugin.getLogger().severe("A queued ShopChest display update failed: "
+                        + exception.getMessage());
+                plugin.debug(exception);
+            }
+            processed++;
+        }
     }
 }

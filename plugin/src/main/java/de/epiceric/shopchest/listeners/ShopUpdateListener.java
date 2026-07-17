@@ -16,6 +16,7 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
+import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import de.epiceric.shopchest.ShopChest;
@@ -164,5 +165,11 @@ public class ShopUpdateListener implements Listener {
         }
 
         newLoadedChunks.add(e.getChunk());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onChunkUnload(ChunkUnloadEvent e) {
+        newLoadedChunks.remove(e.getChunk());
+        plugin.getShopUtils().unloadDisplays(e.getChunk());
     }
 }

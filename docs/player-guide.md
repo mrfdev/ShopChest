@@ -19,10 +19,18 @@ remains visible and usable.
 Enchanted books and other enchanted products list their enchantments and
 levels. Potions list their localized effects, amplifiers, and durations. Dense
 items are kept readable with two details per line and a short overflow summary.
+Standard vanilla item names use Minecraft's client-side language, including
+items introduced by newer supported server releases. Renamed items retain the
+name chosen by the player.
 
 Example: `/shops create 8 40 20` creates a shop that trades 8 held items at a time. Other players pay 40 to buy that bundle and receive 20 when selling that bundle to the shop.
 
 Set either price to `0` to disable that direction. For example, `/shops create 16 100 0` only sells items to players.
+
+When the server uses CMI, ShopChest may show a brief price-check warning before
+you choose the chest. It can point out a direct `/sell` resale opportunity or a
+price far outside the server's configured worth. The warning is informational:
+your entered price is unchanged and you can continue creating the shop.
 
 ## How Players Use It
 
@@ -36,7 +44,8 @@ The default setup charges 5 economy units to create a normal shop and allows 5 n
 - `/shops info` - Show a short introduction, numbered creation instructions, the installed version, and a clickable link to this guide.
 - `/shops create <amount> <buy-price> <sell-price>` - Prepare a shop using the held item, then click a chest within 15 seconds.
 - `/shops limits` - Show used and available normal-shop slots.
-- `/shops list [page]` - List every shop you created with its item, world, and block coordinates. The locations are informational and do not teleport you.
+- `/shops list [page]` - List every shop you created. Hover a compact row for its prices, stock, type, world, and coordinates. Loaded shops that cannot fill one complete purchase are marked `[Out of stock]`; the locations are informational and do not teleport you.
+- `/shops recent [page]` - Review recent purchases and sales, including trades at your normal shops and the money you earned or spent. Hover a compact trade row for its date, per-item price, and shop location. History is available only for trades recorded by the server.
 - `/shops inspect` - Enter inspection mode, then click a shop within 15 seconds. `/shops info shop` is a compatibility alias.
 - `/shops open` - Enter open mode, then click one of your shops within 15 seconds.
 - `/shops remove` - Enter removal mode, then click one of your shops within 15 seconds.

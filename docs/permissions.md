@@ -20,8 +20,10 @@ Defaults below come from `plugin.yml`. `true` means all players, and `op` means 
 | `shopchest.extend.other` | `op` | Extends another player's shop into a double chest. |
 | `shopchest.extend.protected` | `op` | Extends a shop into a protected location. |
 | `shopchest.external.bypass` | `op` | Bypasses an integrated plot, region, island, or claim denial when using a shop. |
+| `shopchest.recent` | `true` | Uses `/shops recent` to view the player's own recorded transaction history. |
 | `shopchest.admin` | `op` | Parent permission for ShopChest administration commands. |
 | `shopchest.admin.list` | `op` | Lists another player's registered shops and allows in-game staff to teleport to a listed shop. |
+| `shopchest.admin.debug` | `op` | Generates a copyable plugin, platform, dependency, database, configuration, and loaded-shop support report. |
 | `shopchest.limit.*` | `op` | Removes the normal-shop limit. |
 
 ## Dynamic Permissions
@@ -39,4 +41,5 @@ Material names use Bukkit enum names such as `DIAMOND` or `OAK_LOG`. A general p
 
 No permission is required for `/shops`, `/shops info`, `/shops limits`,
 `/shops list`, `/shops inspect`, or managing a player's own normal shop after
-it has been created.
+it has been created. `shopchest.recent` is granted to all players by default,
+but can be revoked independently.

@@ -1,28 +1,48 @@
 package de.epiceric.shopchest.shop;
 
 import de.epiceric.shopchest.ShopChest;
-import de.epiceric.shopchest.nms.FakeItem;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.entity.Display;
+import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.*;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Objects;
 
 public class ShopItem {
 
-    // concurrent since update task is in async thread
+    private static final float DISPLAY_BOUND = 1.0F;
+
     private final Set<UUID> viewers = ConcurrentHashMap.newKeySet();
     private final ItemStack itemStack;
     private final Location location;
-    private final UUID uuid = UUID.randomUUID();
-    private final FakeItem fakeItem;
+    private final ItemDisplay display;
+    private final ShopChest plugin;
+    private final float animationPhase;
 
     public ShopItem(ShopChest plugin, ItemStack itemStack, Location location) {
-        this.itemStack = itemStack;
-        this.location = location;
-        this.fakeItem = plugin.getPlatform().createFakeItem();
+        this.plugin = plugin;
+        this.itemStack = itemStack.clone();
+        this.location = location.clone();
+        this.display = Objects.requireNonNull(location.getWorld()).spawn(location, ItemDisplay.class, entity -> {
+            entity.setPersistent(false);
+            entity.setVisibleByDefault(false);
+            entity.setInvulnerable(true);
+            entity.setGravity(false);
+            entity.setSilent(true);
+            entity.setBillboard(Display.Billboard.FIXED);
+            entity.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
+            entity.setInterpolationDelay(0);
+            entity.setInterpolationDuration(ShopItemAnimation.UPDATE_INTERVAL_TICKS);
+            entity.setDisplayWidth(DISPLAY_BOUND);
+            entity.setDisplayHeight(DISPLAY_BOUND);
+            entity.setItemStack(this.itemStack);
+        });
+        this.animationPhase = ShopItemAnimation.phaseFor(display.getUniqueId());
+        plugin.getShopItemAnimator().register(this);
     }
 
     /**
@@ -60,10 +80,8 @@ public class ShopItem {
      */
     public void showPlayer(Player p, boolean force) {
         if (viewers.add(p.getUniqueId()) || force) {
-            final List<Player> receiver = Collections.singletonList(p);
-            fakeItem.spawn(uuid, location, receiver);
-            fakeItem.sendData(itemStack, receiver);
-            fakeItem.resetVelocity(receiver);
+            plugin.getShopItemAnimator().prepareForViewer(this);
+            p.showEntity(plugin, display);
         }
     }
 
@@ -81,7 +99,7 @@ public class ShopItem {
     public void hidePlayer(Player p, boolean force) {
         if (viewers.remove(p.getUniqueId()) || force) {
             if (p.isOnline()) {
-                fakeItem.remove(Collections.singletonList(p));
+                p.hideEntity(plugin, display);
             }
         }
     }
@@ -95,11 +113,9 @@ public class ShopItem {
      * Item will be hidden from all players
      */
     public void remove() {
-        // Avoid ConcurrentModificationException
-        for (UUID uuid : new ArrayList<>(viewers)) {
-            Player p = Bukkit.getPlayer(uuid);
-            if (p != null) hidePlayer(p);
-        }
+        viewers.clear();
+        plugin.getShopItemAnimator().unregister(this);
+        display.remove();
     }
 
     /**
@@ -109,6 +125,20 @@ public class ShopItem {
     public void resetForPlayer(Player p) {
         hidePlayer(p);
         showPlayer(p);
+    }
+
+    public boolean exists() {
+        return display.isValid();
+    }
+
+    boolean hasViewers() {
+        return !viewers.isEmpty();
+    }
+
+    void applyAnimation(long elapsedTicks) {
+        display.setTransformation(ShopItemAnimation.at(elapsedTicks, animationPhase));
+        display.setInterpolationDelay(0);
+        display.setInterpolationDuration(ShopItemAnimation.UPDATE_INTERVAL_TICKS);
     }
 
 }

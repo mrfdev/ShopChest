@@ -2,10 +2,11 @@
 
 ## Requirements
 
-- Paper 26.2 as the supported live target
+- Paper 26.2 as the supported and verified live target
 - Java 25 to run Paper 26.2
 - Vault
 - A Vault-compatible economy provider registered before ShopChest enables
+- CMI is optional; when present, it enables the configurable worth-price advisory
 
 ShopChest's own classes target Java 25 bytecode for the supported Paper server.
 
@@ -18,7 +19,8 @@ ShopChest's own classes target Java 25 bytecode for the supported Paper server.
 5. Review `plugins/ShopChest/config.yml` and `hologram-format.yml`.
 6. Run `/shops info`, `/shops limits`, and a controlled create/buy/sell test.
 
-ShopChest disables itself when Vault, an economy provider, database access, or a compatible server platform is unavailable.
+ShopChest disables itself when Vault, an economy provider, or database access
+is unavailable.
 
 ## Updating
 
@@ -42,4 +44,8 @@ The output is `plugin/build/libs/1MB-ShopChest-v1.15.1-<build>-j25-26.2.jar`, wh
 
 ## Compatibility Policy
 
-The project compiles against the Paper 26.2 API line and supports Paper 26.2 only. Older Paper and Minecraft releases are intentionally out of scope for this branch.
+The project compiles against Paper 26.2 build 60 beta and uses Paper APIs
+directly. It does not support Spigot or older Paper/Minecraft releases. A newer
+Paper release is considered compatible only after the platform contract tests,
+clean build, and test-server smoke checks pass; there is no version-specific
+NMS gate that would reject it preemptively.

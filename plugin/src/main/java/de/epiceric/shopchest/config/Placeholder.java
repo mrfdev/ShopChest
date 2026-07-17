@@ -46,7 +46,16 @@ public enum Placeholder {
     Y("%Y%"),
     Z("%Z%"),
     PAGE("%PAGE%"),
-    PAGES("%PAGES%");
+    PAGES("%PAGES%"),
+    TIME("%TIME%"),
+    COUNTERPARTY("%COUNTERPARTY%"),
+    PRICE("%PRICE%"),
+    UNIT_PRICE("%UNIT-PRICE%"),
+    CMI_WORTH("%CMI-WORTH%"),
+    MULTIPLIER("%MULTIPLIER%"),
+    EARNED("%EARNED%"),
+    SPENT("%SPENT%"),
+    NET("%NET%");
 
     private final String name;
 

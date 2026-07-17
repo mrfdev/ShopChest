@@ -11,12 +11,15 @@ import de.epiceric.shopchest.language.Message;
 import de.epiceric.shopchest.language.Replacement;
 import de.epiceric.shopchest.exceptions.ChestNotFoundException;
 import de.epiceric.shopchest.exceptions.NotEnoughSpaceException;
-import de.epiceric.shopchest.nms.Hologram;
-import de.epiceric.shopchest.nms.HologramOrientation;
-import de.epiceric.shopchest.nms.HologramTextFormatter;
+import de.epiceric.shopchest.display.Hologram;
+import de.epiceric.shopchest.display.HologramOrientation;
+import de.epiceric.shopchest.display.HologramTextFormatter;
+import de.epiceric.shopchest.utils.ChunkCoordinates;
 import de.epiceric.shopchest.utils.ItemUtils;
 import de.epiceric.shopchest.utils.Utils;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.Style;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
@@ -31,7 +34,6 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -66,6 +68,7 @@ public class Shop {
     private final ShopType shopType;
 
     private boolean created;
+    private boolean creationQueued;
     private int id;
     private Hologram hologram;
     private Location holoLocation;
@@ -114,8 +117,19 @@ public class Shop {
      * @param showConsoleMessages to log exceptions to console
      * @return Whether is was created or not
      */
-    public boolean create(boolean showConsoleMessages) {
-        if (created) return false;
+    public synchronized boolean create(boolean showConsoleMessages) {
+        if (created || creationQueued) return false;
+
+        if (!Bukkit.isPrimaryThread()) {
+            creationQueued = true;
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                synchronized (Shop.this) {
+                    creationQueued = false;
+                }
+                create(showConsoleMessages);
+            });
+            return true;
+        }
 
         plugin.debug("Creating shop (#" + id + ")");
 
@@ -144,18 +158,10 @@ public class Shop {
             return false;
         }
 
-        plugin.getShopCreationThreadPool().execute(() -> {
-            if (hologram == null || !hologram.exists()) createHologram(preResult);
-            if (item == null) createItem();
+        if (hologram == null || !hologram.exists()) createHologram(preResult);
+        if (item == null) createItem();
 
-            // Update shops for players in the same world after creation has finished
-            plugin.getUpdater().queue(() -> {
-                for (Player player : location.getWorld().getPlayers()) {
-                    plugin.getShopUtils().resetPlayerLocation(player);
-                }
-            });
-            plugin.getUpdater().updateShops(location.getWorld());
-        });
+        queueDisplayRefresh();
 
         created = true;
         return true;
@@ -165,9 +171,10 @@ public class Shop {
      * Removes the hologram of the shop
      */
     public void removeHologram() {
-        if (hologram != null && hologram.exists()) {
+        if (hologram != null) {
             plugin.debug("Removing hologram (#" + id + ")");
             hologram.remove();
+            hologram = null;
         }
     }
 
@@ -178,6 +185,7 @@ public class Shop {
         if (item != null) {
             plugin.debug("Removing shop item (#" + id + ")");
             item.remove();
+            item = null;
         }
     }
 
@@ -190,8 +198,70 @@ public class Shop {
 
         Location itemLocation;
 
-        itemLocation = new Location(location.getWorld(), holoLocation.getX(), location.getY() + 0.9, holoLocation.getZ());
+        itemLocation = holoLocation.clone();
+        itemLocation.setY(location.getY() + 1.15);
         item = new ShopItem(plugin, product.getItemStack(), itemLocation);
+    }
+
+    /**
+     * Recreates display entities that were discarded when their chunk unloaded.
+     *
+     * @return whether either display entity was recreated
+     */
+    public synchronized boolean restoreDisplays() {
+        if (!Bukkit.isPrimaryThread()) {
+            Bukkit.getScheduler().runTask(plugin, this::restoreDisplays);
+            return true;
+        }
+
+        final World world = location.getWorld();
+        if (world == null || !world.isChunkLoaded(
+                ChunkCoordinates.fromBlock(location.getBlockX()),
+                ChunkCoordinates.fromBlock(location.getBlockZ()))) {
+            return false;
+        }
+
+        final boolean restoreHologram = hologram == null || !hologram.exists();
+        final boolean restoreItem = item == null || !item.exists();
+        if (!restoreHologram && !restoreItem) {
+            return false;
+        }
+
+        final PreCreateResult preResult = preCreateHologram();
+        if (preResult == null) {
+            return false;
+        }
+
+        if (restoreHologram) {
+            removeHologram();
+            createHologram(preResult);
+        } else {
+            holoLocation = getHologramLocation(preResult.chests, preResult.face);
+        }
+        if (restoreItem) {
+            removeItem();
+            createItem();
+        }
+
+        queueDisplayRefresh();
+        return true;
+    }
+
+    /**
+     * Removes transient displays while retaining the registered shop record.
+     */
+    public synchronized void unloadDisplays() {
+        removeItem();
+        removeHologram();
+    }
+
+    private void queueDisplayRefresh() {
+        plugin.getUpdater().queue(() -> {
+            for (Player player : location.getWorld().getPlayers()) {
+                plugin.getShopUtils().resetPlayerLocation(player);
+            }
+        });
+        plugin.getUpdater().updateShops(location.getWorld());
     }
 
     /**
@@ -225,18 +295,12 @@ public class Shop {
     }
 
     /**
-     * Acuatlly creates the hologram (async)
+     * Creates the hologram on the server thread.
      */
     private void createHologram(PreCreateResult preResult) {
         Component[] holoText = getHologramText(preResult.inventory);
         holoLocation = getHologramLocation(preResult.chests, preResult.face);
-
-        new BukkitRunnable(){
-            @Override
-            public void run() {
-                hologram = new Hologram(plugin, holoText, holoLocation);
-            }
-        }.runTask(plugin);
+        hologram = new Hologram(plugin, holoText, holoLocation);
     }
 
     /**
@@ -292,6 +356,11 @@ public class Shop {
                 Config.hologramMaxItemDetailEntries,
                 Config.hologramItemDetailsPerLine,
                 overflowFactory);
+        final Component itemName = HologramTextFormatter.sanitizeItemName(
+                        getProduct().getLocalizedNameComponent(),
+                        Config.hologramMaxItemNameLength)
+                .applyFallbackStyle(Style.style(
+                        Config.hologramColors.textColor(HologramColorPalette.Role.ITEM)));
 
         // Create requirements base on the shop value
         // (As requirements are always the same, only set requirements to the shop value)
@@ -326,8 +395,7 @@ public class Shop {
         Map<Placeholder, Object> placeholders = new EnumMap<>(Placeholder.class);
         placeholders.put(Placeholder.VENDOR, getVendor().getName());
         placeholders.put(Placeholder.AMOUNT, getProduct().getAmount());
-        placeholders.put(Placeholder.ITEM_NAME, HologramTextFormatter.sanitizeItemName(
-                getProduct().getLocalizedName(), Config.hologramMaxItemNameLength));
+        placeholders.put(Placeholder.ITEM_NAME, Placeholder.ITEM_NAME.toString());
         placeholders.put(Placeholder.ENCHANTMENT, Placeholder.ENCHANTMENT.toString());
         placeholders.put(Placeholder.ITEM_DETAILS, Placeholder.ITEM_DETAILS.toString());
         placeholders.put(Placeholder.BUY_PRICE, getBuyPrice());
@@ -353,6 +421,7 @@ public class Shop {
         placeholders.put(Placeholder.COLOR_UNAVAILABLE, Config.hologramColors.color(HologramColorPalette.Role.UNAVAILABLE));
         placeholders.put(Placeholder.COLOR_RESET, HologramColorPalette.RESET);
         final Map<String, Component> componentReplacements = Map.of(
+                Placeholder.ITEM_NAME.toString(), itemName,
                 Placeholder.ENCHANTMENT.toString(), enchantmentDetails,
                 Placeholder.POTION_EFFECT.toString(), potionDetails,
                 Placeholder.ITEM_DETAILS.toString(), combinedItemDetails);
@@ -533,11 +602,11 @@ public class Shop {
     }
 
     public boolean hasHologram() {
-        return hologram != null;
+        return hologram != null && hologram.exists();
     }
 
     public boolean hasItem() {
-        return item != null;
+        return item != null && item.exists();
     }
 
     /**

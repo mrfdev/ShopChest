@@ -11,6 +11,7 @@ import de.epiceric.shopchest.ShopChest;
 import de.epiceric.shopchest.config.FileLoader;
 import de.epiceric.shopchest.config.LanguageConfigurationLoader;
 import de.epiceric.shopchest.language.item.ItemNameManager;
+import de.epiceric.shopchest.language.item.ItemNameDiagnostics;
 import de.epiceric.shopchest.language.item.LocalizedItemNameManager;
 
 public class LanguageLoader {
@@ -71,10 +72,19 @@ public class LanguageLoader {
             throw new RuntimeException(e);
         }
         final Map<String, String> storedItems = languageConfigurationLoader.getTranslations(itemsFile, logger);
-        if (storedItems.isEmpty()) {
-            logger.warning("Items language file is empty. Falling back to generated item names.");
+        final LocalizedItemNameManager itemNameManager = new LocalizedItemNameManager(storedItems);
+        final ItemNameDiagnostics diagnostics = itemNameManager.auditRuntimeItems();
+        logger.info("Item naming: " + diagnostics.translatableItems() + "/"
+                + diagnostics.runtimeItems() + " runtime items have translation keys; "
+                + diagnostics.localeOverrides() + " locale override(s) loaded"
+                + (diagnostics.ignoredOverrides() > 0
+                        ? "; " + diagnostics.ignoredOverrides() + " invalid override(s) ignored"
+                        : ""));
+        if (!diagnostics.complete()) {
+            logger.warning("Items without usable runtime translation keys: "
+                    + String.join(", ", diagnostics.missingTranslationKeys()));
         }
-        return new LocalizedItemNameManager(storedItems);
+        return itemNameManager;
     }
 
     @NotNull

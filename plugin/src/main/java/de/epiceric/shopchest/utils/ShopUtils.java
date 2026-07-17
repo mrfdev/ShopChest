@@ -146,6 +146,20 @@ public class ShopUtils {
         shopLocation.clear();
     }
 
+    /**
+     * Retires transient displays before their chunk is discarded. The shop
+     * record remains registered and restores its displays on the next load.
+     */
+    public void unloadDisplays(Chunk chunk) {
+        final Set<Shop> shops = shopLocation.entrySet().stream()
+                .filter(entry -> entry.getKey().getWorld().equals(chunk.getWorld()))
+                .filter(entry -> ChunkCoordinates.fromBlock(entry.getKey().getBlockX()) == chunk.getX())
+                .filter(entry -> ChunkCoordinates.fromBlock(entry.getKey().getBlockZ()) == chunk.getZ())
+                .map(Map.Entry::getValue)
+                .collect(Collectors.toSet());
+        shops.forEach(Shop::unloadDisplays);
+    }
+
     /** Remove a shop. May not work properly if double chest doesn't exist!
      * @param shop Shop to remove
      * @param removeFromDatabase Whether the shop should also be removed from the database
@@ -364,16 +378,19 @@ public class ShopUtils {
                 for (Shop shop : result) {
                     Location loc = shop.getLocation();
 
-                    // Don't add shop if shop is already loaded
-                    if (shopLocation.containsKey(loc)) {
-                        continue;
-                    }
-
-                    int x = loc.getBlockX() / 16;
-                    int z = loc.getBlockZ() / 16;
+                    int x = ChunkCoordinates.fromBlock(loc.getBlockX());
+                    int z = ChunkCoordinates.fromBlock(loc.getBlockZ());
                     
                     // Don't add shop if chunk is no longer loaded
                     if (!loc.getWorld().isChunkLoaded(x, z)) {
+                        continue;
+                    }
+
+                    final Shop existingShop = shopLocation.get(loc);
+                    if (existingShop != null) {
+                        if (existingShop.restoreDisplays()) {
+                            loadedShops.add(existingShop);
+                        }
                         continue;
                     }
 

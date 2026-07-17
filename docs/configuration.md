@@ -10,6 +10,7 @@ ShopChest creates `config.yml`, `hologram-format.yml`, and a `lang/` directory u
 | `language-file` | `en_US` | Selects `messages-<locale>.lang` and `items-<locale>.lang`. |
 | `shop-info-item` | `STICK` | Clicking a shop with this item shows details; an empty value disables it. |
 | `confirm-shopping` | `false` | Requires a second click before a buy or sell. |
+| `trade-interaction-cooldown-milliseconds` | `250` | Silently limits each player to one shop trade attempt per interval before permission, inventory, economy, or database work. Values are clamped from `0` (disabled) through `5000`. |
 | `creative-select-item` | `true` | Lets a creator select a product from the creative inventory when no item is held. |
 | `refund-shop-creation` | `false` | Refunds the current creation price when the creator removes their own shop. |
 | `auto-calculate-item-amount` | `false` | Reduces a trade and price when money, stock, items, or space are insufficient. Active only when decimal prices are allowed. |
@@ -21,6 +22,27 @@ ShopChest creates `config.yml`, `hologram-format.yml`, and a `lang/` directory u
 | `blacklist` | Empty | Bukkit materials that cannot become shop products. |
 
 `shop-creation-price.normal` defaults to `5`; `shop-creation-price.admin` defaults to `0`. `shop-limits.default` defaults to `5`, and `-1` disables the default limit. Permission limits override it.
+
+### CMI Worth Price Warnings
+
+When CMI is installed, ShopChest can compare a proposed normal shop's per-item
+prices with CMI's loaded `/sell` worth. The check is advisory: it does not
+change a price or prevent the shop from being created. Admin shops and products
+without a positive CMI worth are skipped silently.
+
+| Key under `cmi-worth-price-warning` | Default | Behavior |
+| --- | --- | --- |
+| `enabled` | `true` | Enables the optional CMI comparison when CMI and its worth API are available. |
+| `warn-resale-risk` | `true` | Warns whenever a customer could buy an item below its CMI `/sell` worth and immediately resell it for profit. |
+| `low-multiplier` | `0.50` | Warns when the shop's per-item payout is below this fraction of CMI worth. Clamped from `0.01` through `1.00`. |
+| `high-multiplier` | `20.00` | Warns when either per-item price is above this multiple of CMI worth. Clamped from `1.00` through `10000.00`. |
+
+The comparison runs only after the proposed shop passes normal validation. It
+uses CMI's in-memory `WorthManager`, makes one metadata-aware lookup for the
+held product, and emits at most one customer-price warning and one shop-payout
+warning. Shop creation then continues normally. Missing settings are added to
+existing configuration files automatically, and `/shops reload` refreshes the
+integration and thresholds.
 
 ### Trade Feedback
 
@@ -63,7 +85,7 @@ Missing settings are added to existing configuration files automatically.
 | `hologram-colors.separator` | `#BDD0DE` | Global pastel color for the price-row separator. |
 | `hologram-colors.admin` | `#FFC2CF` | Global pastel color for the admin-shop heading. |
 | `hologram-colors.unavailable` | `#FFD0D0` | Global pastel color for unavailable trade states such as `[Out of stock]`. |
-| `hologram-max-item-name-length` | `48` | Maximum visible item-name characters before the panel uses `...`; `0` disables truncation. The full name remains available through shop information. |
+| `hologram-max-item-name-length` | `48` | Maximum visible characters for literal custom or overridden item names before the panel uses `...`; `0` disables truncation. Vanilla translatable names remain client-resolved and wrap to the configured panel width. |
 | `hologram-max-item-detail-entries` | `7` | Maximum enchantments and potion effects shown before a localized `+N more` summary. Values are clamped from `1` through `32`. |
 | `hologram-item-details-per-line` | `2` | Enchantment and potion detail entries placed on each panel line. Values are clamped from `1` through `4`. |
 | `hologram-fixed-facing` | `true` | Keeps the panel aligned with the front of its chest. Set to `false` to restore center billboarding toward each viewer. |
@@ -73,7 +95,32 @@ Missing settings are added to existing configuration files automatically.
 | `enable-vendor-messages` | `true` | Notifies online vendors about trades and empty stock. |
 | `enable-vendor-bungee-messages` | `false` | Publishes vendor notifications through the BungeeCord plugin channel. |
 
-Item translations are loaded from `lang/items-<locale>.lang`. Missing entries fall back to readable names generated from the modern Bukkit material/item type rather than displaying an error.
+### Item Name Localization
+
+Vanilla product names are resolved automatically from the runtime
+`ItemStack.translationKey()`. Holograms send an Adventure translatable
+component to the client, allowing Minecraft or the active resource pack to
+localize the name. ShopChest also supplies a readable fallback for plain-text
+contexts and clients that do not know a future key. A new vanilla item therefore
+does not require a generated language-file update.
+
+`lang/items-<locale>.lang` is an optional administrator override file. New
+installations receive an empty, commented template. Existing files remain
+compatible and may use a full translation key, namespaced item key, simple key,
+or Bukkit material name:
+
+```properties
+block.minecraft.oak_log=Timber
+minecraft:oak_log=Timber
+oak_log=Timber
+OAK_LOG=Timber
+```
+
+Custom item names take precedence over these overrides. Blank values and known
+failure sentinels such as `ERROR`, `unknown item`, and `not configured` are
+ignored rather than displayed. Startup logs and `/shops admin debug` report
+runtime translation-key coverage, loaded override count, and invalid override
+count.
 
 `hologram-format.yml` defines ordered line options, conditions, colors, and internal placeholders. All active lines are rendered in one TextDisplay panel, so wrapped custom item names cannot overlap the owner or price lines. Enchanted items show their enchantments and levels; potions show all base and custom effects with amplifiers and non-instant durations. Details retain client-side Minecraft translations, use the global item/separator colors, wrap at two entries per line by default, and show at most seven entries plus an overflow summary. Normal shops that cannot supply one complete configured purchase replace the buy price with the localized `[Out of stock]` state while retaining an independently enabled sell price; admin shops remain unlimited. The `hologram-colors` palette is server-wide and cannot be overridden by players. Missing modern display keys are added to existing configuration files automatically, and invalid values fall back to the documented default with a console warning. See [Hologram Placeholders](placeholders.md).
 
@@ -81,8 +128,8 @@ Item translations are loaded from `lang/items-<locale>.lang`. Missing entries fa
 
 | Key | Default | Behavior |
 | --- | --- | --- |
-| `enable-economy-log` | `false` | Stores completed buy/sell transactions. |
-| `cleanup-economy-log-days` | `30` | Deletes older economy logs at startup; `0` disables cleanup. |
+| `enable-economy-log` | `false` | Stores completed buy/sell transactions for `/shops recent` and vendor revenue reporting. Disabling it stops new history without deleting existing rows. |
+| `cleanup-economy-log-days` | `30` | Deletes older economy logs at startup; `0` disables cleanup. This also controls how far back `/shops recent` can report. |
 | `enable-debug-log` | `false` | Writes verbose diagnostics to `plugins/ShopChest/debug.txt`; restart after changing. |
 | `remove-shop-on-error` | `false` | Deletes a database record when its world, chest, or display space cannot be loaded. Keep disabled while diagnosing recoverable world-loading issues. |
 
@@ -104,4 +151,8 @@ Database selection, connection details, and table prefix should be changed only 
 
 ## Reload Versus Restart
 
-`/shops reload` reloads normal configuration values, language files, the hologram format, shop visibility tasks, database connection, and shops in loaded chunks. Use a full restart for `main-command-name`, database backend changes, debug-file creation, integration registration, or plugin dependency changes. Display and positioning settings changed through `/shops config set` refresh loaded holograms immediately, including any `hologram-colors.*` value.
+`/shops reload` reloads normal configuration values, language files, the hologram format, CMI worth-price thresholds, shop visibility tasks, database connection, and shops in loaded chunks. Use a full restart for `main-command-name`, database backend changes, debug-file creation, integration registration, or plugin dependency changes. Display and positioning settings changed through `/shops config set` refresh loaded holograms immediately, including any `hologram-colors.*` value.
+
+`/shops admin debug` is independent of `enable-debug-log`. It collects a
+bounded, privacy-conscious runtime snapshot on demand, while the debug log is a
+verbose file intended only for deeper temporary troubleshooting.

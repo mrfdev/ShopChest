@@ -6,6 +6,7 @@ import de.epiceric.shopchest.command.ShopCommand;
 import de.epiceric.shopchest.config.Config;
 import de.epiceric.shopchest.config.hologram.HologramFormat;
 import de.epiceric.shopchest.external.BentoBoxShopFlag;
+import de.epiceric.shopchest.external.cmi.CmiWorthPriceAdvisor;
 import de.epiceric.shopchest.external.PlotSquaredOldShopFlag;
 import de.epiceric.shopchest.external.PlotSquaredShopFlag;
 import de.epiceric.shopchest.external.WorldGuardShopFlag;
@@ -15,9 +16,8 @@ import de.epiceric.shopchest.language.LanguageManager;
 import de.epiceric.shopchest.listeners.BentoBoxListener;
 import de.epiceric.shopchest.listeners.WorldGuardListener;
 import de.epiceric.shopchest.listeners.*;
-import de.epiceric.shopchest.nms.Platform;
-import de.epiceric.shopchest.nms.PlatformLoader;
 import de.epiceric.shopchest.shop.Shop;
+import de.epiceric.shopchest.shop.ShopItemAnimator;
 import de.epiceric.shopchest.sql.Database;
 import de.epiceric.shopchest.sql.MySQL;
 import de.epiceric.shopchest.sql.SQLite;
@@ -45,10 +45,6 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 public class ShopChest extends JavaPlugin {
@@ -56,7 +52,6 @@ public class ShopChest extends JavaPlugin {
     private static ShopChest instance;
 
     private Config config;
-    private Platform platform;
     private LanguageManager languageManager;
     private HologramFormat hologramFormat;
     private ShopCommand shopCommand;
@@ -73,8 +68,9 @@ public class ShopChest extends JavaPlugin {
     private GriefPrevention griefPrevention;
     private AreaShop areaShop;
     private BentoBox bentoBox;
+    private CmiWorthPriceAdvisor cmiWorthPriceAdvisor;
+    private ShopItemAnimator shopItemAnimator;
     private ShopUpdater updater;
-    private ExecutorService shopCreationThreadPool;
 
     /**
      * @return An instance of ShopChest
@@ -145,20 +141,9 @@ public class ShopChest extends JavaPlugin {
             return;
         }
 
-        // Load NMS
-        final PlatformLoader platformLoader = new PlatformLoader();
-        try {
-            platform = platformLoader.loadPlatform();
-        } catch (RuntimeException e) {
-            debug(e.getMessage());
-            debug("Disabling the plugin");
-            getLogger().warning(e.getMessage());
-            getLogger().warning("Disabling the plugin");
-            Bukkit.getPluginManager().disablePlugin(this);
-            return;
-        }
-
         shopUtils = new ShopUtils(this);
+        cmiWorthPriceAdvisor = new CmiWorthPriceAdvisor(this);
+        cmiWorthPriceAdvisor.refresh();
 
         File hologramFormatFile = new File(getDataFolder(), "hologram-format.yml");
         if (!hologramFormatFile.exists()) {
@@ -168,19 +153,18 @@ public class ShopChest extends JavaPlugin {
         hologramFormat = new HologramFormat(this);
         hologramFormat.load();
         shopCommand = new ShopCommand(this);
-        shopCreationThreadPool = new ThreadPoolExecutor(0, 8,
-                5L, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
-        
+
         loadExternalPlugins();
         initDatabase();
         registerListeners();
         registerExternalListeners();
+        shopItemAnimator = new ShopItemAnimator(this);
+        shopItemAnimator.start();
+        updater = new ShopUpdater(this);
+        updater.start();
         initializeShops();
 
         getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
-
-        updater = new ShopUpdater(this);
-        updater.start();
     }
 
     @Override
@@ -212,8 +196,8 @@ public class ShopChest extends JavaPlugin {
             updater.stop();
         }
 
-        if (shopCreationThreadPool != null) {
-            shopCreationThreadPool.shutdown();
+        if (shopItemAnimator != null) {
+            shopItemAnimator.stop();
         }
 
         shopUtils.removeShops();
@@ -335,9 +319,7 @@ public class ShopChest extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ChestProtectListener(this), this);
         getServer().getPluginManager().registerEvents(new CreativeModeListener(this), this);
 
-        if (Utils.getMajorVersion() != 8 || Utils.getRevision() != 1) {
-            getServer().getPluginManager().registerEvents(new BlockExplodeListener(this), this);
-        }
+        getServer().getPluginManager().registerEvents(new BlockExplodeListener(this), this);
 
         if (hasWorldGuard()) {
             getServer().getPluginManager().registerEvents(new WorldGuardListener(this), this);
@@ -450,17 +432,6 @@ public class ShopChest extends JavaPlugin {
         }
     }
 
-    /**
-     * @return A thread pool for executing shop creation tasks
-     */
-    public ExecutorService getShopCreationThreadPool() {
-        return shopCreationThreadPool;
-    }
-
-    public Platform getPlatform() {
-        return platform;
-    }
-
     public LanguageManager getLanguageManager() {
         return languageManager;
     }
@@ -478,6 +449,14 @@ public class ShopChest extends JavaPlugin {
      */
     public ShopUpdater getUpdater() {
         return updater;
+    }
+
+    public CmiWorthPriceAdvisor getCmiWorthPriceAdvisor() {
+        return cmiWorthPriceAdvisor;
+    }
+
+    public ShopItemAnimator getShopItemAnimator() {
+        return shopItemAnimator;
     }
 
     /**
@@ -536,10 +515,6 @@ public class ShopChest extends JavaPlugin {
             return false;
         }
 
-        if (Utils.getMajorVersion() < 13) {
-            // Supported PlotSquared versions don't support versions below 1.13
-            return false;
-        }
         Plugin p = getServer().getPluginManager().getPlugin("PlotSquared");
         return p != null && p.isEnabled();
     }

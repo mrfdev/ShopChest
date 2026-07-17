@@ -179,6 +179,10 @@ message.buy-price-too-high=&cThe buy price must be lower than %MAX-PRICE%.
 # Set the message when the entered sell price is below the maximum price.
 # Usable Placeholders: %MAX-PRICE%
 message.sell-price-too-high=&cThe sell price must be lower than %MAX-PRICE%.
+message.cmi-worth.resale-risk=&6CMI price check: &e%ITEMNAME% &7costs &f%UNIT-PRICE% &7each here, below CMI's &a/sell &7worth of &f%CMI-WORTH%&7. Players could resell it for profit.
+message.cmi-worth.customer-high=&6CMI price check: &e%ITEMNAME% &7costs &f%UNIT-PRICE% &7each here (&f%MULTIPLIER%x &7its CMI worth of &f%CMI-WORTH%&7). Check that this is intentional.
+message.cmi-worth.shop-low=&6CMI price check: &7Your shop pays &f%UNIT-PRICE% &7per &e%ITEMNAME%&7, only &f%MULTIPLIER%x &7its CMI worth of &f%CMI-WORTH%&7.
+message.cmi-worth.shop-high=&6CMI price check: &7Your shop pays &f%UNIT-PRICE% &7per &e%ITEMNAME%&7 (&f%MULTIPLIER%x &7its CMI worth of &f%CMI-WORTH%&7). Check that this is intentional.
 
 # Set the message when buying is disabled at the shop.
 message.buying-disabled=&cBuying is disabled at this shop.
@@ -343,14 +347,30 @@ message.info.guide=&b&nOpen the ShopChest player guide
 # Database-backed shop lists. Player rows are informational; authorized staff
 # rows are clickable and teleport through a permission-checked internal action.
 message.help.command.list=&a/%COMMAND% list [page] &7- List every shop you own and its location.
-message.help.command.admin=&a/%COMMAND% admin list <player> [page] &7- List and teleport to a player's shops. &8[shopchest.admin.list]
+message.help.command.recent=&a/%COMMAND% recent [page] &7- Show your latest purchases, sales, earnings, and spending.
+message.help.command.admin=&a/%COMMAND% admin <list|debug> ... &7- Shop administration and support diagnostics.
+message.noPermission.recent=&cYou do not have permission to view recent shop activity.
+message.noPermission.admin=&cYou do not have permission to use ShopChest administration commands.
 message.noPermission.admin-list=&cYou don't have permission to list other players' shops.
+message.noPermission.admin-debug=&cYou do not have permission to generate ShopChest diagnostics.
 message.shopList.loading=&7Loading registered shops...
 message.shopList.header=&6Your shops &7- Page %PAGE%/%PAGES% &8(%AMOUNT% total)
 message.shopList.admin-header=&6%PLAYER%'s shops &7- Page %PAGE%/%PAGES% &8(%AMOUNT% total)
 message.shopList.empty=&eYou have not created any shops.
 message.shopList.admin-empty=&e%PLAYER% has no registered shops.
-message.shopList.entry=&e#%SHOP-ID% &f%AMOUNT% x %ITEMNAME% &8- &b%WORLD% &7(%X%, %Y%, %Z%)
+message.shopList.compact-entry=&e#%SHOP-ID% &f%AMOUNT%x %ITEMNAME%%STOCK%
+message.shopList.console-entry=&e#%SHOP-ID% &f%AMOUNT%x %ITEMNAME%%STOCK% &8- &b%WORLD% &7(%X%, %Y%, %Z%)
+message.shopList.out-of-stock= &c[Out of stock]
+message.shopList.hover.header=&6Shop #%SHOP-ID%
+message.shopList.hover.item=&7Item: &f%AMOUNT%x %ITEMNAME%
+message.shopList.hover.prices=&7Prices: &fBuy %BUY-PRICE% &8| &fSell %SELL-PRICE%
+message.shopList.hover.stock=&7Stock: %STOCK%
+message.shopList.hover.location=&7Location: &f%WORLD% %X%, %Y%, %Z%
+message.shopList.stock.available=&a%STOCK% available
+message.shopList.stock.out=&cOut of stock &8(&f%STOCK%&8/&f%AMOUNT% required&8)
+message.shopList.stock.unknown=&7Unknown while the shop chunk is unloaded
+message.shopList.stock.unlimited=&bUnlimited admin stock
+message.shopList.stock.not-sold=&7Not applicable; buying is disabled
 message.shopList.click-teleport=&aClick to teleport to this shop.
 message.shopList.previous=&b\u00AB Previous
 message.shopList.next=&bNext \u00BB
@@ -358,8 +378,33 @@ message.shopList.invalid-page=&cPage must be a positive whole number.
 message.shopList.player-not-found=&cNo player named %PLAYER% was found in the local server cache.
 message.shopList.error=&cThe shop list could not be loaded. Check the server log for details.
 message.admin.header=&6ShopChest &cAdministration
-message.admin.list=&a/%COMMAND% admin list <player> [page] &7- List every registered shop and click a row to teleport.
+message.admin.list=&a/%COMMAND% admin list <player> [page] &7- List every registered shop and click a row to teleport. &8[shopchest.admin.list]
+message.admin.debug=&a/%COMMAND% admin debug &7- Generate a copyable support diagnostics report. &8[shopchest.admin.debug]
+message.admin.debug-collecting=&7Collecting ShopChest diagnostics...
+message.admin.debug-header=&6ShopChest &eSupport diagnostics
+message.admin.debug-copy=&b&n[Copy full support report]
+message.admin.debug-copy-hover=&7Click to copy the complete report. It excludes credentials, paths, player names, and world names.
+message.admin.debug-database-failed=&eThe database snapshot failed; the report contains the remaining diagnostics.
 message.admin.teleport-target-expired=&cThat shop location is no longer cached. Run the admin list command again.
 message.admin.teleport-world-unavailable=&cThat shop's world is not currently available.
 message.admin.teleport-success=&aTeleported to shop #%SHOP-ID%.
 message.admin.teleport-failed=&cCould not teleport to shop #%SHOP-ID%.
+
+# Recent trades are read from the optional economy log. The command includes
+# both trades made by the player and trades completed at their normal shops.
+message.recent.loading=&7Loading recent shop activity...
+message.recent.logging-disabled=&eTransaction logging is disabled; showing previously recorded activity only.
+message.recent.header=&6Recent trades &7- Page &f%PAGE%&7/%PAGES% &8(%AMOUNT% total)
+message.recent.empty=&7No shop transactions have been recorded for you.
+message.recent.compact.player-buy=&c%PRICE% &7Bought &f%AMOUNT%x %ITEMNAME% &7from &f%COUNTERPARTY%
+message.recent.compact.player-sell=&a%PRICE% &7Sold &f%AMOUNT%x %ITEMNAME% &7to &f%COUNTERPARTY%
+message.recent.compact.shop-buy=&a%PRICE% &f%COUNTERPARTY% &7bought &f%AMOUNT%x %ITEMNAME%
+message.recent.compact.shop-sell=&c%PRICE% &f%COUNTERPARTY% &7sold &f%AMOUNT%x %ITEMNAME%
+message.recent.hover.header=&6Transaction details
+message.recent.hover.date=&7Date: &f%TIME%
+message.recent.hover.counterparty=&7Other party: &f%COUNTERPARTY%
+message.recent.hover.item=&7Item: &f%AMOUNT%x %ITEMNAME%
+message.recent.hover.money=&7Balance change: &f%PRICE% &8(&f%UNIT-PRICE% each&8)
+message.recent.hover.shop=&7Shop: &f#%SHOP-ID% &8- &f%WORLD% %X%, %Y%, %Z%
+message.recent.summary=&7This page: &aEarned %EARNED% &8| &cSpent %SPENT% &8| &fNet %NET%
+message.recent.error=&cRecent shop activity could not be loaded.

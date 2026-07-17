@@ -1,5 +1,5 @@
 plugins {
-    id("buildlogic.java-spigot-conventions")
+    id("buildlogic.java-paper-conventions")
     id("com.gradleup.shadow") version "9.0.0-rc1"
 }
 
@@ -42,8 +42,6 @@ configurations.configureEach {
 tasks.shadowJar {
     archiveFileName.set("1MB-ShopChest-v${pluginVersion}-${buildNumber}-j${javaVersion}-${paperVersion}.jar")
     dependencies {
-        include(project(":nms:interface"))
-        include(project(":nms:paper"))
         include(dependency("org.codemc.worldguardwrapper:worldguardwrapper"))
         include(dependency("com.zaxxer:HikariCP"))
     }
@@ -52,15 +50,13 @@ tasks.shadowJar {
 }
 
 dependencies {
-    // Nms modules
-    implementation(project(":nms:interface"))
-    implementation(project(":nms:paper"))
     // Shaded api
     implementation("org.codemc.worldguardwrapper:worldguardwrapper:1.2.0-SNAPSHOT")
     implementation("com.zaxxer:HikariCP:6.3.0")
     // Used api
     implementation("com.github.MilkBowl:VaultAPI:1.7")
     // Optionnal plugin compatibility
+    compileOnly("com.github.Zrips:CMI-API:9.8.6.4")
     implementation("fr.xephi:authme:5.4.0")
     implementation("com.plotsquared:PlotSquared-Core:6.5.0")
     implementation("com.sk89q.worldedit:worldedit-core:7.3.0")
@@ -75,6 +71,7 @@ dependencies {
     // Local dependencies are not handled well and can't be excluded (see https://github.com/GradleUp/shadow/issues/142)
     compileOnly(files("../lib/AreaShop-2.6.0.jar", "../lib/IslandWorld-8.5.jar"))
     testImplementation("io.papermc.paper:paper-api:26.2.build.60-beta")
+    testImplementation("org.xerial:sqlite-jdbc:3.49.1.0")
     testImplementation("org.junit.jupiter:junit-jupiter:5.13.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.13.4")
 }
@@ -88,5 +85,12 @@ group = "de.epiceric"
 version = pluginVersion
 
 tasks.processResources {
-    expand(Pair("version", version))
+    expand(
+        mapOf(
+            "version" to version,
+            "buildNumber" to buildNumber,
+            "javaVersion" to javaVersion,
+            "paperVersion" to paperVersion,
+        )
+    )
 }

@@ -5,9 +5,9 @@ main: de.epiceric.shopchest.ShopChest
 version: ${version}
 author: EpicEric
 description: Create your own nice-looking chest shops and sell your stuff to other players!
-softdepend: [WorldGuard, Towny, AuthMe, PlotSquared, uSkyBlock, ASkyBlock, IslandWorld, GriefPrevention, AreaShop, Multiverse-Core, MultiWorld, BentoBox]
+softdepend: [CMI, WorldGuard, Towny, AuthMe, PlotSquared, uSkyBlock, ASkyBlock, IslandWorld, GriefPrevention, AreaShop, Multiverse-Core, MultiWorld, BentoBox]
 depend: [Vault]
-api-version: 1.13
+api-version: '26.2'
 
 permissions:
   shopchest.*:
@@ -31,6 +31,7 @@ permissions:
       shopchest.extend.protected: true
       shopchest.external.bypass: true
       shopchest.admin: true
+      shopchest.recent: true
   shopchest.create:
     description: Allows you to create a shop.
     children:
@@ -90,6 +91,13 @@ permissions:
     default: op
     children:
       shopchest.admin.list: true
+      shopchest.admin.debug: true
   shopchest.admin.list:
     description: Allows listing another player's shops and teleporting to them.
     default: op
+  shopchest.admin.debug:
+    description: Allows generating a ShopChest support diagnostics report.
+    default: op
+  shopchest.recent:
+    description: Allows viewing your own recent ShopChest transactions.
+    default: true

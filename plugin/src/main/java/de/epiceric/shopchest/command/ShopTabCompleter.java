@@ -39,8 +39,15 @@ class ShopTabCompleter implements TabCompleter {
             ArrayList<String> returnCompletions = new ArrayList<>();
 
             if (args.length == 2) {
-                if (args[0].equalsIgnoreCase("admin") && sender.hasPermission(Permissions.ADMIN_LIST)) {
-                    return filterCompletions(List.of("list"), args[1]);
+                if (args[0].equalsIgnoreCase("admin")) {
+                    final List<String> adminCommands = new ArrayList<>();
+                    if (sender.hasPermission(Permissions.ADMIN_LIST)) {
+                        adminCommands.add("list");
+                    }
+                    if (sender.hasPermission(Permissions.ADMIN_DEBUG)) {
+                        adminCommands.add("debug");
+                    }
+                    return filterCompletions(adminCommands, args[1]);
                 } else if (args[0].equals("config")) {
                     if (!args[1].equals("")) {
                         for (String s : configSubCommands) {

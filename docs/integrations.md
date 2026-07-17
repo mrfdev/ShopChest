@@ -21,6 +21,20 @@ Each hook has an `enable-*-integration` setting. Most are also listed as soft de
 
 `shopchest.external.bypass` lets trusted staff bypass integrated region, plot, island, or claim denials while using shops. `shopchest.create.protected` separately bypasses a cancelled creation event.
 
+## CMI Worth Price Advisory
+
+CMI is an optional soft dependency. When installed and
+`cmi-worth-price-warning.enabled` is true, ShopChest uses CMI's public
+`WorthManager` API to compare proposed normal-shop unit prices with the
+product's loaded `/sell` worth. It can flag direct resale opportunities and
+unusually low or high ratios without blocking shop creation.
+
+ShopChest does not parse `Worth.yml`, schedule a file scan, or perform this
+comparison during normal trades. It makes one lookup only when a valid
+normal-shop proposal is being created. CMI remains responsible for interpreting
+item metadata and its worth configuration. `/shops admin debug` reports whether
+the advisory is active and which thresholds are loaded.
+
 ## Multiworld and Proxy Behavior
 
 Multiverse-Core and MultiWorld are soft dependencies used to improve load ordering for persisted shops in multiple worlds. Shop records include world and block coordinates.

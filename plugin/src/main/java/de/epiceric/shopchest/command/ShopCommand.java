@@ -103,6 +103,17 @@ public class ShopCommand {
             }
         });
 
+        addSubCommand(new ShopSubCommand("recent", true, executor, tabCompleter) {
+            @Override
+            public String getHelpMessage(CommandSender sender) {
+                if (!sender.hasPermission(Permissions.RECENT)) {
+                    return "";
+                }
+                final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+                return messageRegistry.getMessage(Message.HELP_COMMAND_RECENT, cmdReplacement);
+            }
+        });
+
         addSubCommand(new ShopSubCommand("help", false, executor, tabCompleter) {
             @Override
             public String getHelpMessage(CommandSender sender) {
@@ -138,7 +149,8 @@ public class ShopCommand {
         addSubCommand(new ShopSubCommand("admin", false, ShopSubCommand.HelpSection.STAFF, executor, tabCompleter) {
             @Override
             public String getHelpMessage(CommandSender sender) {
-                if (sender.hasPermission(Permissions.ADMIN_LIST)) {
+                if (sender.hasPermission(Permissions.ADMIN_LIST)
+                        || sender.hasPermission(Permissions.ADMIN_DEBUG)) {
                     final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
                     return messageRegistry.getMessage(Message.HELP_COMMAND_ADMIN, cmdReplacement);
                 }

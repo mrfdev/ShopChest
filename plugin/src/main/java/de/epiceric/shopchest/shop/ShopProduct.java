@@ -1,6 +1,7 @@
 package de.epiceric.shopchest.shop;
 
 import de.epiceric.shopchest.ShopChest;
+import net.kyori.adventure.text.Component;
 import org.bukkit.inventory.ItemStack;
 
 public class ShopProduct {
@@ -19,11 +20,19 @@ public class ShopProduct {
     }
 
     /**
-     * @return The localized name of the product's {@link ItemStack} in the selected language file.
+     * @return The product name as plain legacy text for logs and legacy messages.
      */
     public String getLocalizedName() {
         return ShopChest.getInstance().getLanguageManager().getItemNameManager().getItemName(getItemStack());
-        //LanguageUtils.getItemName(getItemStack());
+    }
+
+    /**
+     * @return The rich product name for client-side vanilla translation.
+     */
+    public Component getLocalizedNameComponent() {
+        return ShopChest.getInstance().getLanguageManager()
+                .getItemNameManager()
+                .getItemNameComponent(getItemStack());
     }
 
     /**

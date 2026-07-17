@@ -2,7 +2,6 @@ package de.epiceric.shopchest.utils;
 
 import de.epiceric.shopchest.ShopChest;
 import de.epiceric.shopchest.shop.Shop;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Chest;
@@ -137,7 +136,7 @@ public class Utils {
 
     /**
      * @param p Player whose item in his off hand should be returned
-     * @return {@link ItemStack} in his off hand, or {@code null} if he doesn't hold one or the server version is below 1.9
+     * @return {@link ItemStack} in his off hand, or {@code null} if he doesn't hold one
      */
     public static ItemStack getItemInOffHand(Player p) {
         if (p.getInventory().getItemInOffHand().getType() == Material.AIR)
@@ -245,71 +244,6 @@ public class Utils {
             chestLocations.add(shop.getLocation());
         }
         return chestLocations;
-    }
-
-    private final static int majorVersion;
-    private final static int revision;
-
-    static {
-        String rawMajorVersion = null;
-        try {
-            final String bukkitVersion = Bukkit.getServer().getBukkitVersion();
-            final String[] minecraftVersion = bukkitVersion.substring(0, bukkitVersion.indexOf('-')).split("\\.");
-            rawMajorVersion = minecraftVersion["1".equals(minecraftVersion[0]) ? 1 : 0];
-        } catch (Exception e) {
-            try {
-                final String packageName = Bukkit.getServer().getClass().getPackage().getName();
-                final String serverVersion = packageName.substring(packageName.lastIndexOf('.') + 1);
-                rawMajorVersion = serverVersion.split("_")[1];
-            } catch (Exception ex) {
-                if (rawMajorVersion == null) {
-                    throw new RuntimeException("Could not load major version");
-                }
-            }
-        }
-        int parsedMajorVersion = -1;
-        try {
-            parsedMajorVersion = Integer.valueOf(rawMajorVersion);
-        } catch (Exception e) {
-            throw new RuntimeException("Could not parse major version");
-        }
-        int parsedRevision = 0;
-        if (parsedMajorVersion < 17) {
-            try {
-                final String packageName = Bukkit.getServer().getClass().getPackage().getName();
-                final String serverVersion = packageName.substring(packageName.lastIndexOf('.') + 1);
-                final String rawRevision = serverVersion.substring(serverVersion.length() - 1);
-                parsedRevision = Integer.valueOf(rawRevision);
-            } catch (Exception e) {}
-        }
-        majorVersion = parsedMajorVersion;
-        revision = parsedRevision;
-    }
-
-    /**
-     * @return The current server version with revision number (e.g. v1_9_R2, v1_10_R1)
-     */
-    private static String getServerVersion() {
-        /*
-        String packageName = Bukkit.getServer().getClass().getPackage().getName();
-
-        return packageName.substring(packageName.lastIndexOf('.') + 1);
-        */
-        return "";
-    }
-
-    /**
-     * @return The revision of the current server version (e.g. <i>2</i> for v1_9_R2, <i>1</i> for v1_10_R1)
-     */
-    public static int getRevision() {
-        return revision;
-    }
-
-    /**
-     * @return The major version of the server (e.g. <i>9</i> for 1.9.2, <i>10</i> for 1.10)
-     */
-    public static int getMajorVersion() {
-        return majorVersion;
     }
 
     /**

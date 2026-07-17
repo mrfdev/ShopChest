@@ -22,6 +22,9 @@ public class Config {
     static final float MAXIMUM_HOLOGRAM_TEXT_SCALE = 1.25f;
     static final int DEFAULT_HOLOGRAM_MAX_ITEM_DETAIL_ENTRIES = 7;
     static final int DEFAULT_HOLOGRAM_ITEM_DETAILS_PER_LINE = 2;
+    static final int DEFAULT_TRADE_INTERACTION_COOLDOWN_MILLIS = 250;
+    static final double DEFAULT_CMI_WORTH_LOW_MULTIPLIER = 0.5D;
+    static final double DEFAULT_CMI_WORTH_HIGH_MULTIPLIER = 20.0D;
     private static final String SUCCESS_SOUND = "minecraft:entity.experience_orb.pickup";
     private static final String SUCCESS_PARTICLE = "minecraft:happy_villager";
     private static final String FAILURE_SOUND = "minecraft:block.note_block.bass";
@@ -138,9 +141,30 @@ public class Config {
     public static boolean buyGreaterOrEqualSell;
 
     /**
+     * Whether normal-shop prices are compared with CMI's configured worth.
+     **/
+    public static boolean cmiWorthPriceWarningEnabled;
+
+    /**
+     * Whether a direct buy-then-/sell profit should be called out.
+     **/
+    public static boolean cmiWorthWarnResaleRisk;
+
+    /**
+     * Multipliers outside this range are considered unusual.
+     **/
+    public static double cmiWorthLowMultiplier;
+    public static double cmiWorthHighMultiplier;
+
+    /**
      * Whether buys and sells must be confirmed
      **/
     public static boolean confirmShopping;
+
+    /**
+     * Minimum time between shop trade attempts from the same player
+     **/
+    public static int tradeInteractionCooldownMillis;
 
     /**
      * Player-local sound and particle shown after a completed trade
@@ -526,7 +550,19 @@ public class Config {
         creativeSelectItem = plugin.getConfig().getBoolean("creative-select-item");
         blacklist = (plugin.getConfig().getStringList("blacklist") == null) ? new ArrayList<String>() : plugin.getConfig().getStringList("blacklist");
         buyGreaterOrEqualSell = plugin.getConfig().getBoolean("buy-greater-or-equal-sell");
+        cmiWorthPriceWarningEnabled = plugin.getConfig().getBoolean(
+                "cmi-worth-price-warning.enabled", true);
+        cmiWorthWarnResaleRisk = plugin.getConfig().getBoolean(
+                "cmi-worth-price-warning.warn-resale-risk", true);
+        cmiWorthLowMultiplier = normalizeCmiWorthLowMultiplier(plugin.getConfig().getDouble(
+                "cmi-worth-price-warning.low-multiplier", DEFAULT_CMI_WORTH_LOW_MULTIPLIER));
+        cmiWorthHighMultiplier = normalizeCmiWorthHighMultiplier(plugin.getConfig().getDouble(
+                "cmi-worth-price-warning.high-multiplier", DEFAULT_CMI_WORTH_HIGH_MULTIPLIER));
         confirmShopping = plugin.getConfig().getBoolean("confirm-shopping");
+        tradeInteractionCooldownMillis = normalizeTradeInteractionCooldownMillis(
+                plugin.getConfig().getInt(
+                        "trade-interaction-cooldown-milliseconds",
+                        DEFAULT_TRADE_INTERACTION_COOLDOWN_MILLIS));
         tradeSuccessFeedback = getTradeFeedbackEffect(
                 "success", SUCCESS_SOUND, 0.45, 1.2, SUCCESS_PARTICLE, 4);
         tradeFailureFeedback = getTradeFeedbackEffect(
@@ -678,6 +714,15 @@ public class Config {
         changed |= addDefaultIfMissing("trade-feedback.failure.pitch", 0.7);
         changed |= addDefaultIfMissing("trade-feedback.failure.particle", FAILURE_PARTICLE);
         changed |= addDefaultIfMissing("trade-feedback.failure.particle-count", 3);
+        changed |= addDefaultIfMissing(
+                "trade-interaction-cooldown-milliseconds",
+                DEFAULT_TRADE_INTERACTION_COOLDOWN_MILLIS);
+        changed |= addDefaultIfMissing("cmi-worth-price-warning.enabled", true);
+        changed |= addDefaultIfMissing("cmi-worth-price-warning.warn-resale-risk", true);
+        changed |= addDefaultIfMissing(
+                "cmi-worth-price-warning.low-multiplier", DEFAULT_CMI_WORTH_LOW_MULTIPLIER);
+        changed |= addDefaultIfMissing(
+                "cmi-worth-price-warning.high-multiplier", DEFAULT_CMI_WORTH_HIGH_MULTIPLIER);
         if (changed) {
             plugin.saveConfig();
         }
@@ -710,6 +755,24 @@ public class Config {
 
     static int normalizeTradeFeedbackParticleCount(int value) {
         return clamp(value, 0, 16);
+    }
+
+    static int normalizeTradeInteractionCooldownMillis(int value) {
+        return clamp(value, 0, 5_000);
+    }
+
+    static double normalizeCmiWorthLowMultiplier(double value) {
+        if (!Double.isFinite(value)) {
+            return DEFAULT_CMI_WORTH_LOW_MULTIPLIER;
+        }
+        return Math.max(0.01D, Math.min(value, 1.0D));
+    }
+
+    static double normalizeCmiWorthHighMultiplier(double value) {
+        if (!Double.isFinite(value)) {
+            return DEFAULT_CMI_WORTH_HIGH_MULTIPLIER;
+        }
+        return Math.max(1.0D, Math.min(value, 10_000.0D));
     }
 
 }

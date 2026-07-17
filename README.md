@@ -8,13 +8,16 @@ This repository is a maintained fork of [EpicEricEE/ShopChest](https://github.co
 
 | Component | Verified target |
 | --- | --- |
-| Minecraft / Paper | 26.2 build 60 beta |
+| Minecraft / Paper | Paper 26.2 build 60 beta |
 | Server runtime | Java 25 |
 | Plugin bytecode | Java 25 |
 | Build toolchain | Gradle wrapper with a Java 25 toolchain |
 | Required plugins | Vault and a Vault economy provider |
 
-The shaded plugin jar is intended for Paper 26.2. Older Minecraft releases, including 26.1.x, are outside this branch's supported scope.
+The shaded plugin jar is intended for Paper 26.2 and uses Paper APIs directly.
+Spigot and older Minecraft releases, including 26.1.x, are outside this
+branch's supported scope. Newer Paper releases are compatibility targets, but
+must pass the build and test-server checks before deployment.
 
 ## Features
 
@@ -23,6 +26,7 @@ The shaded plugin jar is intended for Paper 26.2. Older Minecraft releases, incl
 - Floating product item and configurable hologram text
 - Per-player shop limits and per-material creation permissions
 - Optional click confirmation, partial transaction calculation, creation costs, and refunds
+- Optional advisory price checks against CMI's loaded worth data, including direct `/sell` resale-risk warnings
 - SQLite or MySQL persistence with built-in legacy schema migration
 - Protection hooks for WorldGuard, Towny, PlotSquared, BentoBox, GriefPrevention, AreaShop, AuthMe, ASkyBlock, uSkyBlock, and IslandWorld
 - Optional cross-server vendor notifications through the BungeeCord plugin channel
@@ -56,7 +60,12 @@ The normal build is:
 JAVA_HOME=/path/to/jdk-25 ./gradlew build plugin:shadowJar
 ```
 
-The deployable jar is written to `plugin/build/libs/1MB-ShopChest-v1.15.1-<build>-j25-26.2.jar`, where `<build>` is the zero-padded Git commit count. Gradle includes the Paper NMS module automatically; legacy Spigot NMS aggregates are not part of this branch's supported build.
+The deployable jar is written to
+`plugin/build/libs/1MB-ShopChest-v1.15.1-<build>-j25-26.2.jar`, where `<build>`
+is the zero-padded Git commit count. The jar uses Paper's public
+`TextDisplay`, `ItemDisplay`, and per-player entity visibility APIs; it does not
+include version-specific NMS, CraftBukkit, reflection, or Spigot compatibility
+modules.
 
 ## Persistence and Updates
 

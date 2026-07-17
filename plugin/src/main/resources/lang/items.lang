@@ -1,1 +1,8 @@
-# See usage section on github to fill this file.
+# Optional item-name overrides.
+#
+# Vanilla item names are resolved automatically from each runtime ItemStack's
+# Paper/Adventure translation key. New Minecraft items therefore do not need to
+# be added here. Add only intentional server-specific wording, for example:
+#
+# block.minecraft.oak_log=Timber
+# oak_log=Timber

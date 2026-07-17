@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.zaxxer.hikari.HikariDataSource;
+import com.zaxxer.hikari.HikariPoolMXBean;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
@@ -694,6 +695,196 @@ public abstract class Database {
                 callback.callSyncResult(null);
             }
         }
+    }
+
+    /**
+     * Get one page of recent transactions involving a player, either as the
+     * person trading or as the vendor of a normal shop.
+     */
+    public void getRecentTransactions(
+            UUID playerId,
+            int requestedPage,
+            int pageSize,
+            Callback<RecentTransactionPage> callback
+    ) {
+        if (pageSize < 1) {
+            throw new IllegalArgumentException("Page size must be positive");
+        }
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                try (Connection con = dataSource.getConnection()) {
+                    callback.callSyncResult(queryRecentTransactions(
+                            con, tableLogs, playerId, requestedPage, pageSize));
+                } catch (SQLException | IllegalArgumentException exception) {
+                    plugin.getLogger().severe("Failed to load recent ShopChest transactions");
+                    plugin.debug(exception);
+                    callback.callSyncError(exception);
+                }
+            }
+        }.runTaskAsynchronously(plugin);
+    }
+
+    /**
+     * Collects a read-only database and connection-pool snapshot for support
+     * reports without exposing connection settings or stored shop details.
+     */
+    public void getDiagnostics(Callback<DatabaseDiagnostics> callback) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (dataSource == null || dataSource.isClosed()) {
+                    callback.callSyncResult(DatabaseDiagnostics.unavailable(initialized));
+                    return;
+                }
+
+                try {
+                    callback.callSyncResult(queryDiagnostics(
+                            dataSource,
+                            tableShops,
+                            tableLogs,
+                            tableFields,
+                            initialized));
+                } catch (SQLException exception) {
+                    plugin.getLogger().warning("Failed to collect ShopChest database diagnostics");
+                    plugin.debug(exception);
+                    callback.callSyncError(exception);
+                }
+            }
+        }.runTaskAsynchronously(plugin);
+    }
+
+    static DatabaseDiagnostics queryDiagnostics(
+            HikariDataSource source,
+            String shopsTable,
+            String logsTable,
+            String fieldsTable,
+            boolean initialized
+    ) throws SQLException {
+        final long started = System.nanoTime();
+        int schemaVersion = 0;
+        int totalShops = 0;
+        int normalShops = 0;
+        int adminShops = 0;
+        int owners = 0;
+        int economyLogs = 0;
+
+        try (Connection connection = source.getConnection()) {
+            final boolean connectionValid = connection.isValid(2);
+
+            try (Statement statement = connection.createStatement();
+                    ResultSet resultSet = statement.executeQuery(
+                            "SELECT value FROM " + fieldsTable + " WHERE field='version'")) {
+                if (resultSet.next()) {
+                    schemaVersion = resultSet.getInt("value");
+                }
+            }
+
+            final String shopCountsQuery = "SELECT COUNT(*) AS total,"
+                    + " SUM(CASE WHEN shoptype='NORMAL' THEN 1 ELSE 0 END) AS normal,"
+                    + " SUM(CASE WHEN shoptype='ADMIN' THEN 1 ELSE 0 END) AS admin,"
+                    + " COUNT(DISTINCT vendor) AS owners"
+                    + " FROM " + shopsTable;
+            try (Statement statement = connection.createStatement();
+                    ResultSet resultSet = statement.executeQuery(shopCountsQuery)) {
+                if (resultSet.next()) {
+                    totalShops = resultSet.getInt("total");
+                    normalShops = resultSet.getInt("normal");
+                    adminShops = resultSet.getInt("admin");
+                    owners = resultSet.getInt("owners");
+                }
+            }
+
+            try (Statement statement = connection.createStatement();
+                    ResultSet resultSet = statement.executeQuery("SELECT COUNT(*) FROM " + logsTable)) {
+                if (resultSet.next()) {
+                    economyLogs = resultSet.getInt(1);
+                }
+            }
+
+            final long latencyMillis = (System.nanoTime() - started) / 1_000_000L;
+            final HikariPoolMXBean pool = source.getHikariPoolMXBean();
+            return new DatabaseDiagnostics(
+                    initialized,
+                    connectionValid,
+                    latencyMillis,
+                    schemaVersion,
+                    totalShops,
+                    normalShops,
+                    adminShops,
+                    owners,
+                    economyLogs,
+                    pool == null ? -1 : pool.getActiveConnections(),
+                    pool == null ? -1 : pool.getIdleConnections(),
+                    pool == null ? -1 : pool.getTotalConnections(),
+                    pool == null ? -1 : pool.getThreadsAwaitingConnection());
+        }
+    }
+
+    static RecentTransactionPage queryRecentTransactions(
+            Connection connection,
+            String table,
+            UUID playerId,
+            int requestedPage,
+            int pageSize
+    ) throws SQLException {
+        if (pageSize < 1) {
+            throw new IllegalArgumentException("Page size must be positive");
+        }
+
+        final String involvement = "(player_uuid = ? OR (vendor_uuid = ? AND admin = ?))";
+        final String countQuery = "SELECT COUNT(id) FROM " + table + " WHERE " + involvement;
+        final String pageQuery = "SELECT id,shop_id,timestamp,time,player_name,player_uuid,product_name,amount,"
+                + "vendor_name,vendor_uuid,admin,world,x,y,z,price,type FROM " + table
+                + " WHERE " + involvement + " ORDER BY time DESC,id DESC LIMIT ? OFFSET ?";
+        final int totalEntries;
+        try (PreparedStatement countStatement = connection.prepareStatement(countQuery)) {
+            bindRecentPlayer(countStatement, playerId);
+            try (ResultSet resultSet = countStatement.executeQuery()) {
+                totalEntries = resultSet.next() ? resultSet.getInt(1) : 0;
+            }
+        }
+
+        final int pageCount = Math.max(1, (int) Math.ceil(totalEntries / (double) pageSize));
+        final int page = Math.clamp(requestedPage, 1, pageCount);
+        final int offset = (page - 1) * pageSize;
+        final List<RecentTransaction> entries = new ArrayList<>();
+
+        try (PreparedStatement pageStatement = connection.prepareStatement(pageQuery)) {
+            bindRecentPlayer(pageStatement, playerId);
+            pageStatement.setInt(4, pageSize);
+            pageStatement.setInt(5, offset);
+            try (ResultSet resultSet = pageStatement.executeQuery()) {
+                while (resultSet.next()) {
+                    entries.add(new RecentTransaction(
+                            resultSet.getLong("id"),
+                            resultSet.getInt("shop_id"),
+                            resultSet.getString("timestamp"),
+                            resultSet.getLong("time"),
+                            resultSet.getString("player_name"),
+                            resultSet.getString("player_uuid"),
+                            resultSet.getString("product_name"),
+                            resultSet.getInt("amount"),
+                            resultSet.getString("vendor_name"),
+                            resultSet.getString("vendor_uuid"),
+                            resultSet.getBoolean("admin"),
+                            resultSet.getString("world"),
+                            resultSet.getInt("x"),
+                            resultSet.getInt("y"),
+                            resultSet.getInt("z"),
+                            resultSet.getDouble("price"),
+                            ShopBuySellEvent.Type.valueOf(resultSet.getString("type"))));
+                }
+            }
+        }
+        return new RecentTransactionPage(entries, page, pageCount, totalEntries);
+    }
+
+    private static void bindRecentPlayer(PreparedStatement statement, UUID playerId) throws SQLException {
+        statement.setString(1, playerId.toString());
+        statement.setString(2, playerId.toString());
+        statement.setBoolean(3, false);
     }
 
     /**

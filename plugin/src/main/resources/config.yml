@@ -22,6 +22,11 @@ shop-info-item: "STICK"
 # in order to prevent accidents.
 confirm-shopping: false
 
+# Silently ignore additional buy or sell attempts from the same player during
+# this interval. This limits packet/click spam before permission, inventory,
+# economy, and database work. Set to 0 to disable; values are capped at 5000.
+trade-interaction-cooldown-milliseconds: 250
+
 # Configure player-local feedback for completed and failed trade attempts.
 # Set either outcome's enabled value to false to disable it. Set a sound or
 # particle to "none" to disable only that part. Particle counts are capped at
@@ -194,6 +199,17 @@ minimum-prices:
 
 maximum-prices:
 # "STONE": 2
+
+# Compare proposed normal-shop prices with CMI's in-memory WorthManager data.
+# This is advisory only: warnings never block creation or change a price.
+# A resale-risk warning is shown whenever a customer could buy from the shop
+# below CMI's /sell worth. The low/high multipliers catch less direct mistakes
+# without warning about ordinary market variation.
+cmi-worth-price-warning:
+  enabled: true
+  warn-resale-risk: true
+  low-multiplier: 0.50
+  high-multiplier: 20.00
 
 # Set the items of which a player can't create a shop.
 blacklist:
