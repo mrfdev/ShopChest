@@ -226,6 +226,7 @@ public class ShopInteractListener implements Listener {
             if (p.getGameMode() == GameMode.CREATIVE) {
                 e.setCancelled(true);
                 p.sendMessage(messageRegistry.getMessage(Message.USE_IN_CREATIVE));
+                TradeFeedback.failure(p, shop);
                 return;
             }
 
@@ -284,6 +285,7 @@ public class ShopInteractListener implements Listener {
                                 } else {
                                     plugin.debug(p.getName() + " doesn't have external plugin's permission");
                                     p.sendMessage(messageRegistry.getMessage(Message.NO_PERMISSION_BUY_HERE));
+                                    TradeFeedback.failure(p, shop);
                                 }
                             } else {
                                 if (externalPluginsAllowed || p.hasPermission(Permissions.BYPASS_EXTERNAL_PLUGIN)) {
@@ -326,6 +328,7 @@ public class ShopInteractListener implements Listener {
                                             }
                                         } else {
                                             p.sendMessage(messageRegistry.getMessage(Message.OUT_OF_STOCK));
+                                            TradeFeedback.failure(p, shop);
                                             if (shop.getVendor().isOnline() && Config.enableVendorMessages) {
                                                 shop.getVendor().getPlayer().sendMessage(messageRegistry.getMessage(Message.VENDOR_OUT_OF_STOCK,
                                                         new Replacement(Placeholder.AMOUNT, String.valueOf(shop.getProduct().getAmount())),
@@ -342,14 +345,17 @@ public class ShopInteractListener implements Listener {
                                 } else {
                                     plugin.debug(p.getName() + " doesn't have external plugin's permission");
                                     p.sendMessage(messageRegistry.getMessage(Message.NO_PERMISSION_BUY_HERE));
+                                    TradeFeedback.failure(p, shop);
                                 }
                             }
                         } else {
                             p.sendMessage(messageRegistry.getMessage(Message.NO_PERMISSION_BUY));
+                            TradeFeedback.failure(p, shop);
                             plugin.debug(p.getName() + " is not permitted to buy");
                         }
                     } else {
                         p.sendMessage(messageRegistry.getMessage(Message.BUYING_DISABLED));
+                        TradeFeedback.failure(p, shop);
                         plugin.debug("Buying is disabled");
                     }
                 }
@@ -430,19 +436,23 @@ public class ShopInteractListener implements Listener {
                                         }
                                     } else {
                                         p.sendMessage(messageRegistry.getMessage(Message.NOT_ENOUGH_ITEMS));
+                                        TradeFeedback.failure(p, shop);
                                         plugin.debug(p.getName() + " doesn't have enough items");
                                     }
                                 }
                             } else {
                                 plugin.debug(p.getName() + " doesn't have external plugin's permission");
                                 p.sendMessage(messageRegistry.getMessage(Message.NO_PERMISSION_SELL_HERE));
+                                TradeFeedback.failure(p, shop);
                             }
                         } else {
                             p.sendMessage(messageRegistry.getMessage(Message.NO_PERMISSION_SELL));
+                            TradeFeedback.failure(p, shop);
                             plugin.debug(p.getName() + " is not permitted to sell");
                         }
                     } else {
                         p.sendMessage(messageRegistry.getMessage(Message.SELLING_DISABLED));
+                        TradeFeedback.failure(p, shop);
                         plugin.debug("Selling is disabled");
                     }
                 }
@@ -671,6 +681,7 @@ public class ShopInteractListener implements Listener {
 
             if (amountForMoney == 0 && Config.autoCalculateItemAmount) {
                 executor.sendMessage(messageRegistry.getMessage(Message.NOT_ENOUGH_MONEY));
+                TradeFeedback.failure(executor, shop);
                 return;
             }
 
@@ -683,6 +694,7 @@ public class ShopInteractListener implements Listener {
 
             if (amountForChestItems == 0 && shop.getShopType() != ShopType.ADMIN) {
                 executor.sendMessage(messageRegistry.getMessage(Message.OUT_OF_STOCK));
+                TradeFeedback.failure(executor, shop);
                 return;
             }
 
@@ -695,6 +707,7 @@ public class ShopInteractListener implements Listener {
 
             if (freeSpace == 0) {
                 executor.sendMessage(messageRegistry.getMessage(Message.NOT_ENOUGH_INVENTORY_SPACE));
+                TradeFeedback.failure(executor, shop);
                 return;
             }
 
@@ -729,6 +742,7 @@ public class ShopInteractListener implements Listener {
                                 econ.depositPlayer(executor, worldName, newPrice);
                                 econ.withdrawPlayer(shop.getVendor(), worldName, newPrice);
                                 plugin.debug("Buy event cancelled (#" + shop.getID() + ")");
+                                TradeFeedback.failure(executor, shop);
                                 return;
                             }
 
@@ -751,6 +765,7 @@ public class ShopInteractListener implements Listener {
                             executor.sendMessage(messageRegistry.getMessage(Message.BUY_SUCCESS, new Replacement(Placeholder.AMOUNT, String.valueOf(newAmount)),
                                     new Replacement(Placeholder.ITEM_NAME, newProduct.getLocalizedName()), new Replacement(Placeholder.BUY_PRICE, String.valueOf(newPrice)),
                                     new Replacement(Placeholder.VENDOR, vendorName)));
+                            TradeFeedback.success(executor, shop);
 
                             plugin.debug(executor.getName() + " successfully bought (#" + shop.getID() + ")");
 
@@ -770,6 +785,7 @@ public class ShopInteractListener implements Listener {
                             executor.sendMessage(messageRegistry.getMessage(Message.ERROR_OCCURRED, new Replacement(Placeholder.ERROR, r2.errorMessage)));
                             econ.withdrawPlayer(shop.getVendor(), worldName, newPrice);
                             econ.depositPlayer(executor, worldName, newPrice);
+                            TradeFeedback.failure(executor, shop);
                         }
                     } else {
                         ShopBuySellEvent event = new ShopBuySellEvent(executor, shop, ShopBuySellEvent.Type.BUY, newAmount, newPrice);
@@ -778,6 +794,7 @@ public class ShopInteractListener implements Listener {
                         if (event.isCancelled()) {
                             econ.depositPlayer(executor, worldName, newPrice);
                             plugin.debug("Buy event cancelled (#" + shop.getID() + ")");
+                            TradeFeedback.failure(executor, shop);
                             return;
                         }
 
@@ -797,6 +814,7 @@ public class ShopInteractListener implements Listener {
 
                         executor.sendMessage(messageRegistry.getMessage(Message.BUY_SUCCESS_ADMIN, new Replacement(Placeholder.AMOUNT, String.valueOf(newAmount)),
                                 new Replacement(Placeholder.ITEM_NAME, newProduct.getLocalizedName()), new Replacement(Placeholder.BUY_PRICE, String.valueOf(newPrice))));
+                        TradeFeedback.success(executor, shop);
 
                         plugin.debug(executor.getName() + " successfully bought (#" + shop.getID() + ")");
                     }
@@ -804,12 +822,15 @@ public class ShopInteractListener implements Listener {
                     plugin.debug("Economy transaction failed (r): " + r.errorMessage + " (#" + shop.getID() + ")");
                     executor.sendMessage(messageRegistry.getMessage(Message.ERROR_OCCURRED, new Replacement(Placeholder.ERROR, r.errorMessage)));
                     econ.depositPlayer(executor, worldName, newPrice);
+                    TradeFeedback.failure(executor, shop);
                 }
             } else {
                 executor.sendMessage(messageRegistry.getMessage(Message.NOT_ENOUGH_INVENTORY_SPACE));
+                TradeFeedback.failure(executor, shop);
             }
         } else {
             executor.sendMessage(messageRegistry.getMessage(Message.NOT_ENOUGH_MONEY));
+            TradeFeedback.failure(executor, shop);
         }
     }
 
@@ -843,6 +864,7 @@ public class ShopInteractListener implements Listener {
 
             if (amountForMoney == 0 && Config.autoCalculateItemAmount && shop.getShopType() != ShopType.ADMIN) {
                 executor.sendMessage(messageRegistry.getMessage(Message.VENDOR_NOT_ENOUGH_MONEY));
+                TradeFeedback.failure(executor, shop);
                 return;
             }
 
@@ -853,6 +875,7 @@ public class ShopInteractListener implements Listener {
 
             if (amountForItemCount == 0) {
                 executor.sendMessage(messageRegistry.getMessage(Message.NOT_ENOUGH_ITEMS));
+                TradeFeedback.failure(executor, shop);
                 return;
             }
 
@@ -865,6 +888,7 @@ public class ShopInteractListener implements Listener {
 
             if (freeSpace == 0 && shop.getShopType() != ShopType.ADMIN) {
                 executor.sendMessage(messageRegistry.getMessage(Message.CHEST_NOT_ENOUGH_INVENTORY_SPACE));
+                TradeFeedback.failure(executor, shop);
                 return;
             }
 
@@ -899,6 +923,7 @@ public class ShopInteractListener implements Listener {
                                 econ.withdrawPlayer(executor, worldName, newPrice);
                                 econ.depositPlayer(shop.getVendor(), worldName, newPrice);
                                 plugin.debug("Sell event cancelled (#" + shop.getID() + ")");
+                                TradeFeedback.failure(executor, shop);
                                 return;
                             }
 
@@ -921,6 +946,7 @@ public class ShopInteractListener implements Listener {
                             executor.sendMessage(messageRegistry.getMessage(Message.SELL_SUCCESS, new Replacement(Placeholder.AMOUNT, String.valueOf(newAmount)),
                                     new Replacement(Placeholder.ITEM_NAME, newProduct.getLocalizedName()), new Replacement(Placeholder.SELL_PRICE, String.valueOf(newPrice)),
                                     new Replacement(Placeholder.VENDOR, vendorName)));
+                            TradeFeedback.success(executor, shop);
 
                             plugin.debug(executor.getName() + " successfully sold (#" + shop.getID() + ")");
 
@@ -940,6 +966,7 @@ public class ShopInteractListener implements Listener {
                             executor.sendMessage(messageRegistry.getMessage(Message.ERROR_OCCURRED, new Replacement(Placeholder.ERROR, r2.errorMessage)));
                             econ.withdrawPlayer(executor, worldName, newPrice);
                             econ.depositPlayer(shop.getVendor(), worldName, newPrice);
+                            TradeFeedback.failure(executor, shop);
                         }
 
                     } else {
@@ -949,6 +976,7 @@ public class ShopInteractListener implements Listener {
                         if (event.isCancelled()) {
                             econ.withdrawPlayer(executor, worldName, newPrice);
                             plugin.debug("Sell event cancelled (#" + shop.getID() + ")");
+                            TradeFeedback.failure(executor, shop);
                             return;
                         }
 
@@ -968,6 +996,7 @@ public class ShopInteractListener implements Listener {
 
                         executor.sendMessage(messageRegistry.getMessage(Message.SELL_SUCCESS_ADMIN, new Replacement(Placeholder.AMOUNT, String.valueOf(newAmount)),
                                 new Replacement(Placeholder.ITEM_NAME, newProduct.getLocalizedName()), new Replacement(Placeholder.SELL_PRICE, String.valueOf(newPrice))));
+                        TradeFeedback.success(executor, shop);
 
                         plugin.debug(executor.getName() + " successfully sold (#" + shop.getID() + ")");
                     }
@@ -976,14 +1005,17 @@ public class ShopInteractListener implements Listener {
                     plugin.debug("Economy transaction failed (r): " + r.errorMessage + " (#" + shop.getID() + ")");
                     executor.sendMessage(messageRegistry.getMessage(Message.ERROR_OCCURRED, new Replacement(Placeholder.ERROR, r.errorMessage)));
                     econ.withdrawPlayer(executor, worldName, newPrice);
+                    TradeFeedback.failure(executor, shop);
                 }
 
             } else {
                 executor.sendMessage(messageRegistry.getMessage(Message.CHEST_NOT_ENOUGH_INVENTORY_SPACE));
+                TradeFeedback.failure(executor, shop);
             }
 
         } else {
             executor.sendMessage(messageRegistry.getMessage(Message.VENDOR_NOT_ENOUGH_MONEY));
+            TradeFeedback.failure(executor, shop);
         }
     }
 

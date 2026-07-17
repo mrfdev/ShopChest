@@ -3,12 +3,20 @@ package de.epiceric.shopchest.shop;
 import de.epiceric.shopchest.ShopChest;
 import de.epiceric.shopchest.config.Config;
 import de.epiceric.shopchest.config.Placeholder;
+import de.epiceric.shopchest.config.hologram.HologramColorPalette;
 import de.epiceric.shopchest.config.hologram.HologramFormat;
+import de.epiceric.shopchest.config.hologram.HologramItemDetails;
+import de.epiceric.shopchest.config.hologram.HologramTradeAvailability;
+import de.epiceric.shopchest.language.Message;
+import de.epiceric.shopchest.language.Replacement;
 import de.epiceric.shopchest.exceptions.ChestNotFoundException;
 import de.epiceric.shopchest.exceptions.NotEnoughSpaceException;
 import de.epiceric.shopchest.nms.Hologram;
+import de.epiceric.shopchest.nms.HologramOrientation;
+import de.epiceric.shopchest.nms.HologramTextFormatter;
 import de.epiceric.shopchest.utils.ItemUtils;
 import de.epiceric.shopchest.utils.Utils;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
@@ -220,7 +228,7 @@ public class Shop {
      * Acuatlly creates the hologram (async)
      */
     private void createHologram(PreCreateResult preResult) {
-        String[] holoText = getHologramText(preResult.inventory);
+        Component[] holoText = getHologramText(preResult.inventory);
         holoLocation = getHologramLocation(preResult.chests, preResult.face);
 
         new BukkitRunnable(){
@@ -236,18 +244,13 @@ public class Shop {
      * <p><b>Has to be called synchronously!</b></p>
      */
     public void updateHologramText() {
-        String[] lines = getHologramText(getInventoryHolder().getInventory());
-        String[] currentLines = hologram.getLines();
+        if (hologram == null || !hologram.exists()) return;
 
-        int max = Math.max(lines.length, currentLines.length);
+        final InventoryHolder inventoryHolder = getInventoryHolder();
+        if (inventoryHolder == null) return;
 
-        for (int i = 0; i < max; i++) {
-            if (i < lines.length) {
-                hologram.setLine(i, lines[i]);
-            } else {
-                hologram.removeLine(i);
-            }
-        }
+        Component[] lines = getHologramText(inventoryHolder.getInventory());
+        hologram.setLines(lines);
     }
 
     /**
@@ -264,55 +267,95 @@ public class Shop {
         hologram.setLocation(holoLocation);
     }
 
-    private String[] getHologramText(Inventory inventory) {
-        List<String> lines = new ArrayList<>();
+    private Component[] getHologramText(Inventory inventory) {
+        List<Component> lines = new ArrayList<>();
 
         ItemStack itemStack = getProduct().getItemStack();
+        final HologramItemDetails itemDetails = HologramItemDetails.from(
+                itemStack,
+                Config.hologramColors.textColor(HologramColorPalette.Role.DETAILS),
+                Config.hologramColors.textColor(HologramColorPalette.Role.SEPARATOR));
+        final java.util.function.IntFunction<Component> overflowFactory = hiddenCount ->
+                HologramTextFormatter.fromLegacy(plugin.getLanguageManager().getMessageRegistry().getMessage(
+                                Message.HOLOGRAM_MORE_ITEM_DETAILS,
+                                new Replacement(Placeholder.DETAIL_COUNT, hiddenCount)))
+                        .color(Config.hologramColors.textColor(HologramColorPalette.Role.SEPARATOR));
+        final Component enchantmentDetails = itemDetails.enchantments(
+                Config.hologramMaxItemDetailEntries,
+                Config.hologramItemDetailsPerLine,
+                overflowFactory);
+        final Component potionDetails = itemDetails.potionEffects(
+                Config.hologramMaxItemDetailEntries,
+                Config.hologramItemDetailsPerLine,
+                overflowFactory);
+        final Component combinedItemDetails = itemDetails.combined(
+                Config.hologramMaxItemDetailEntries,
+                Config.hologramItemDetailsPerLine,
+                overflowFactory);
 
         // Create requirements base on the shop value
         // (As requirements are always the same, only set requirements to the shop value)
         Map<HologramFormat.Requirement, Object> requirements = new EnumMap<>(HologramFormat.Requirement.class);
         final int damage = ItemUtils.getDamage(itemStack);
+        final int stock = Utils.getAmount(inventory, itemStack);
+        final int chestSpace = Utils.getFreeSpaceForItem(inventory, itemStack);
+        final boolean buyOutOfStock = HologramTradeAvailability.isBuyOutOfStock(
+                getBuyPrice(), getShopType() == ShopType.ADMIN, stock, getProduct().getAmount());
         requirements.put(HologramFormat.Requirement.VENDOR, getVendor().getName());
         requirements.put(HologramFormat.Requirement.AMOUNT, getProduct().getAmount());
         requirements.put(HologramFormat.Requirement.ITEM_TYPE, itemStack.getType() + (damage > 0 ? ":" + damage : ""));
         requirements.put(HologramFormat.Requirement.ITEM_NAME, getLegacyDisplayName(itemStack));
-        //TODO Link it
-        //requirements.put(HologramFormat.Requirement.HAS_ENCHANTMENT, !LanguageUtils.getEnchantmentString(ItemUtils.getEnchantments(itemStack)).isEmpty());
+        requirements.put(HologramFormat.Requirement.HAS_ENCHANTMENT, itemDetails.hasEnchantments());
+        requirements.put(HologramFormat.Requirement.HAS_ITEM_DETAILS, !itemDetails.isEmpty());
         requirements.put(HologramFormat.Requirement.BUY_PRICE, getBuyPrice());
         requirements.put(HologramFormat.Requirement.SELL_PRICE, getSellPrice());
-        requirements.put(HologramFormat.Requirement.HAS_POTION_EFFECT, ItemUtils.getPotionEffect(itemStack) != null);
+        requirements.put(HologramFormat.Requirement.HAS_POTION_EFFECT, itemDetails.hasPotionEffects());
         requirements.put(HologramFormat.Requirement.IS_MUSIC_DISC, itemStack.getType().isRecord());
         requirements.put(HologramFormat.Requirement.IS_POTION_EXTENDED, ItemUtils.isExtendedPotion(itemStack));
         requirements.put(HologramFormat.Requirement.IS_WRITTEN_BOOK, itemStack.getType() == Material.WRITTEN_BOOK);
         requirements.put(HologramFormat.Requirement.IS_BANNER_PATTERN, ItemUtils.isBannerPattern(itemStack));
         requirements.put(HologramFormat.Requirement.ADMIN_SHOP, getShopType() == ShopType.ADMIN);
         requirements.put(HologramFormat.Requirement.NORMAL_SHOP, getShopType() == ShopType.NORMAL);
-        requirements.put(HologramFormat.Requirement.IN_STOCK, Utils.getAmount(inventory, itemStack));
+        requirements.put(HologramFormat.Requirement.IN_STOCK, stock);
+        requirements.put(HologramFormat.Requirement.OUT_OF_STOCK, buyOutOfStock);
         requirements.put(HologramFormat.Requirement.MAX_STACK, itemStack.getMaxStackSize());
-        requirements.put(HologramFormat.Requirement.CHEST_SPACE, Utils.getFreeSpaceForItem(inventory, itemStack));
+        requirements.put(HologramFormat.Requirement.CHEST_SPACE, chestSpace);
         requirements.put(HologramFormat.Requirement.DURABILITY, damage);
 
         // Same as requirements
         Map<Placeholder, Object> placeholders = new EnumMap<>(Placeholder.class);
         placeholders.put(Placeholder.VENDOR, getVendor().getName());
         placeholders.put(Placeholder.AMOUNT, getProduct().getAmount());
-        placeholders.put(Placeholder.ITEM_NAME, getProduct().getLocalizedName());
-        //TODO Link it
-        //placeholders.put(Placeholder.ENCHANTMENT, LanguageUtils.getEnchantmentString(ItemUtils.getEnchantments(itemStack)));
+        placeholders.put(Placeholder.ITEM_NAME, HologramTextFormatter.sanitizeItemName(
+                getProduct().getLocalizedName(), Config.hologramMaxItemNameLength));
+        placeholders.put(Placeholder.ENCHANTMENT, Placeholder.ENCHANTMENT.toString());
+        placeholders.put(Placeholder.ITEM_DETAILS, Placeholder.ITEM_DETAILS.toString());
         placeholders.put(Placeholder.BUY_PRICE, getBuyPrice());
         placeholders.put(Placeholder.SELL_PRICE, getSellPrice());
-        //TODO Link it
+        placeholders.put(Placeholder.POTION_EFFECT, Placeholder.POTION_EFFECT.toString());
         /*
-        placeholders.put(Placeholder.POTION_EFFECT, LanguageUtils.getPotionEffectName(itemStack));
         placeholders.put(Placeholder.MUSIC_TITLE, LanguageUtils.getMusicDiscName(itemStack.getType()));
         placeholders.put(Placeholder.BANNER_PATTERN_NAME, LanguageUtils.getBannerPatternName(itemStack.getType()));
         placeholders.put(Placeholder.GENERATION, LanguageUtils.getBookGenerationName(itemStack));
         */
-        placeholders.put(Placeholder.STOCK, Utils.getAmount(inventory, itemStack));
+        placeholders.put(Placeholder.STOCK, stock);
         placeholders.put(Placeholder.MAX_STACK, itemStack.getMaxStackSize());
-        placeholders.put(Placeholder.CHEST_SPACE, Utils.getFreeSpaceForItem(inventory, itemStack));
+        placeholders.put(Placeholder.CHEST_SPACE, chestSpace);
         placeholders.put(Placeholder.DURABILITY, damage);
+        placeholders.put(Placeholder.COLOR_OWNER, Config.hologramColors.color(HologramColorPalette.Role.OWNER));
+        placeholders.put(Placeholder.COLOR_QUANTITY, Config.hologramColors.color(HologramColorPalette.Role.QUANTITY));
+        placeholders.put(Placeholder.COLOR_ITEM, Config.hologramColors.color(HologramColorPalette.Role.ITEM));
+        placeholders.put(Placeholder.COLOR_LABEL, Config.hologramColors.color(HologramColorPalette.Role.LABEL));
+        placeholders.put(Placeholder.COLOR_BUY_VALUE, Config.hologramColors.color(HologramColorPalette.Role.BUY_VALUE));
+        placeholders.put(Placeholder.COLOR_SELL_VALUE, Config.hologramColors.color(HologramColorPalette.Role.SELL_VALUE));
+        placeholders.put(Placeholder.COLOR_SEPARATOR, Config.hologramColors.color(HologramColorPalette.Role.SEPARATOR));
+        placeholders.put(Placeholder.COLOR_ADMIN, Config.hologramColors.color(HologramColorPalette.Role.ADMIN));
+        placeholders.put(Placeholder.COLOR_UNAVAILABLE, Config.hologramColors.color(HologramColorPalette.Role.UNAVAILABLE));
+        placeholders.put(Placeholder.COLOR_RESET, HologramColorPalette.RESET);
+        final Map<String, Component> componentReplacements = Map.of(
+                Placeholder.ENCHANTMENT.toString(), enchantmentDetails,
+                Placeholder.POTION_EFFECT.toString(), potionDetails,
+                Placeholder.ITEM_DETAILS.toString(), combinedItemDetails);
 
         int lineCount = plugin.getHologramFormat().getLineCount();
 
@@ -323,7 +366,12 @@ public class Shop {
 
                 switch (placeholder) {
                     case BUY_PRICE:
-                        replace = plugin.getEconomy().format(getBuyPrice());
+                        replace = HologramTradeAvailability.formatBuyValue(
+                                plugin.getEconomy().format(getBuyPrice()),
+                                buyOutOfStock,
+                                plugin.getLanguageManager().getMessageRegistry()
+                                        .getMessage(Message.HOLOGRAM_OUT_OF_STOCK),
+                                Config.hologramColors.color(HologramColorPalette.Role.UNAVAILABLE));
                         break;
                     case SELL_PRICE:
                         replace = plugin.getEconomy().format(getSellPrice());
@@ -336,11 +384,11 @@ public class Shop {
             }
 
             if (!format.isEmpty()) {
-                lines.add(format);
+                lines.add(HologramTextFormatter.replaceComponents(format, componentReplacements));
             }
         }
 
-        return lines.toArray(new String[0]);
+        return lines.toArray(new Component[0]);
     }
 
     private Location getHologramLocation(Chest[] chests, BlockFace face) {
@@ -381,6 +429,8 @@ public class Shop {
         }
 
         holoLocation.add(0, Config.hologramLift, 0);
+        holoLocation.setYaw(HologramOrientation.yawForDirection(face.getModX(), face.getModZ()));
+        holoLocation.setPitch(0f);
 
         return holoLocation;
     }

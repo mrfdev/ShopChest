@@ -8,6 +8,8 @@ public enum Placeholder {
     CREATION_PRICE("%CREATION-PRICE%"),
     ERROR("%ERROR%"),
     ENCHANTMENT("%ENCHANTMENT%"),
+    ITEM_DETAILS("%ITEM-DETAILS%"),
+    DETAIL_COUNT("%DETAIL-COUNT%"),
     MIN_PRICE("%MIN-PRICE%"),
     MAX_PRICE("%MAX-PRICE%"),
     VERSION("%VERSION%"),
@@ -27,7 +29,24 @@ public enum Placeholder {
     CHEST_SPACE("%CHEST-SPACE%"),
     MAX_STACK("%MAX-STACK%"),
     COMMAND("%COMMAND%"),
-    DURABILITY("%DURABILITY%");
+    DURABILITY("%DURABILITY%"),
+    COLOR_OWNER("%COLOR-OWNER%"),
+    COLOR_QUANTITY("%COLOR-QUANTITY%"),
+    COLOR_ITEM("%COLOR-ITEM%"),
+    COLOR_LABEL("%COLOR-LABEL%"),
+    COLOR_BUY_VALUE("%COLOR-BUY-VALUE%"),
+    COLOR_SELL_VALUE("%COLOR-SELL-VALUE%"),
+    COLOR_SEPARATOR("%COLOR-SEPARATOR%"),
+    COLOR_ADMIN("%COLOR-ADMIN%"),
+    COLOR_UNAVAILABLE("%COLOR-UNAVAILABLE%"),
+    COLOR_RESET("%COLOR-RESET%"),
+    SHOP_ID("%SHOP-ID%"),
+    WORLD("%WORLD%"),
+    X("%X%"),
+    Y("%Y%"),
+    Z("%Z%"),
+    PAGE("%PAGE%"),
+    PAGES("%PAGES%");
 
     private final String name;
 

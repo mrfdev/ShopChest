@@ -1,7 +1,6 @@
 package de.epiceric.shopchest.nms;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -13,12 +12,6 @@ import java.util.regex.Pattern;
 public interface TextComponentHelper {
 
     LegacyComponentSerializer LEGACY_COMPONENT_SERIALIZER = LegacyComponentSerializer.legacySection();
-
-    default void sendUpdateMessage(Player player, String updateMessage, String hoverMessage, String downloadUrl){
-        player.sendMessage(LEGACY_COMPONENT_SERIALIZER.deserialize(updateMessage)
-                .hoverEvent(Component.text(hoverMessage))
-                .clickEvent(ClickEvent.openUrl(downloadUrl)));
-    }
 
     default Consumer<Player> getSendableItemInfo(String message, String itemPlaceHolder, ItemStack itemStack, String productName){
         final Component replacement = LEGACY_COMPONENT_SERIALIZER.deserialize(productName)

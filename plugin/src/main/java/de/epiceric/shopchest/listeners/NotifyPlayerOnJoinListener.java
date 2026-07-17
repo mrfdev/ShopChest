@@ -1,14 +1,11 @@
 package de.epiceric.shopchest.listeners;
 
 import de.epiceric.shopchest.ShopChest;
-import de.epiceric.shopchest.config.Config;
 import de.epiceric.shopchest.config.Placeholder;
 import de.epiceric.shopchest.language.Message;
 import de.epiceric.shopchest.language.MessageRegistry;
 import de.epiceric.shopchest.language.Replacement;
 import de.epiceric.shopchest.utils.Callback;
-import de.epiceric.shopchest.utils.Permissions;
-import de.epiceric.shopchest.utils.Utils;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -26,12 +23,6 @@ public class NotifyPlayerOnJoinListener implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent e) {
         final Player p = e.getPlayer();
-
-        if (plugin.isUpdateNeeded() && Config.enableUpdateChecker) {
-            if (p.hasPermission(Permissions.UPDATE_NOTIFICATION)) {
-                Utils.sendUpdateMessage(plugin, p);
-            }
-        }
 
         plugin.getShopDatabase().getLastLogout(p, new Callback<Long>(plugin) {
             @Override

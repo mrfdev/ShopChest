@@ -30,6 +30,11 @@ Run `/shops reload` after editing `hologram-format.yml` or language files. Item 
 
 Use `/shops config set hologram-lift 0.35` to test a higher hologram position live. The default is `0.25`. Adjust in small increments, then keep the final value in `config.yml`.
 
+Use `/shops config set hologram-text-scale 0.50` to resize loaded holograms
+without restarting. The supported range is `0.50` through `1.25`; smaller
+values help distinguish neighboring shops, while the default remains readily
+legible.
+
 Blue entity outlines or direction lines are normally the client's entity-hitbox debug view. Toggle Minecraft's hitbox display off before treating those lines as a ShopChest rendering fault.
 
 ## Shop Exists but Cannot Trade

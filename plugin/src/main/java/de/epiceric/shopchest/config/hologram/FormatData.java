@@ -44,6 +44,7 @@ public class FormatData {
         initRequirement(HologramFormat.Requirement.ITEM_TYPE, String.class);
         initRequirement(HologramFormat.Requirement.ITEM_NAME, String.class);
         initRequirement(HologramFormat.Requirement.HAS_ENCHANTMENT, Boolean.class);
+        initRequirement(HologramFormat.Requirement.HAS_ITEM_DETAILS, Boolean.class);
         initRequirement(HologramFormat.Requirement.BUY_PRICE, Double.class);
         initRequirement(HologramFormat.Requirement.SELL_PRICE, Double.class);
         initRequirement(HologramFormat.Requirement.HAS_POTION_EFFECT, Boolean.class);
@@ -54,6 +55,7 @@ public class FormatData {
         initRequirement(HologramFormat.Requirement.ADMIN_SHOP, Boolean.class);
         initRequirement(HologramFormat.Requirement.NORMAL_SHOP, Boolean.class);
         initRequirement(HologramFormat.Requirement.IN_STOCK, Double.class);
+        initRequirement(HologramFormat.Requirement.OUT_OF_STOCK, Boolean.class);
         initRequirement(HologramFormat.Requirement.MAX_STACK, Double.class);
         initRequirement(HologramFormat.Requirement.CHEST_SPACE, Double.class);
         initRequirement(HologramFormat.Requirement.DURABILITY, Double.class);
@@ -70,6 +72,7 @@ public class FormatData {
         initPlaceholder(Placeholder.AMOUNT, Double.class);
         initPlaceholder(Placeholder.ITEM_NAME, String.class);
         initPlaceholder(Placeholder.ENCHANTMENT, String.class);
+        initPlaceholder(Placeholder.ITEM_DETAILS, String.class);
         initPlaceholder(Placeholder.BUY_PRICE, Double.class);
         initPlaceholder(Placeholder.SELL_PRICE, Double.class);
         initPlaceholder(Placeholder.POTION_EFFECT, String.class);
@@ -80,6 +83,16 @@ public class FormatData {
         initPlaceholder(Placeholder.MAX_STACK, Double.class);
         initPlaceholder(Placeholder.CHEST_SPACE, Double.class);
         initPlaceholder(Placeholder.DURABILITY, Double.class);
+        initPlaceholder(Placeholder.COLOR_OWNER, String.class);
+        initPlaceholder(Placeholder.COLOR_QUANTITY, String.class);
+        initPlaceholder(Placeholder.COLOR_ITEM, String.class);
+        initPlaceholder(Placeholder.COLOR_LABEL, String.class);
+        initPlaceholder(Placeholder.COLOR_BUY_VALUE, String.class);
+        initPlaceholder(Placeholder.COLOR_SELL_VALUE, String.class);
+        initPlaceholder(Placeholder.COLOR_SEPARATOR, String.class);
+        initPlaceholder(Placeholder.COLOR_ADMIN, String.class);
+        initPlaceholder(Placeholder.COLOR_UNAVAILABLE, String.class);
+        initPlaceholder(Placeholder.COLOR_RESET, String.class);
     }
 
     private void initPlaceholder(Placeholder placeholder, Class<?> type) {

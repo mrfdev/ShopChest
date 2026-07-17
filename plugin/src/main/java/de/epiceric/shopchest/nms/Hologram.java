@@ -1,11 +1,13 @@
 package de.epiceric.shopchest.nms;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
@@ -15,256 +17,162 @@ import de.epiceric.shopchest.config.Config;
 import de.epiceric.shopchest.utils.LegacyColorUtils;
 
 public class Hologram {
-    // concurrent since update task is in async thread
-    private final Set<UUID> viewers = ConcurrentHashMap.newKeySet();
-    private final List<ArmorStandWrapper> wrappers = new ArrayList<>();
-    private Location location;
-    private final ShopChest plugin;
 
+    private final Set<UUID> viewers = ConcurrentHashMap.newKeySet();
+    private final List<Component> lines = new ArrayList<>();
+    private final ArmorStandWrapper wrapper;
+    private Location location;
     private boolean exists;
 
     public Hologram(ShopChest plugin, String[] lines, Location location) {
-        this.plugin = plugin;
         this.location = location.clone();
-
-        for (int i = 0; i < lines.length; i++) {
-            addLine(i, lines[i]);
-        }
-
+        setStoredLines(lines);
+        this.wrapper = new ArmorStandWrapper(plugin, this.location, createDisplayData());
         this.exists = true;
     }
 
-    /**
-     * @return Location of the hologram
-     */
+    public Hologram(ShopChest plugin, Component[] lines, Location location) {
+        this.location = location.clone();
+        setStoredLines(lines);
+        this.wrapper = new ArmorStandWrapper(plugin, this.location, createDisplayData());
+        this.exists = true;
+    }
+
     public Location getLocation() {
         return location.clone();
     }
 
-    /**
-     * Move the whole hologram while preserving the spacing between lines.
-     *
-     * @param location New base location of the hologram
-     */
     public void setLocation(Location location) {
-        double deltaX = location.getX() - this.location.getX();
-        double deltaY = location.getY() - this.location.getY();
-        double deltaZ = location.getZ() - this.location.getZ();
-
         this.location = location.clone();
-
-        for (ArmorStandWrapper wrapper : wrappers) {
-            wrapper.setLocation(wrapper.getLocation().add(deltaX, deltaY, deltaZ));
-        }
+        wrapper.setLocation(this.location);
     }
 
-    /**
-     * @return Whether the hologram exists and is not dead
-     */
     public boolean exists() {
         return exists;
     }
 
-    /**
-     * @param armorStand Armor stand to check
-     * @return Whether the given armor stand is part of the hologram
-     */
     public boolean contains(ArmorStand armorStand) {
-        for (ArmorStandWrapper wrapper : wrappers) {
-            if (armorStand.getUniqueId().equals(wrapper.getUuid())) {
-                return true;
-            }
-        }
-        return false;
+        return exists && armorStand.getUniqueId().equals(wrapper.getUuid());
     }
 
-    /**
-     * @return A list of {@link ArmorStandWrapper}s of this hologram
-     */
     public List<ArmorStandWrapper> getArmorStandWrappers() {
-        return wrappers;
+        return exists ? Collections.singletonList(wrapper) : Collections.emptyList();
     }
 
-    /**
-     * @param p Player to check
-     * @return Whether the hologram is visible to the player
-     */
-    public boolean isVisible(Player p) {
-        return viewers.contains(p.getUniqueId());
+    public boolean isVisible(Player player) {
+        return viewers.contains(player.getUniqueId());
     }
 
-    /**
-     * @param p Player to which the hologram should be shown
-     */
-    public void showPlayer(Player p) {
-        showPlayer(p, false);
+    public void showPlayer(Player player) {
+        showPlayer(player, false);
     }
 
-    /**
-     * @param p Player to which the hologram should be shown
-     * @param force Whether to force showing the hologram
-     */
-    public void showPlayer(Player p, boolean force) {
-        if (viewers.add(p.getUniqueId()) || force) {
-            togglePlayer(p, true);
+    public void showPlayer(Player player, boolean force) {
+        if (viewers.add(player.getUniqueId()) || force) {
+            wrapper.setVisible(player, true);
         }
     }
 
-    /**
-     * @param p Player from which the hologram should be hidden
-     */
-    public void hidePlayer(Player p) {
-        hidePlayer(p, false);
+    public void hidePlayer(Player player) {
+        hidePlayer(player, false);
     }
 
-    /**
-     * @param p Player from which the hologram should be hidden
-     * @param force Whether to force hiding the hologram
-     */
-    public void hidePlayer(Player p, boolean force) {
-        if (viewers.remove(p.getUniqueId()) || force) {
-            togglePlayer(p, false);
+    public void hidePlayer(Player player, boolean force) {
+        if (viewers.remove(player.getUniqueId()) || force) {
+            wrapper.setVisible(player, false);
         }
     }
 
-    /**
-     * <p>Removes the hologram.</p>
-     * 
-     * Hologram will be hidden from all players and all
-     * ArmorStand entities will be killed.
-     */
     public void remove() {
         viewers.clear();
-
-        for (ArmorStandWrapper wrapper : wrappers) {
-            wrapper.remove();
-        }
-        wrappers.clear();
-
+        wrapper.remove();
+        lines.clear();
         exists = false;
     }
 
-    /**
-     * Remove the player from the list of viewers. The hologram is
-     * then counted as hidden, but no packets are sent to the player.
-     * @param p Player whose visibility status will be reset
-     */
-    public void resetVisible(Player p) {
-        viewers.remove(p.getUniqueId());
+    public void resetVisible(Player player) {
+        viewers.remove(player.getUniqueId());
     }
 
-    private void togglePlayer(Player p, boolean visible) {
-        for (ArmorStandWrapper wrapper : wrappers) {
-            wrapper.setVisible(p, visible);
-        }
-    }
-
-    /**
-     * Get all hologram lines
-     *
-     * @return Hologram lines
-     */
     public String[] getLines() {
-        List<String> lines = new ArrayList<>();
-        for (ArmorStandWrapper wrapper : wrappers) {
-            lines.add(wrapper.getCustomName());
-        }
-
-        return lines.toArray(new String[lines.size()]);
+        return lines.stream().map(HologramTextFormatter::toLegacy).toArray(String[]::new);
     }
 
-    /**
-     * Add a line
-     *
-     * @param line where to insert
-     * @param text text to display
-     */
+    public void setLines(String[] lines) {
+        setStoredLines(lines);
+        refreshDisplay();
+    }
+
+    public void setLines(Component[] lines) {
+        setStoredLines(lines);
+        refreshDisplay();
+    }
+
     public void addLine(int line, String text) {
-        addLine(line, text, false);
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        final int insertionPoint = Math.max(0, Math.min(line, lines.size()));
+        lines.add(insertionPoint, prepareLegacyLine(text));
+        refreshDisplay();
     }
 
-    private void addLine(int line, String text, boolean forceUpdateLine) {
-        if (text == null || text.isEmpty()) return;
-
-        if (line >= wrappers.size()) {
-            line = wrappers.size();
-        }
-
-        text = LegacyColorUtils.translateAlternateColorCodes('&', text);
-
-        if (Config.hologramFixedBottom) {
-            for (int i = 0; i < line; i++) {
-                ArmorStandWrapper wrapper = wrappers.get(i);
-                wrapper.setLocation(wrapper.getLocation().add(0, 0.25, 0));
-            }
-        } else {
-            for (int i = line; i < wrappers.size(); i++) {
-                ArmorStandWrapper wrapper = wrappers.get(i);
-                wrapper.setLocation(wrapper.getLocation().subtract(0, 0.25, 0));
-            }
-        }
-
-        Location loc = getLocation();
-
-        if (!Config.hologramFixedBottom) {
-            loc.subtract(0, line * 0.25, 0);
-        }
-
-        ArmorStandWrapper wrapper = new ArmorStandWrapper(plugin, loc, text);
-        wrappers.add(line, wrapper);
-
-        if (forceUpdateLine) {
-            for (Player player : location.getWorld().getPlayers()) {
-                if (viewers.contains(player.getUniqueId())) {
-                    wrapper.setVisible(player, true);
-                }
-            }
-        }
-    }
-
-    /**
-     * Set a line
-     *
-     * @param line index to change
-     * @param text text to display
-     */
     public void setLine(int line, String text) {
-        if (text == null ||text.isEmpty()) {
+        if (text == null || text.isEmpty()) {
             removeLine(line);
             return;
         }
-
-        text = LegacyColorUtils.translateAlternateColorCodes('&', text);
-
-        if (line >= wrappers.size()) {
-            addLine(line, text, true);
+        if (line >= lines.size()) {
+            addLine(line, text);
             return;
         }
-
-        wrappers.get(line).setCustomName(text);
+        if (line < 0) {
+            return;
+        }
+        lines.set(line, prepareLegacyLine(text));
+        refreshDisplay();
     }
 
-    /**
-     * Remove a line
-     *
-     * @param line index to remove
-     */
     public void removeLine(int line) {
-        if (line < wrappers.size()) {
-            if (Config.hologramFixedBottom) {
-                for (int i = 0; i < line; i++) {
-                    ArmorStandWrapper wrapper = wrappers.get(i);
-                    wrapper.setLocation(wrapper.getLocation().subtract(0, 0.25, 0));
-                }
-            } else {
-                for (int i = line + 1; i < wrappers.size(); i++) {
-                    ArmorStandWrapper wrapper = wrappers.get(i);
-                    wrapper.setLocation(wrapper.getLocation().add(0, 0.25, 0));
-                }
-            }
-
-            wrappers.get(line).remove();
-            wrappers.remove(line);
+        if (line >= 0 && line < lines.size()) {
+            lines.remove(line);
+            refreshDisplay();
         }
+    }
+
+    public void refreshDisplay() {
+        wrapper.setDisplayData(createDisplayData());
+    }
+
+    private void setStoredLines(String[] newLines) {
+        lines.clear();
+        for (String line : newLines) {
+            if (line != null && !line.isEmpty()) {
+                lines.add(prepareLegacyLine(line));
+            }
+        }
+    }
+
+    private void setStoredLines(Component[] newLines) {
+        lines.clear();
+        for (Component line : newLines) {
+            if (line != null && !line.equals(Component.empty())) {
+                lines.add(line);
+            }
+        }
+    }
+
+    private Component prepareLegacyLine(String line) {
+        return HologramTextFormatter.fromLegacy(
+                LegacyColorUtils.translateAlternateColorCodes('&', line));
+    }
+
+    private TextDisplayData createDisplayData() {
+        return new TextDisplayData(
+                HologramTextFormatter.toPanelComponent(lines),
+                Config.hologramPanelWidth,
+                Config.hologramBackgroundColor,
+                Config.hologramFixedFacing,
+                Config.hologramTextScale);
     }
 }

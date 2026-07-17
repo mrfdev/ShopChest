@@ -14,6 +14,7 @@ import org.bukkit.entity.Player;
 
 import de.epiceric.shopchest.ShopChest;
 import de.epiceric.shopchest.config.Config;
+import de.epiceric.shopchest.utils.Permissions;
 
 class ShopTabCompleter implements TabCompleter {
     private ShopChest plugin;
@@ -38,7 +39,9 @@ class ShopTabCompleter implements TabCompleter {
             ArrayList<String> returnCompletions = new ArrayList<>();
 
             if (args.length == 2) {
-                if (args[0].equals("config")) {
+                if (args[0].equalsIgnoreCase("admin") && sender.hasPermission(Permissions.ADMIN_LIST)) {
+                    return filterCompletions(List.of("list"), args[1]);
+                } else if (args[0].equals("config")) {
                     if (!args[1].equals("")) {
                         for (String s : configSubCommands) {
                             if (s.startsWith(args[1])) {
@@ -76,7 +79,11 @@ class ShopTabCompleter implements TabCompleter {
                     }
                 }
             } else if (args.length == 3) {
-                if (args[0].equals("config")) {
+                if (args[0].equalsIgnoreCase("admin")
+                        && args[1].equalsIgnoreCase("list")
+                        && sender.hasPermission(Permissions.ADMIN_LIST)) {
+                    return filterCompletions(playerNames, args[2]);
+                } else if (args[0].equals("config")) {
                     if (!args[2].equals("")) {
                         for (String s : configValues) {
                             if (s.startsWith(args[2])) {
@@ -135,5 +142,12 @@ class ShopTabCompleter implements TabCompleter {
         }
 
         return new ArrayList<>();
+    }
+
+    private List<String> filterCompletions(List<String> candidates, String input) {
+        final String prefix = input.toLowerCase();
+        return candidates.stream()
+                .filter(candidate -> candidate.toLowerCase().startsWith(prefix))
+                .collect(Collectors.toList());
     }
 }

@@ -35,21 +35,36 @@ public class ShopUpdateListener implements Listener {
     public void onInventoryUpdate(InventoryMoveItemEvent e) {
         if (!plugin.getHologramFormat().isDynamic()) return;
 
-        Location loc = null;
-
-        if (e.getSource().getHolder() instanceof Chest) {
-            loc =  ((Chest) e.getSource().getHolder()).getLocation();
-        } else if (e.getSource().getHolder() instanceof DoubleChest) {
-            loc =  ((DoubleChest) e.getSource().getHolder()).getLocation();
-        } else if (e.getDestination().getHolder() instanceof Chest) {
-            loc =  ((Chest) e.getDestination().getHolder()).getLocation();
-        } else if (e.getDestination().getHolder() instanceof DoubleChest) {
-            loc =  ((DoubleChest) e.getDestination().getHolder()).getLocation();
+        final Set<Shop> shops = new HashSet<>();
+        addShop(shops, getLocation(e.getSource().getHolder()));
+        addShop(shops, getLocation(e.getDestination().getHolder()));
+        if (!shops.isEmpty()) {
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    shops.forEach(Shop::updateHologramText);
+                }
+            }.runTaskLater(plugin, 1L);
         }
+    }
 
-        if (loc != null) {
-            Shop shop = plugin.getShopUtils().getShop(loc);
-            if (shop != null) shop.updateHologramText();
+    private Location getLocation(Object holder) {
+        if (holder instanceof Chest) {
+            return ((Chest) holder).getLocation();
+        }
+        if (holder instanceof DoubleChest) {
+            return ((DoubleChest) holder).getLocation();
+        }
+        return null;
+    }
+
+    private void addShop(Set<Shop> shops, Location location) {
+        if (location == null) {
+            return;
+        }
+        final Shop shop = plugin.getShopUtils().getShop(location);
+        if (shop != null) {
+            shops.add(shop);
         }
     }
 

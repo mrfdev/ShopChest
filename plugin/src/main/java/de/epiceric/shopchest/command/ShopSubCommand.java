@@ -7,16 +7,29 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.Player;
 
 public abstract class ShopSubCommand {
-    private String name;
-    private boolean playerCommand;
-    private CommandExecutor executor;
-    private TabCompleter tabCompleter;
+    private final String name;
+    private final boolean playerCommand;
+    private final HelpSection helpSection;
+    private final CommandExecutor executor;
+    private final TabCompleter tabCompleter;
 
     public ShopSubCommand(String name, boolean playerCommand, CommandExecutor executor, TabCompleter tabCompleter) {
+        this(name, playerCommand, HelpSection.PLAYER, executor, tabCompleter);
+    }
+
+    public ShopSubCommand(
+            String name,
+            boolean playerCommand,
+            HelpSection helpSection,
+            CommandExecutor executor,
+            TabCompleter tabCompleter
+    ) {
         this.name = name;
         this.playerCommand = playerCommand;
+        this.helpSection = helpSection;
         this.executor = executor;
         this.tabCompleter = tabCompleter;
     }
@@ -30,6 +43,18 @@ public abstract class ShopSubCommand {
      */
     public boolean isPlayerCommand() {
         return playerCommand;
+    }
+
+    public HelpSection getHelpSection() {
+        return helpSection;
+    }
+
+    public boolean isVisibleTo(CommandSender sender) {
+        if (playerCommand && !(sender instanceof Player)) {
+            return false;
+        }
+        final String helpMessage = getHelpMessage(sender);
+        return helpMessage != null && !helpMessage.isBlank();
     }
 
     /**
@@ -64,4 +89,9 @@ public abstract class ShopSubCommand {
      * @return The help message for the command.
      */
     public abstract String getHelpMessage(CommandSender sender);
+
+    public enum HelpSection {
+        PLAYER,
+        STAFF
+    }
 }

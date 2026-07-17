@@ -22,6 +22,26 @@ shop-info-item: "STICK"
 # in order to prevent accidents.
 confirm-shopping: false
 
+# Configure player-local feedback for completed and failed trade attempts.
+# Set either outcome's enabled value to false to disable it. Set a sound or
+# particle to "none" to disable only that part. Particle counts are capped at
+# 16; only the player attempting the trade receives these effects.
+trade-feedback:
+  success:
+    enabled: true
+    sound: "minecraft:entity.experience_orb.pickup"
+    volume: 0.45
+    pitch: 1.20
+    particle: "minecraft:happy_villager"
+    particle-count: 4
+  failure:
+    enabled: true
+    sound: "minecraft:block.note_block.bass"
+    volume: 0.35
+    pitch: 0.70
+    particle: "minecraft:smoke"
+    particle-count: 3
+
 # Set whether players should be able to select the shop item from the
 # creative inventory if they don't hold an item in their hand.
 creative-select-item: true
@@ -29,12 +49,6 @@ creative-select-item: true
 # Set whether the (current) shop creation price should be refunded
 # when the shop is removed by its creator.
 refund-shop-creation: false
-
-# Set whether the plugin will check for updates on server start
-# and notify permitted players on join.
-# The command is not affected by this setting and will continue to
-# check for updates.
-enable-update-checker: true
 
 # Set whether buys and sells should be logged in the database.
 enable-economy-log: false
@@ -83,6 +97,55 @@ hologram-fixed-bottom: true
 # A value of '1' equals to one block, and a value of '0.25' is equal to the
 # height of one line.
 hologram-lift: 0.25
+
+# Set the maximum width of the complete hologram text panel in client font
+# pixels. Text that does not fit wraps inside the panel without overlapping
+# neighboring hologram lines. Valid values are clamped between 40 and 1024.
+hologram-panel-width: 200
+
+# Set the visual scale of the complete TextDisplay panel. Lower values make
+# neighboring shop holograms easier to distinguish while scaling the text and
+# background together. Values are clamped between 0.50 and 1.25.
+hologram-text-scale: 0.50
+
+# Set the TextDisplay panel background color and opacity. The opacity range is
+# 0 (transparent) through 255 (opaque). The defaults use a muted blue that
+# remains readable against both bright skies and darker surroundings.
+hologram-background-color: "#315B7D"
+hologram-background-opacity: 112
+
+# Set the global text palette used by every shop hologram. Players cannot
+# override these colors. Each value must be a six-digit RGB hex color.
+# Labels and values remain separate so the display is understandable without
+# relying on color alone.
+hologram-colors:
+  owner: "#DCE7FF"
+  quantity: "#D8E1EA"
+  item: "#FFE29A"
+  details: "#D8CCFF"
+  label: "#C7D8E5"
+  buy-value: "#B8EBCB"
+  sell-value: "#FFC9B8"
+  separator: "#BDD0DE"
+  admin: "#FFC2CF"
+  unavailable: "#FFD0D0"
+
+# Set the maximum visible length of item names in the hologram. Longer custom
+# names end in "...", while item inspection still shows the complete name.
+# Set this to 0 to disable truncation. Values are clamped at 256.
+hologram-max-item-name-length: 48
+
+# Show at most seven enchantments and/or potion effects in the panel. When an
+# item has more, the last line includes a localized "+N more" summary.
+hologram-max-item-detail-entries: 7
+
+# Keep metadata compact by placing two enchantments or potion effects per line.
+# Values are clamped from 1 through 4.
+hologram-item-details-per-line: 2
+
+# Set whether the text panel should stay aligned with the front of its chest.
+# Set this to false to make the panel rotate toward each viewer instead.
+hologram-fixed-facing: true
 
 # Set whether players should be allowed to buy or sell less items
 # than the vendor has specified, in case the player does not have enough

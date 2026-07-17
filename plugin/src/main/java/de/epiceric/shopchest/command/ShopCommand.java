@@ -70,9 +70,9 @@ public class ShopCommand {
                 final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
 
                 if (sender.hasPermission(Permissions.CREATE_ADMIN)) {
-                    return messageRegistry.getMessage(Message.COMMAND_DESC_CREATE_ADMIN, cmdReplacement);
+                    return messageRegistry.getMessage(Message.HELP_COMMAND_CREATE_ADMIN, cmdReplacement);
                 } else if (receiveCreateMessage) {
-                    return messageRegistry.getMessage(Message.COMMAND_DESC_CREATE, cmdReplacement);
+                    return messageRegistry.getMessage(Message.HELP_COMMAND_CREATE, cmdReplacement);
                 }
 
                 return "";
@@ -83,7 +83,7 @@ public class ShopCommand {
             @Override
             public String getHelpMessage(CommandSender sender) {
                 final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
-                return messageRegistry.getMessage(Message.COMMAND_DESC_REMOVE, cmdReplacement);
+                return messageRegistry.getMessage(Message.HELP_COMMAND_REMOVE, cmdReplacement);
             }
         });
 
@@ -91,7 +91,23 @@ public class ShopCommand {
             @Override
             public String getHelpMessage(CommandSender sender) {
                 final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
-                return messageRegistry.getMessage(Message.COMMAND_DESC_INFO, cmdReplacement);
+                return messageRegistry.getMessage(Message.HELP_COMMAND_INFO, cmdReplacement);
+            }
+        });
+
+        addSubCommand(new ShopSubCommand("list", true, executor, tabCompleter) {
+            @Override
+            public String getHelpMessage(CommandSender sender) {
+                final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+                return messageRegistry.getMessage(Message.HELP_COMMAND_LIST, cmdReplacement);
+            }
+        });
+
+        addSubCommand(new ShopSubCommand("help", false, executor, tabCompleter) {
+            @Override
+            public String getHelpMessage(CommandSender sender) {
+                final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+                return messageRegistry.getMessage(Message.HELP_COMMAND_HELP, cmdReplacement);
             }
         });
 
@@ -99,7 +115,7 @@ public class ShopCommand {
             @Override
             public String getHelpMessage(CommandSender sender) {
                 final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
-                return messageRegistry.getMessage(Message.COMMAND_DESC_INSPECT, cmdReplacement);
+                return messageRegistry.getMessage(Message.HELP_COMMAND_INSPECT, cmdReplacement);
             }
         });
 
@@ -107,7 +123,7 @@ public class ShopCommand {
             @Override
             public String getHelpMessage(CommandSender sender) {
                 final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
-                return messageRegistry.getMessage(Message.COMMAND_DESC_LIMITS, cmdReplacement);
+                return messageRegistry.getMessage(Message.HELP_COMMAND_LIMITS, cmdReplacement);
             }
         });
 
@@ -115,52 +131,51 @@ public class ShopCommand {
             @Override
             public String getHelpMessage(CommandSender sender) {
                 final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
-                return messageRegistry.getMessage(Message.COMMAND_DESC_OPEN, cmdReplacement);
+                return messageRegistry.getMessage(Message.HELP_COMMAND_OPEN, cmdReplacement);
             }
         });
 
-        addSubCommand(new ShopSubCommand("removeall", false, executor, tabCompleter) {
+        addSubCommand(new ShopSubCommand("admin", false, ShopSubCommand.HelpSection.STAFF, executor, tabCompleter) {
+            @Override
+            public String getHelpMessage(CommandSender sender) {
+                if (sender.hasPermission(Permissions.ADMIN_LIST)) {
+                    final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+                    return messageRegistry.getMessage(Message.HELP_COMMAND_ADMIN, cmdReplacement);
+                }
+                return "";
+            }
+        });
+
+        addSubCommand(new ShopSubCommand("removeall", false, ShopSubCommand.HelpSection.STAFF, executor, tabCompleter) {
             @Override
             public String getHelpMessage(CommandSender sender) {
                 if (sender.hasPermission(Permissions.REMOVE_OTHER)) {
                     final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
-                    return messageRegistry.getMessage(Message.COMMAND_DESC_REMOVEALL, cmdReplacement);
+                    return messageRegistry.getMessage(Message.HELP_COMMAND_REMOVEALL, cmdReplacement);
                 } else {
                     return "";
                 }
             }
         });
 
-        addSubCommand(new ShopSubCommand("reload", false, executor, tabCompleter) {
+        addSubCommand(new ShopSubCommand("reload", false, ShopSubCommand.HelpSection.STAFF, executor, tabCompleter) {
             @Override
             public String getHelpMessage(CommandSender sender) {
                 if (sender.hasPermission(Permissions.RELOAD)) {
                     final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
-                    return messageRegistry.getMessage(Message.COMMAND_DESC_RELOAD, cmdReplacement);
+                    return messageRegistry.getMessage(Message.HELP_COMMAND_RELOAD, cmdReplacement);
                 } else {
                     return "";
                 }
             }
         });
 
-        addSubCommand(new ShopSubCommand("update", false, executor, tabCompleter) {
-            @Override
-            public String getHelpMessage(CommandSender sender) {
-                if (sender.hasPermission(Permissions.UPDATE)) {
-                    final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
-                    return messageRegistry.getMessage(Message.COMMAND_DESC_UPDATE, cmdReplacement);
-                } else {
-                    return "";
-                }
-            }
-        });
-
-        addSubCommand(new ShopSubCommand("config", false, executor, tabCompleter) {
+        addSubCommand(new ShopSubCommand("config", false, ShopSubCommand.HelpSection.STAFF, executor, tabCompleter) {
             @Override
             public String getHelpMessage(CommandSender sender) {
                 if (sender.hasPermission(Permissions.CONFIG)) {
                     final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
-                    return messageRegistry.getMessage(Message.COMMAND_DESC_CONFIG, cmdReplacement);
+                    return messageRegistry.getMessage(Message.HELP_COMMAND_CONFIG, cmdReplacement);
                 } else {
                     return "";
                 }
@@ -279,25 +294,39 @@ public class ShopCommand {
         final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
 
         sender.sendMessage(" ");
-        String header = messageRegistry.getMessage(Message.COMMAND_DESC_HEADER,
+        String header = messageRegistry.getMessage(Message.HELP_HEADER,
                 new Replacement(Placeholder.COMMAND, Config.mainCommandName));
 
         if (!header.trim().isEmpty()) sender.sendMessage(header);
 
-        for (ShopSubCommand subCommand : subCommands) {
-            String msg = subCommand.getHelpMessage(sender);
-            if (msg == null || msg.isEmpty()) {
-                continue;
-            }
+        sendHelpSection(sender, ShopSubCommand.HelpSection.PLAYER, Message.HELP_PLAYER_HEADER);
+        sendHelpSection(sender, ShopSubCommand.HelpSection.STAFF, Message.HELP_STAFF_HEADER);
 
-            sender.sendMessage(msg);
-        }
-
-        String footer = messageRegistry.getMessage(Message.COMMAND_DESC_FOOTER,
+        String footer = messageRegistry.getMessage(Message.HELP_FOOTER,
                 new Replacement(Placeholder.COMMAND, Config.mainCommandName));
 
         if (!footer.trim().isEmpty()) sender.sendMessage(footer);
         sender.sendMessage(" ");
+    }
+
+    private void sendHelpSection(
+            CommandSender sender,
+            ShopSubCommand.HelpSection section,
+            Message headerMessage
+    ) {
+        final List<String> entries = new ArrayList<>();
+        for (ShopSubCommand subCommand : subCommands) {
+            if (subCommand.getHelpSection() == section && subCommand.isVisibleTo(sender)) {
+                entries.add(subCommand.getHelpMessage(sender));
+            }
+        }
+        if (entries.isEmpty()) {
+            return;
+        }
+
+        final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+        sender.sendMessage(messageRegistry.getMessage(headerMessage));
+        entries.forEach(sender::sendMessage);
     }
 
     private class ShopBaseCommandExecutor implements CommandExecutor {
@@ -338,7 +367,9 @@ public class ShopCommand {
             List<String> tabCompletions = new ArrayList<>();
 
             for (ShopSubCommand subCommand : subCommands) {
-                subCommandNames.add(subCommand.getName());
+                if (subCommand.isVisibleTo(sender)) {
+                    subCommandNames.add(subCommand.getName());
+                }
             }
 
             if (args.length == 1) {
@@ -355,7 +386,9 @@ public class ShopCommand {
             } else if (args.length > 1) {
                 for (ShopSubCommand subCmd : subCommands) {
                     if (subCmd.getName().equalsIgnoreCase(args[0])) {
-                        return subCmd.getTabCompletions(sender, command, label, args);
+                        return subCmd.isVisibleTo(sender)
+                                ? subCmd.getTabCompletions(sender, command, label, args)
+                                : new ArrayList<>();
                     }
                 }
             }

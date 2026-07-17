@@ -7,6 +7,7 @@ import de.epiceric.shopchest.event.*;
 import de.epiceric.shopchest.language.Message;
 import de.epiceric.shopchest.language.MessageRegistry;
 import de.epiceric.shopchest.language.Replacement;
+import de.epiceric.shopchest.nms.HologramTextFormatter;
 import de.epiceric.shopchest.shop.Shop;
 import de.epiceric.shopchest.shop.Shop.ShopType;
 import de.epiceric.shopchest.shop.ShopProduct;
@@ -16,7 +17,7 @@ import de.epiceric.shopchest.utils.ClickType.SelectClickType;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -27,15 +28,24 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 class ShopCommandExecutor implements CommandExecutor {
 
     private static final String DOCS_URL = "https://docs.1moreblock.com/custom-server-plugins/shopchest/";
+    private static final int SHOP_LIST_PAGE_SIZE = 8;
+    private static final int SHOP_LIST_ITEM_NAME_LENGTH = 36;
+    private static final LegacyComponentSerializer LEGACY_SERIALIZER = LegacyComponentSerializer.legacySection();
 
-    private ShopChest plugin;
-    private ShopUtils shopUtils;
+    private final ShopChest plugin;
+    private final ShopUtils shopUtils;
+    private final Map<UUID, Map<Integer, Location>> adminTeleportTargets = new ConcurrentHashMap<>();
     private static final Enchantment UNBREAKING_ENCHANT = Enchantment.UNBREAKING;
 
     ShopCommandExecutor(ShopChest plugin) {
@@ -69,12 +79,6 @@ class ShopCommandExecutor implements CommandExecutor {
                 } else {
                     sender.sendMessage(messageRegistry.getMessage(Message.NO_PERMISSION_RELOAD));
                 }
-            } else if (subCommand.getName().equalsIgnoreCase("update")) {
-                if (sender.hasPermission(Permissions.UPDATE)) {
-                    checkUpdates(sender);
-                } else {
-                    sender.sendMessage(messageRegistry.getMessage(Message.NO_PERMISSION_UPDATE));
-                }
             } else if (subCommand.getName().equalsIgnoreCase("config")) {
                 if (sender.hasPermission(Permissions.CONFIG)) {
                     return args.length >= 4 && changeConfig(sender, args);
@@ -91,6 +95,8 @@ class ShopCommandExecutor implements CommandExecutor {
                 } else {
                     sender.sendMessage(messageRegistry.getMessage(Message.NO_PERMISSION_REMOVE_OTHERS));
                 }
+            } else if (subCommand.getName().equalsIgnoreCase("admin")) {
+                return handleAdminCommand(sender, args);
             } else if (subCommand.getName().equalsIgnoreCase("info")) {
                 if (args.length >= 2 && args[1].equalsIgnoreCase("shop")) {
                     if (sender instanceof Player) {
@@ -101,6 +107,8 @@ class ShopCommandExecutor implements CommandExecutor {
                 } else {
                     sendPluginInfo(sender);
                 }
+            } else if (subCommand.getName().equalsIgnoreCase("help")) {
+                return false;
             } else {
                 if (sender instanceof Player) {
                     Player p = (Player) sender;
@@ -135,6 +143,14 @@ class ShopCommandExecutor implements CommandExecutor {
                                 new Replacement(Placeholder.AMOUNT, String.valueOf(shopUtils.getShopAmount(p)))));
                     } else if (subCommand.getName().equalsIgnoreCase("open")) {
                         open(p);
+                    } else if (subCommand.getName().equalsIgnoreCase("list")) {
+                        if (args.length > 2) {
+                            return false;
+                        }
+                        final Integer page = parsePage(p, args.length == 2 ? args[1] : null);
+                        if (page != null) {
+                            listShops(p, p, page, false);
+                        }
                     } else {
                         return false;
                     }
@@ -148,67 +164,299 @@ class ShopCommandExecutor implements CommandExecutor {
     }
 
     private void sendPluginInfo(CommandSender sender) {
-        String command = Config.mainCommandName;
+        final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+        final Replacement command = new Replacement(Placeholder.COMMAND, Config.mainCommandName);
+        final Replacement version = new Replacement(Placeholder.VERSION, plugin.getPluginMeta().getVersion());
 
         sender.sendMessage(" ");
-        sender.sendMessage(Component.text("ShopChest ", NamedTextColor.GOLD)
-                .append(Component.text("v" + plugin.getPluginMeta().getVersion(), NamedTextColor.GRAY)));
-        sender.sendMessage(Component.text("Create chest shops to buy and sell items with other players.", NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text("/" + command + " create <amount> <buy-price> <sell-price>", NamedTextColor.GREEN)
-                .append(Component.text(" - Create a shop", NamedTextColor.GRAY)));
-        sender.sendMessage(Component.text("/" + command + " limits", NamedTextColor.GREEN)
-                .append(Component.text(" - View your shop limit", NamedTextColor.GRAY)));
-        sender.sendMessage(Component.text("/" + command + " inspect", NamedTextColor.GREEN)
-                .append(Component.text(" - Inspect a shop", NamedTextColor.GRAY)));
+        sender.sendMessage(messageRegistry.getMessage(Message.INFO_HEADER, version));
+        sender.sendMessage(messageRegistry.getMessage(Message.INFO_INTRO));
+        sender.sendMessage(messageRegistry.getMessage(Message.INFO_STEP_PLACE));
+        sender.sendMessage(messageRegistry.getMessage(Message.INFO_STEP_CREATE, command));
+        sender.sendMessage(messageRegistry.getMessage(Message.INFO_STEP_CHEST));
+        sender.sendMessage(messageRegistry.getMessage(Message.INFO_PRICE_HINT, command));
 
         if (sender instanceof Player player) {
-            player.sendMessage(Component.text("View the ShopChest player guide", NamedTextColor.AQUA)
-                    .decorate(TextDecoration.UNDERLINED)
+            final Component guideLink = LegacyComponentSerializer.legacySection().deserialize(
+                            messageRegistry.getMessage(Message.INFO_GUIDE))
                     .clickEvent(ClickEvent.openUrl(DOCS_URL))
-                    .hoverEvent(Component.text("Open " + DOCS_URL)));
+                    .hoverEvent(Component.text(DOCS_URL, NamedTextColor.GRAY));
+            player.sendMessage(guideLink);
         } else {
-            sender.sendMessage(Component.text(DOCS_URL, NamedTextColor.AQUA));
+            sender.sendMessage(messageRegistry.getMessage(Message.INFO_GUIDE) + ": " + DOCS_URL);
         }
 
         sender.sendMessage(" ");
     }
 
-    /**
-     * A given player checks for updates
-     * @param sender The command executor
-     */
-    private void checkUpdates(CommandSender sender) {
+    private boolean handleAdminCommand(CommandSender sender, String[] args) {
         final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+        if (!sender.hasPermission(Permissions.ADMIN_LIST)) {
+            sender.sendMessage(messageRegistry.getMessage(Message.NO_PERMISSION_ADMIN_LIST));
+            return true;
+        }
 
-        plugin.debug(sender.getName() + " is checking for updates");
+        if (args.length == 1) {
+            sendAdminHelp(sender);
+            return true;
+        }
 
-        sender.sendMessage(messageRegistry.getMessage(Message.UPDATE_CHECKING));
-
-        UpdateChecker uc = new UpdateChecker(ShopChest.getInstance());
-        UpdateChecker.UpdateCheckerResult result = uc.check();
-
-        if (result == UpdateChecker.UpdateCheckerResult.TRUE) {
-            plugin.setLatestVersion(uc.getVersion());
-            plugin.setDownloadLink(uc.getLink());
-            plugin.setUpdateNeeded(true);
-
-            if (sender instanceof Player) {
-                Utils.sendUpdateMessage(plugin, (Player) sender);
-            } else {
-                sender.sendMessage(messageRegistry.getMessage(Message.UPDATE_AVAILABLE, new Replacement(Placeholder.VERSION, uc.getVersion())));
+        if (args[1].equalsIgnoreCase("list")) {
+            if (args.length < 3 || args.length > 4) {
+                sendAdminHelp(sender);
+                return true;
             }
 
-        } else if (result == UpdateChecker.UpdateCheckerResult.FALSE) {
-            plugin.setLatestVersion("");
-            plugin.setDownloadLink("");
-            plugin.setUpdateNeeded(false);
-            sender.sendMessage(messageRegistry.getMessage(Message.UPDATE_NO_UPDATE));
-        } else {
-            plugin.setLatestVersion("");
-            plugin.setDownloadLink("");
-            plugin.setUpdateNeeded(false);
-            sender.sendMessage(messageRegistry.getMessage(Message.UPDATE_ERROR));
+            final OfflinePlayer owner = findOfflinePlayer(args[2]);
+            if (owner == null) {
+                sender.sendMessage(messageRegistry.getMessage(
+                        Message.SHOP_LIST_PLAYER_NOT_FOUND,
+                        new Replacement(Placeholder.PLAYER, args[2])));
+                return true;
+            }
+
+            final Integer page = parsePage(sender, args.length == 4 ? args[3] : null);
+            if (page != null) {
+                listShops(sender, owner, page, true);
+            }
+            return true;
         }
+
+        if (args[1].equalsIgnoreCase("teleport") && args.length == 3) {
+            if (sender instanceof Player player) {
+                teleportToListedShop(player, args[2]);
+            } else {
+                sender.sendMessage(Component.text("Only players can teleport to a shop.", NamedTextColor.RED));
+            }
+            return true;
+        }
+
+        sendAdminHelp(sender);
+        return true;
+    }
+
+    private void sendAdminHelp(CommandSender sender) {
+        final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+        final Replacement command = new Replacement(Placeholder.COMMAND, Config.mainCommandName);
+
+        sender.sendMessage(" ");
+        sender.sendMessage(messageRegistry.getMessage(Message.ADMIN_HELP_HEADER));
+        sender.sendMessage(messageRegistry.getMessage(Message.ADMIN_HELP_LIST, command));
+        sender.sendMessage(" ");
+    }
+
+    private OfflinePlayer findOfflinePlayer(String playerNameOrUuid) {
+        final Player onlinePlayer = Bukkit.getPlayerExact(playerNameOrUuid);
+        if (onlinePlayer != null) {
+            return onlinePlayer;
+        }
+
+        try {
+            return Bukkit.getOfflinePlayer(UUID.fromString(playerNameOrUuid));
+        } catch (IllegalArgumentException ignored) {
+            return Bukkit.getOfflinePlayerIfCached(playerNameOrUuid);
+        }
+    }
+
+    private Integer parsePage(CommandSender sender, String value) {
+        if (value == null) {
+            return 1;
+        }
+
+        try {
+            final int page = Integer.parseInt(value);
+            if (page > 0) {
+                return page;
+            }
+        } catch (NumberFormatException ignored) {
+            // The localized message below covers invalid values.
+        }
+
+        sender.sendMessage(plugin.getLanguageManager().getMessageRegistry()
+                .getMessage(Message.SHOP_LIST_INVALID_PAGE));
+        return null;
+    }
+
+    private void listShops(CommandSender sender, OfflinePlayer owner, int requestedPage, boolean adminView) {
+        final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+        sender.sendMessage(messageRegistry.getMessage(Message.SHOP_LIST_LOADING));
+
+        shopUtils.getShops(owner, new Callback<Collection<Shop>>(plugin) {
+            @Override
+            public void onResult(Collection<Shop> result) {
+                if (sender instanceof Player player && !player.isOnline()) {
+                    return;
+                }
+                displayShopList(sender, owner, result, requestedPage, adminView);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                plugin.getLogger().severe("Failed to list shops for " + owner.getUniqueId());
+                if (throwable != null) {
+                    plugin.debug(throwable);
+                }
+                sender.sendMessage(messageRegistry.getMessage(Message.SHOP_LIST_ERROR));
+            }
+        });
+    }
+
+    private void displayShopList(
+            CommandSender sender,
+            OfflinePlayer owner,
+            Collection<Shop> result,
+            int requestedPage,
+            boolean adminView
+    ) {
+        final List<Shop> shops = new ArrayList<>(result);
+        shops.sort(Comparator
+                .comparing((Shop shop) -> worldName(shop.getLocation()), String.CASE_INSENSITIVE_ORDER)
+                .thenComparingInt(shop -> shop.getLocation().getBlockX())
+                .thenComparingInt(shop -> shop.getLocation().getBlockY())
+                .thenComparingInt(shop -> shop.getLocation().getBlockZ())
+                .thenComparingInt(Shop::getID));
+
+        if (adminView && sender instanceof Player admin) {
+            final Map<Integer, Location> targets = new HashMap<>();
+            for (Shop shop : shops) {
+                if (shop.getID() >= 0 && shop.getLocation() != null) {
+                    targets.put(shop.getID(), shop.getLocation().clone());
+                }
+            }
+            adminTeleportTargets.put(admin.getUniqueId(), Map.copyOf(targets));
+        }
+
+        final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+        final String ownerName = owner.getName() == null ? owner.getUniqueId().toString() : owner.getName();
+
+        if (shops.isEmpty()) {
+            final Message emptyMessage = adminView ? Message.SHOP_LIST_ADMIN_EMPTY : Message.SHOP_LIST_EMPTY;
+            sender.sendMessage(messageRegistry.getMessage(
+                    emptyMessage,
+                    new Replacement(Placeholder.PLAYER, ownerName)));
+            return;
+        }
+
+        final PageSlice<Shop> page = PageSlice.of(shops, requestedPage, SHOP_LIST_PAGE_SIZE);
+        final Message headerMessage = adminView ? Message.SHOP_LIST_ADMIN_HEADER : Message.SHOP_LIST_HEADER;
+
+        sender.sendMessage(" ");
+        sender.sendMessage(messageRegistry.getMessage(
+                headerMessage,
+                new Replacement(Placeholder.PLAYER, ownerName),
+                new Replacement(Placeholder.PAGE, page.page()),
+                new Replacement(Placeholder.PAGES, page.pageCount()),
+                new Replacement(Placeholder.AMOUNT, page.totalEntries())));
+
+        for (Shop shop : page.entries()) {
+            final Location location = shop.getLocation();
+            final String itemName = HologramTextFormatter.sanitizeItemName(
+                    shop.getProduct().getLocalizedName(),
+                    SHOP_LIST_ITEM_NAME_LENGTH);
+            final String entry = messageRegistry.getMessage(
+                    Message.SHOP_LIST_ENTRY,
+                    new Replacement(Placeholder.SHOP_ID, shop.getID()),
+                    new Replacement(Placeholder.AMOUNT, shop.getProduct().getAmount()),
+                    new Replacement(Placeholder.ITEM_NAME, itemName),
+                    new Replacement(Placeholder.WORLD, worldName(location)),
+                    new Replacement(Placeholder.X, location.getBlockX()),
+                    new Replacement(Placeholder.Y, location.getBlockY()),
+                    new Replacement(Placeholder.Z, location.getBlockZ()));
+
+            Component line = LEGACY_SERIALIZER.deserialize(entry);
+            if (adminView && sender instanceof Player && shop.getID() >= 0) {
+                line = line
+                        .clickEvent(ClickEvent.runCommand(
+                                "/" + Config.mainCommandName + " admin teleport " + shop.getID()))
+                        .hoverEvent(LEGACY_SERIALIZER.deserialize(
+                                messageRegistry.getMessage(Message.SHOP_LIST_CLICK_TELEPORT)));
+            }
+            sender.sendMessage(line);
+        }
+
+        sendShopListNavigation(sender, owner, page, adminView);
+        sender.sendMessage(" ");
+    }
+
+    private String worldName(Location location) {
+        return location != null && location.getWorld() != null
+                ? location.getWorld().getName()
+                : "<unavailable>";
+    }
+
+    private void sendShopListNavigation(
+            CommandSender sender,
+            OfflinePlayer owner,
+            PageSlice<Shop> page,
+            boolean adminView
+    ) {
+        if (page.pageCount() <= 1) {
+            return;
+        }
+
+        final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+        Component navigation = Component.empty();
+        if (page.page() > 1) {
+            navigation = navigation.append(LEGACY_SERIALIZER
+                    .deserialize(messageRegistry.getMessage(Message.SHOP_LIST_PREVIOUS))
+                    .clickEvent(ClickEvent.runCommand(shopListPageCommand(owner, page.page() - 1, adminView))));
+        }
+        if (page.page() > 1 && page.page() < page.pageCount()) {
+            navigation = navigation.append(Component.text("  ", NamedTextColor.GRAY));
+        }
+        if (page.page() < page.pageCount()) {
+            navigation = navigation.append(LEGACY_SERIALIZER
+                    .deserialize(messageRegistry.getMessage(Message.SHOP_LIST_NEXT))
+                    .clickEvent(ClickEvent.runCommand(shopListPageCommand(owner, page.page() + 1, adminView))));
+        }
+        sender.sendMessage(navigation);
+    }
+
+    private String shopListPageCommand(OfflinePlayer owner, int page, boolean adminView) {
+        if (adminView) {
+            return "/" + Config.mainCommandName + " admin list " + owner.getUniqueId() + " " + page;
+        }
+        return "/" + Config.mainCommandName + " list " + page;
+    }
+
+    private void teleportToListedShop(Player player, String shopIdValue) {
+        final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+        final int shopId;
+        try {
+            shopId = Integer.parseInt(shopIdValue);
+        } catch (NumberFormatException ignored) {
+            player.sendMessage(messageRegistry.getMessage(Message.ADMIN_TELEPORT_TARGET_EXPIRED));
+            return;
+        }
+
+        final Location shopLocation = adminTeleportTargets
+                .getOrDefault(player.getUniqueId(), Map.of())
+                .get(shopId);
+        if (shopLocation == null) {
+            player.sendMessage(messageRegistry.getMessage(Message.ADMIN_TELEPORT_TARGET_EXPIRED));
+            return;
+        }
+        if (shopLocation.getWorld() == null) {
+            player.sendMessage(messageRegistry.getMessage(Message.ADMIN_TELEPORT_WORLD_UNAVAILABLE));
+            return;
+        }
+
+        final Location destination = shopLocation.clone().add(0.5, 1.0, 0.5);
+        destination.setYaw(player.getLocation().getYaw());
+        destination.setPitch(player.getLocation().getPitch());
+
+        player.teleportAsync(destination).whenComplete((success, throwable) ->
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    final Message result = throwable == null && Boolean.TRUE.equals(success)
+                            ? Message.ADMIN_TELEPORT_SUCCESS
+                            : Message.ADMIN_TELEPORT_FAILED;
+                    player.sendMessage(messageRegistry.getMessage(
+                            result,
+                            new Replacement(Placeholder.SHOP_ID, shopId)));
+                    if (throwable != null) {
+                        plugin.debug(throwable);
+                    }
+                }));
     }
 
     /**
@@ -566,6 +814,7 @@ class ShopCommandExecutor implements CommandExecutor {
         String property = args[2];
         String value = args[3];
         boolean updateHologramLocations = isHologramLocationProperty(property);
+        boolean updateHologramDisplays = isHologramDisplayProperty(property);
 
         if (args[1].equalsIgnoreCase("set")) {
             plugin.getShopChestConfig().set(property, value);
@@ -585,12 +834,30 @@ class ShopCommandExecutor implements CommandExecutor {
                 shop.updateHologramLocation();
             }
         }
+        if (updateHologramDisplays) {
+            for (Shop shop : shopUtils.getShops()) {
+                shop.updateHologramText();
+            }
+        }
 
         return true;
     }
 
     private boolean isHologramLocationProperty(String property) {
-        return property.equalsIgnoreCase("hologram-lift");
+        return property.equalsIgnoreCase("hologram-lift")
+                || property.equalsIgnoreCase("hologram-fixed-bottom");
+    }
+
+    private boolean isHologramDisplayProperty(String property) {
+        return property.equalsIgnoreCase("hologram-panel-width")
+                || property.equalsIgnoreCase("hologram-text-scale")
+                || property.equalsIgnoreCase("hologram-background-color")
+                || property.equalsIgnoreCase("hologram-background-opacity")
+                || property.equalsIgnoreCase("hologram-max-item-name-length")
+                || property.equalsIgnoreCase("hologram-max-item-detail-entries")
+                || property.equalsIgnoreCase("hologram-item-details-per-line")
+                || property.equalsIgnoreCase("hologram-fixed-facing")
+                || property.regionMatches(true, 0, "hologram-colors.", 0, "hologram-colors.".length());
     }
 
     private void removeAll(CommandSender sender, String[] args) {

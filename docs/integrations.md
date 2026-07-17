@@ -29,6 +29,9 @@ When `enable-vendor-bungee-messages` is enabled, ShopChest sends vendor notifica
 
 ## Metrics and Updates
 
-The jar includes bStats metrics and records broad settings such as database type and shop type counts. The legacy update command is present, while automatic startup update checks are disabled in this custom build.
+This custom fork does not include bStats or transmit usage metrics. It also
+does not contact the original Spigot resource for update information. Plugin
+updates are distributed as reviewed 1MoreBlock builds through normal server
+maintenance.
 
 ShopChest does not provide a PlaceholderAPI expansion and does not integrate with mcMMO. Hologram placeholders are internal to ShopChest; external plugins should not treat the fake display entities as players.

@@ -1,6 +1,7 @@
 package de.epiceric.shopchest.nms;
 
 import de.epiceric.shopchest.ShopChest;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
@@ -15,11 +16,19 @@ public class ArmorStandWrapper {
     private final FakeArmorStand fakeArmorStand;
 
     private Location location;
-    private String customName;
+    private TextDisplayData displayData;
 
     public ArmorStandWrapper(ShopChest plugin, Location location, String customName) {
+        this(plugin, location, new TextDisplayData(customName));
+    }
+
+    public ArmorStandWrapper(ShopChest plugin, Location location, Component customName) {
+        this(plugin, location, new TextDisplayData(customName));
+    }
+
+    public ArmorStandWrapper(ShopChest plugin, Location location, TextDisplayData displayData) {
         this.location = location;
-        this.customName = customName;
+        this.displayData = displayData;
         this.fakeArmorStand = plugin.getPlatform().createFakeArmorStand();
     }
 
@@ -27,7 +36,7 @@ public class ArmorStandWrapper {
         final List<Player> receiver = Collections.singletonList(player);
         if(visible){
             fakeArmorStand.spawn(uuid, location, receiver);
-            fakeArmorStand.sendData(customName, receiver);
+            fakeArmorStand.sendData(displayData, receiver);
         }
         else if(fakeArmorStand.getEntityId() != -1){
             fakeArmorStand.remove(receiver);
@@ -40,8 +49,13 @@ public class ArmorStandWrapper {
     }
 
     public void setCustomName(String customName) {
-        this.customName = customName;
-        fakeArmorStand.sendData(customName, Objects.requireNonNull(location.getWorld()).getPlayers());
+        setDisplayData(new TextDisplayData(customName, displayData.lineWidth(), displayData.backgroundColor(),
+                displayData.fixedFacing(), displayData.scale()));
+    }
+
+    public void setDisplayData(TextDisplayData displayData) {
+        this.displayData = displayData;
+        fakeArmorStand.sendData(displayData, Objects.requireNonNull(location.getWorld()).getPlayers());
     }
 
     public void remove() {
@@ -63,6 +77,6 @@ public class ArmorStandWrapper {
     }
 
     public String getCustomName() {
-        return customName;
+        return TextComponentHelper.LEGACY_COMPONENT_SERIALIZER.serialize(displayData.text());
     }
 }

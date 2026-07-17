@@ -86,12 +86,12 @@ public abstract class FakeEntityImpl<T> implements FakeEntity {
                 location.getX(),
                 location.getY() + getSpawnOffSet(),
                 location.getZ(),
-                0f,
-                0f,
+                location.getPitch(),
+                location.getYaw(),
                 getEntityType(),
                 0,
                 Vec3.ZERO,
-                0d
+                location.getYaw()
         );
         sendPacket(spawnPacket, receivers);
     }

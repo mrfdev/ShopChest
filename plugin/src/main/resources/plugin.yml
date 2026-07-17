@@ -24,14 +24,13 @@ permissions:
       shopchest.buy: true
       shopchest.sell: true
       shopchest.openOther: true
-      shopchest.notification.update: true
       shopchest.reload: true
-      shopchest.update: true
       shopchest.limit.*: true
       shopchest.config: true
       shopchest.extend.other: true
       shopchest.extend.protected: true
       shopchest.external.bypass: true
+      shopchest.admin: true
   shopchest.create:
     description: Allows you to create a shop.
     children:
@@ -69,14 +68,8 @@ permissions:
   shopchest.openOther:
     description: Allows you to open other players' shops.
     default: op
-  shopchest.notification.update:
-    description: Allows you to get update notification on join.
-    default: op
   shopchest.reload:
     description: Allows you to reload the shops.
-    default: op
-  shopchest.update:
-    description: Allows you to check for updates.
     default: op
   shopchest.limit.*:
     default: op
@@ -91,4 +84,12 @@ permissions:
     default: op
   shopchest.external.bypass:
     description: Allows you to to use shops regions/plots that deny shop use.
+    default: op
+  shopchest.admin:
+    description: Gives access to ShopChest administration commands.
+    default: op
+    children:
+      shopchest.admin.list: true
+  shopchest.admin.list:
+    description: Allows listing another player's shops and teleporting to them.
     default: op

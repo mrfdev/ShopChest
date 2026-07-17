@@ -1,10 +1,6 @@
 package de.epiceric.shopchest.utils;
 
 import de.epiceric.shopchest.ShopChest;
-import de.epiceric.shopchest.config.Placeholder;
-import de.epiceric.shopchest.language.Message;
-import de.epiceric.shopchest.language.MessageRegistry;
-import de.epiceric.shopchest.language.Replacement;
 import de.epiceric.shopchest.shop.Shop;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -249,22 +245,6 @@ public class Utils {
             chestLocations.add(shop.getLocation());
         }
         return chestLocations;
-    }
-
-    /**
-     * Send a clickable update notification to the given player.
-     * @param plugin An instance of the {@link ShopChest} plugin
-     * @param p The player to receive the notification
-     */
-    public static void sendUpdateMessage(ShopChest plugin, Player p) {
-        final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
-        plugin.getPlatform().getTextComponentHelper().sendUpdateMessage(
-                p,
-                messageRegistry.getMessage(Message.UPDATE_AVAILABLE,
-                        new Replacement(Placeholder.VERSION, plugin.getLatestVersion())),
-                messageRegistry.getMessage(Message.UPDATE_CLICK_TO_DOWNLOAD),
-                plugin.getDownloadLink()
-        );
     }
 
     private final static int majorVersion;

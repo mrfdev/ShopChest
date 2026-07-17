@@ -18,27 +18,20 @@ import de.epiceric.shopchest.listeners.*;
 import de.epiceric.shopchest.nms.Platform;
 import de.epiceric.shopchest.nms.PlatformLoader;
 import de.epiceric.shopchest.shop.Shop;
-import de.epiceric.shopchest.shop.Shop.ShopType;
 import de.epiceric.shopchest.sql.Database;
 import de.epiceric.shopchest.sql.MySQL;
 import de.epiceric.shopchest.sql.SQLite;
 import de.epiceric.shopchest.utils.*;
-import de.epiceric.shopchest.utils.UpdateChecker.UpdateCheckerResult;
 import fr.xephi.authme.AuthMe;
 import me.ryanhamshire.GriefPrevention.GriefPrevention;
 import me.wiefferink.areashop.AreaShop;
 import net.milkbowl.vault.economy.Economy;
-import org.bstats.bukkit.Metrics;
-import org.bstats.charts.AdvancedPie;
-import org.bstats.charts.SimplePie;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.World;
-import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.codemc.worldguardwrapper.WorldGuardWrapper;
 import pl.islandworld.IslandWorld;
 import us.talabrek.ultimateskyblock.api.uSkyBlockAPI;
@@ -50,7 +43,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -70,9 +62,6 @@ public class ShopChest extends JavaPlugin {
     private ShopCommand shopCommand;
     private Economy econ = null;
     private Database database;
-    private boolean isUpdateNeeded = false;
-    private String latestVersion = "";
-    private String downloadLink = "";
     private ShopUtils shopUtils;
     private FileWriter fw;
     private Plugin worldGuard;
@@ -183,9 +172,7 @@ public class ShopChest extends JavaPlugin {
                 5L, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
         
         loadExternalPlugins();
-        loadMetrics();
         initDatabase();
-        checkForUpdates();
         registerListeners();
         registerExternalListeners();
         initializeShops();
@@ -317,30 +304,6 @@ public class ShopChest extends JavaPlugin {
         }
     }
 
-    private void loadMetrics() {
-        debug("Initializing Metrics...");
-
-        Metrics metrics = new Metrics(this, 1726);
-        metrics.addCustomChart(new SimplePie("creative_setting", () -> Config.creativeSelectItem ? "Enabled" : "Disabled"));
-        metrics.addCustomChart(new SimplePie("database_type", () -> Config.databaseType.toString()));
-        metrics.addCustomChart(new AdvancedPie("shop_type", () -> {
-                int normal = 0;
-                int admin = 0;
-
-                for (Shop shop : shopUtils.getShops()) {
-                    if (shop.getShopType() == ShopType.NORMAL) normal++;
-                    else if (shop.getShopType() == ShopType.ADMIN) admin++;
-                }
-
-                Map<String, Integer> result = new HashMap<>();
-
-                result.put("Admin", admin);
-                result.put("Normal", normal);
-
-                return result;
-        }));
-    }
-
     private void initDatabase() {
         if (Config.databaseType == Database.DatabaseType.SQLite) {
             debug("Using database type: SQLite");
@@ -361,50 +324,6 @@ public class ShopChest extends JavaPlugin {
                 }, Config.databaseMySqlPingInterval * 20L, Config.databaseMySqlPingInterval * 20L);
             }
         }
-    }
-
-    private void checkForUpdates() {
-        if (true || !Config.enableUpdateChecker) {
-            return;
-        }
-        
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                UpdateChecker uc = new UpdateChecker(ShopChest.this);
-                UpdateCheckerResult result = uc.check();
-
-                switch (result) {
-                    case TRUE:
-                        latestVersion = uc.getVersion();
-                        downloadLink = uc.getLink();
-                        isUpdateNeeded = true;
-
-                        getLogger().warning(String.format("Version %s is available! You are running version %s.",
-                                latestVersion, getPluginMeta().getVersion()));
-
-                        for (Player p : getServer().getOnlinePlayers()) {
-                            if (p.hasPermission(Permissions.UPDATE_NOTIFICATION)) {
-                                Utils.sendUpdateMessage(ShopChest.this, p);
-                            }
-                        }
-                        break;
-                
-                    case FALSE:
-                        latestVersion = "";
-                        downloadLink = "";
-                        isUpdateNeeded = false;
-                        break;
-
-                    case ERROR:
-                        latestVersion = "";
-                        downloadLink = "";
-                        isUpdateNeeded = false;
-                        getLogger().severe("An error occurred while checking for updates.");
-                        break;
-                }
-            }
-        }.runTaskAsynchronously(this);
     }
 
     private void registerListeners() {
@@ -671,51 +590,6 @@ public class ShopChest extends JavaPlugin {
      */
     public Database getShopDatabase() {
         return database;
-    }
-
-    /**
-     * @return Whether an update is needed (will return false if not checked)
-     */
-    public boolean isUpdateNeeded() {
-        return isUpdateNeeded;
-    }
-
-    /**
-     * Set whether an update is needed
-     * @param isUpdateNeeded Whether an update should be needed
-     */
-    public void setUpdateNeeded(boolean isUpdateNeeded) {
-        this.isUpdateNeeded = isUpdateNeeded;
-    }
-
-    /**
-     * @return The latest version of ShopChest (will return null if not checked or if no update is available)
-     */
-    public String getLatestVersion() {
-        return latestVersion;
-    }
-
-    /**
-     * Set the latest version
-     * @param latestVersion Version to set as latest version
-     */
-    public void setLatestVersion(String latestVersion) {
-        this.latestVersion = latestVersion;
-    }
-
-    /**
-     * @return The download link of the latest version (will return null if not checked or if no update is available)
-     */
-    public String getDownloadLink() {
-        return downloadLink;
-    }
-
-    /**
-     * Set the download Link of the latest version (will return null if not checked or if no update is available)
-     * @param downloadLink Link to set as Download Link
-     */
-    public void setDownloadLink(String downloadLink) {
-        this.downloadLink = downloadLink;
     }
 
     /**

@@ -35,6 +35,7 @@ public class HologramFormat {
             plugin.debug("Can not the hologram format, there is no 'lines' section");
             return;
         }
+        final boolean insertDefaultItemDetails = shouldInsertDefaultItemDetails(linesSection);
         // Get options
         final Map<String, ConfigurationSection> optionSections = new HashMap<>();
         for (String linesId : linesSection.getKeys(false)) {
@@ -106,11 +107,12 @@ public class HologramFormat {
                 }
 
                 // Get the format
-                final String format = optionSection.getString("format");
-                if (format == null) {
+                final String configuredFormat = optionSection.getString("format");
+                if (configuredFormat == null) {
                     plugin.debug("The option '" + optionKey + "' does not contains format. Skip it in hologram format");
                     continue;
                 }
+                final String format = HologramColorPalette.applyToLegacyDefault(configuredFormat);
 
                 // Parse the format and check if it's dynamic
                 final FormattedLine<Placeholder> formattedString = evaluateFormat(format, parser, data);
@@ -140,18 +142,78 @@ public class HologramFormat {
             lines.add(new HologramLine(new ArrayList<>(options)));
         }
 
+        if (insertDefaultItemDetails) {
+            lines.add(Math.min(2, lines.size()), new HologramLine(List.of(new HologramOption(
+                    evaluateFormat(Placeholder.ITEM_DETAILS.toString(), parser, data),
+                    List.of(values -> Boolean.TRUE.equals(values.get(Requirement.HAS_ITEM_DETAILS))),
+                    false))));
+        }
+
         this.lines = lines.toArray(new HologramLine[0]);
     }
 
+    static boolean shouldInsertDefaultItemDetails(ConfigurationSection linesSection) {
+        if (!linesSection.getKeys(false).equals(Set.of("0", "1", "2"))) {
+            return false;
+        }
+
+        for (String lineKey : linesSection.getKeys(false)) {
+            final ConfigurationSection options = linesSection.getConfigurationSection(lineKey + ".options");
+            if (options == null) {
+                return false;
+            }
+            for (String optionKey : options.getKeys(false)) {
+                final String format = options.getString(optionKey + ".format", "");
+                if (format.contains(Placeholder.ITEM_DETAILS.toString())
+                        || format.contains(Placeholder.ENCHANTMENT.toString())
+                        || format.contains(Placeholder.POTION_EFFECT.toString())) {
+                    return false;
+                }
+            }
+        }
+
+        final String itemFormat = linesSection.getString("1.options.default.format");
+        if (itemFormat == null || !HologramColorPalette.applyToLegacyDefault(itemFormat).equals(
+                "%COLOR-QUANTITY%%AMOUNT% x %COLOR-ITEM%%ITEMNAME%%COLOR-RESET%")) {
+            return false;
+        }
+
+        final ConfigurationSection priceOptions = linesSection.getConfigurationSection("2.options");
+        if (priceOptions == null || !priceOptions.getKeys(false).equals(
+                Set.of("buy-and-sell", "only-buy", "only-sell"))) {
+            return false;
+        }
+        return matchesDefaultPriceFormat(priceOptions, "buy-and-sell",
+                "%COLOR-LABEL%Buy: %COLOR-BUY-VALUE%%BUY-PRICE% %COLOR-SEPARATOR%| "
+                        + "%COLOR-LABEL%Sell: %COLOR-SELL-VALUE%%SELL-PRICE%%COLOR-RESET%")
+                && matchesDefaultPriceFormat(priceOptions, "only-buy",
+                "%COLOR-LABEL%Buy: %COLOR-BUY-VALUE%%BUY-PRICE%%COLOR-RESET%")
+                && matchesDefaultPriceFormat(priceOptions, "only-sell",
+                "%COLOR-LABEL%Sell: %COLOR-SELL-VALUE%%SELL-PRICE%%COLOR-RESET%");
+    }
+
+    private static boolean matchesDefaultPriceFormat(
+            ConfigurationSection priceOptions,
+            String option,
+            String expectedFormat
+    ) {
+        final String format = priceOptions.getString(option + ".format");
+        return format != null && HologramColorPalette.applyToLegacyDefault(format).equals(expectedFormat);
+    }
+
     private boolean isRequirementDynamic(String requirement) {
-        return requirement.contains(Requirement.IN_STOCK.name()) || requirement.contains(Requirement.CHEST_SPACE.name());
+        return requirement.contains(Requirement.IN_STOCK.name())
+                || requirement.contains(Requirement.OUT_OF_STOCK.name())
+                || requirement.contains(Requirement.CHEST_SPACE.name());
     }
 
     private boolean isPlaceholderDynamic(String format) {
-        return format.contains(Placeholder.STOCK.toString()) || format.contains(Placeholder.CHEST_SPACE.toString());
+        return format.contains(Placeholder.BUY_PRICE.toString())
+                || format.contains(Placeholder.STOCK.toString())
+                || format.contains(Placeholder.CHEST_SPACE.toString());
     }
 
-    private FormattedLine<Placeholder> evaluateFormat(String format, FormatParser parser, FormatData data) {
+    FormattedLine<Placeholder> evaluateFormat(String format, FormatParser parser, FormatData data) {
         final FormatReplacer<Placeholder> formatReplacer = new FormatReplacer<>(format);
 
         // Detect and evaluate accolade inner parts
@@ -193,6 +255,10 @@ public class HologramFormat {
 
         // Replace classics placeholders
         for (Map.Entry<String, Placeholder> entry : data.getPlaceholders().entrySet()) {
+            if (entry.getValue() == Placeholder.BUY_PRICE || entry.getValue() == Placeholder.SELL_PRICE) {
+                // Shop applies the active Vault economy formatter to direct price placeholders.
+                continue;
+            }
             formatReplacer.replace(entry.getKey(), new FormattedLine.MapToString<>(entry.getValue()));
         }
 
@@ -278,8 +344,9 @@ public class HologramFormat {
     }
 
     public enum Requirement {
-        VENDOR, AMOUNT, ITEM_TYPE, ITEM_NAME, HAS_ENCHANTMENT, BUY_PRICE,
+        VENDOR, AMOUNT, ITEM_TYPE, ITEM_NAME, HAS_ENCHANTMENT, HAS_ITEM_DETAILS, BUY_PRICE,
         SELL_PRICE, HAS_POTION_EFFECT, IS_MUSIC_DISC, IS_POTION_EXTENDED, IS_BANNER_PATTERN,
-        IS_WRITTEN_BOOK, ADMIN_SHOP, NORMAL_SHOP, IN_STOCK, MAX_STACK, CHEST_SPACE, DURABILITY
+        IS_WRITTEN_BOOK, ADMIN_SHOP, NORMAL_SHOP, IN_STOCK, OUT_OF_STOCK, MAX_STACK,
+        CHEST_SPACE, DURABILITY
     }
 }

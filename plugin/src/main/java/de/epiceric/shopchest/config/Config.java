@@ -1,8 +1,13 @@
 package de.epiceric.shopchest.config;
 
 import de.epiceric.shopchest.ShopChest;
+import de.epiceric.shopchest.config.hologram.HologramColorPalette;
 import de.epiceric.shopchest.sql.Database;
 import de.epiceric.shopchest.utils.ItemUtils;
+import org.bukkit.NamespacedKey;
+import org.bukkit.Particle;
+import org.bukkit.Registry;
+import org.bukkit.Sound;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
@@ -11,6 +16,16 @@ import java.util.List;
 import java.util.Set;
 
 public class Config {
+
+    static final float DEFAULT_HOLOGRAM_TEXT_SCALE = 0.5f;
+    static final float MINIMUM_HOLOGRAM_TEXT_SCALE = 0.5f;
+    static final float MAXIMUM_HOLOGRAM_TEXT_SCALE = 1.25f;
+    static final int DEFAULT_HOLOGRAM_MAX_ITEM_DETAIL_ENTRIES = 7;
+    static final int DEFAULT_HOLOGRAM_ITEM_DETAILS_PER_LINE = 2;
+    private static final String SUCCESS_SOUND = "minecraft:entity.experience_orb.pickup";
+    private static final String SUCCESS_PARTICLE = "minecraft:happy_villager";
+    private static final String FAILURE_SOUND = "minecraft:block.note_block.bass";
+    private static final String FAILURE_PARTICLE = "minecraft:smoke";
 
     /**
      * The item with which a player can click a shop to retrieve information
@@ -128,15 +143,19 @@ public class Config {
     public static boolean confirmShopping;
 
     /**
+     * Player-local sound and particle shown after a completed trade
+     **/
+    public static TradeFeedbackEffect tradeSuccessFeedback;
+
+    /**
+     * Player-local sound and particle shown after a failed trade attempt
+     **/
+    public static TradeFeedbackEffect tradeFailureFeedback;
+
+    /**
      * Whether the shop creation price should be refunded at removal.
      */
     public static boolean refundShopCreation;
-
-    /**
-     * <p>Whether the update checker should run on start and notify players on join.</p>
-     * The command is not affected by this setting and will continue to check for updates.
-     **/
-    public static boolean enableUpdateChecker;
 
     /**
      * Whether the debug log file should be created
@@ -265,6 +284,46 @@ public class Config {
     public static double hologramLift;
 
     /**
+     * Maximum TextDisplay line width in client font pixels
+     **/
+    public static int hologramPanelWidth;
+
+    /**
+     * Uniform visual scale of the TextDisplay panel
+     **/
+    public static float hologramTextScale;
+
+    /**
+     * TextDisplay panel background as an ARGB integer
+     **/
+    public static int hologramBackgroundColor;
+
+    /**
+     * Semantic text colors used by shop holograms
+     **/
+    public static HologramColorPalette hologramColors;
+
+    /**
+     * Maximum visible characters in an item name shown on a hologram
+     **/
+    public static int hologramMaxItemNameLength;
+
+    /**
+     * Maximum enchantment and potion detail entries shown on a hologram
+     **/
+    public static int hologramMaxItemDetailEntries;
+
+    /**
+     * Number of enchantment and potion detail entries shown on each line
+     **/
+    public static int hologramItemDetailsPerLine;
+
+    /**
+     * Whether the TextDisplay panel keeps the chest's facing direction
+     **/
+    public static boolean hologramFixedFacing;
+
+    /**
      * The maximum distance between a player and a shop to see the hologram
      **/
     public static double maximalDistance;
@@ -305,6 +364,7 @@ public class Config {
         this.plugin = plugin;
 
         plugin.saveDefaultConfig();
+        addMissingModernDefaults();
 
         reload(true, true, true);
     }
@@ -467,8 +527,11 @@ public class Config {
         blacklist = (plugin.getConfig().getStringList("blacklist") == null) ? new ArrayList<String>() : plugin.getConfig().getStringList("blacklist");
         buyGreaterOrEqualSell = plugin.getConfig().getBoolean("buy-greater-or-equal-sell");
         confirmShopping = plugin.getConfig().getBoolean("confirm-shopping");
+        tradeSuccessFeedback = getTradeFeedbackEffect(
+                "success", SUCCESS_SOUND, 0.45, 1.2, SUCCESS_PARTICLE, 4);
+        tradeFailureFeedback = getTradeFeedbackEffect(
+                "failure", FAILURE_SOUND, 0.35, 0.7, FAILURE_PARTICLE, 3);
         refundShopCreation = plugin.getConfig().getBoolean("refund-shop-creation");
-        enableUpdateChecker = plugin.getConfig().getBoolean("enable-update-checker");
         enableDebugLog = plugin.getConfig().getBoolean("enable-debug-log");
         enableEconomyLog = plugin.getConfig().getBoolean("enable-economy-log");
         cleanupEconomyLogDays = plugin.getConfig().getInt("cleanup-economy-log-days");
@@ -490,6 +553,19 @@ public class Config {
         invertMouseButtons = plugin.getConfig().getBoolean("invert-mouse-buttons");
         hologramFixedBottom = plugin.getConfig().getBoolean("hologram-fixed-bottom");
         hologramLift = plugin.getConfig().getDouble("hologram-lift");
+        hologramPanelWidth = clamp(plugin.getConfig().getInt("hologram-panel-width", 200), 40, 1024);
+        hologramTextScale = normalizeHologramTextScale(
+                plugin.getConfig().getDouble("hologram-text-scale", DEFAULT_HOLOGRAM_TEXT_SCALE));
+        hologramBackgroundColor = getHologramBackgroundColor();
+        hologramColors = HologramColorPalette.load(
+                key -> plugin.getConfig().getString(HologramColorPalette.CONFIG_PREFIX + key),
+                plugin.getLogger()::warning);
+        hologramMaxItemNameLength = clamp(plugin.getConfig().getInt("hologram-max-item-name-length", 48), 0, 256);
+        hologramMaxItemDetailEntries = clamp(plugin.getConfig().getInt(
+                "hologram-max-item-detail-entries", DEFAULT_HOLOGRAM_MAX_ITEM_DETAIL_ENTRIES), 1, 32);
+        hologramItemDetailsPerLine = clamp(plugin.getConfig().getInt(
+                "hologram-item-details-per-line", DEFAULT_HOLOGRAM_ITEM_DETAILS_PER_LINE), 1, 4);
+        hologramFixedFacing = plugin.getConfig().getBoolean("hologram-fixed-facing", true);
         maximalDistance = plugin.getConfig().getDouble("maximal-distance");
         maximalItemDistance = plugin.getConfig().getDouble("maximal-item-distance");
         shopCreationPriceNormal = plugin.getConfig().getDouble("shop-creation-price.normal");
@@ -501,6 +577,139 @@ public class Config {
         if (langReload) {
             plugin.loadLanguages();
         }
+    }
+
+    private int getHologramBackgroundColor() {
+        final int opacity = clamp(plugin.getConfig().getInt("hologram-background-opacity", 112), 0, 255);
+        final String configuredColor = plugin.getConfig().getString("hologram-background-color", "#315B7D");
+        final String hexColor = configuredColor == null ? "" : configuredColor.strip().replaceFirst("^#", "");
+
+        if (!hexColor.matches("[0-9a-fA-F]{6}")) {
+            plugin.getLogger().warning("Invalid hologram-background-color '" + configuredColor
+                    + "'. Using #315B7D.");
+            return (opacity << 24) | 0x315B7D;
+        }
+
+        return (opacity << 24) | Integer.parseInt(hexColor, 16);
+    }
+
+    private TradeFeedbackEffect getTradeFeedbackEffect(
+            String outcome,
+            String defaultSound,
+            double defaultVolume,
+            double defaultPitch,
+            String defaultParticle,
+            int defaultParticleCount) {
+        final String prefix = "trade-feedback." + outcome + ".";
+        return new TradeFeedbackEffect(
+                plugin.getConfig().getBoolean(prefix + "enabled", true),
+                getSound(prefix + "sound", defaultSound),
+                getBoundedFloat(prefix + "volume", defaultVolume, 0, 2),
+                getBoundedFloat(prefix + "pitch", defaultPitch, 0.5, 2),
+                getParticle(prefix + "particle", defaultParticle),
+                normalizeTradeFeedbackParticleCount(
+                        plugin.getConfig().getInt(prefix + "particle-count", defaultParticleCount)));
+    }
+
+    private Sound getSound(String path, String fallback) {
+        final String configured = plugin.getConfig().getString(path, fallback);
+        if (configured == null || configured.isBlank() || configured.equalsIgnoreCase("none")) {
+            return null;
+        }
+
+        final NamespacedKey key = NamespacedKey.fromString(configured);
+        final Sound sound = key == null ? null : Registry.SOUND_EVENT.get(key);
+        if (sound != null) {
+            return sound;
+        }
+
+        plugin.getLogger().warning("Invalid " + path + " '" + configured + "'. Using " + fallback + ".");
+        return Registry.SOUND_EVENT.get(NamespacedKey.fromString(fallback));
+    }
+
+    private Particle getParticle(String path, String fallback) {
+        final String configured = plugin.getConfig().getString(path, fallback);
+        if (configured == null || configured.isBlank() || configured.equalsIgnoreCase("none")) {
+            return null;
+        }
+
+        final NamespacedKey key = NamespacedKey.fromString(configured);
+        final Particle particle = key == null ? null : Registry.PARTICLE_TYPE.get(key);
+        if (particle != null && particle.getDataType() == Void.class) {
+            return particle;
+        }
+
+        plugin.getLogger().warning("Invalid data-free " + path + " '" + configured
+                + "'. Using " + fallback + ".");
+        return Registry.PARTICLE_TYPE.get(NamespacedKey.fromString(fallback));
+    }
+
+    private float getBoundedFloat(String path, double fallback, double minimum, double maximum) {
+        final double configured = plugin.getConfig().getDouble(path, fallback);
+        return normalizeTradeFeedbackValue(configured, fallback, minimum, maximum);
+    }
+
+    private void addMissingModernDefaults() {
+        boolean changed = false;
+        if (!plugin.getConfig().contains("hologram-text-scale", true)) {
+            plugin.getConfig().set("hologram-text-scale", DEFAULT_HOLOGRAM_TEXT_SCALE);
+            changed = true;
+        }
+        changed |= addDefaultIfMissing(
+                "hologram-max-item-detail-entries", DEFAULT_HOLOGRAM_MAX_ITEM_DETAIL_ENTRIES);
+        changed |= addDefaultIfMissing(
+                "hologram-item-details-per-line", DEFAULT_HOLOGRAM_ITEM_DETAILS_PER_LINE);
+        for (HologramColorPalette.Role role : HologramColorPalette.Role.values()) {
+            final String path = HologramColorPalette.CONFIG_PREFIX + role.configKey();
+            if (!plugin.getConfig().contains(path, true)) {
+                plugin.getConfig().set(path, role.defaultHex());
+                changed = true;
+            }
+        }
+        changed |= addDefaultIfMissing("trade-feedback.success.enabled", true);
+        changed |= addDefaultIfMissing("trade-feedback.success.sound", SUCCESS_SOUND);
+        changed |= addDefaultIfMissing("trade-feedback.success.volume", 0.45);
+        changed |= addDefaultIfMissing("trade-feedback.success.pitch", 1.2);
+        changed |= addDefaultIfMissing("trade-feedback.success.particle", SUCCESS_PARTICLE);
+        changed |= addDefaultIfMissing("trade-feedback.success.particle-count", 4);
+        changed |= addDefaultIfMissing("trade-feedback.failure.enabled", true);
+        changed |= addDefaultIfMissing("trade-feedback.failure.sound", FAILURE_SOUND);
+        changed |= addDefaultIfMissing("trade-feedback.failure.volume", 0.35);
+        changed |= addDefaultIfMissing("trade-feedback.failure.pitch", 0.7);
+        changed |= addDefaultIfMissing("trade-feedback.failure.particle", FAILURE_PARTICLE);
+        changed |= addDefaultIfMissing("trade-feedback.failure.particle-count", 3);
+        if (changed) {
+            plugin.saveConfig();
+        }
+    }
+
+    private boolean addDefaultIfMissing(String path, Object value) {
+        if (plugin.getConfig().contains(path, true)) {
+            return false;
+        }
+        plugin.getConfig().set(path, value);
+        return true;
+    }
+
+    private static int clamp(int value, int minimum, int maximum) {
+        return Math.max(minimum, Math.min(value, maximum));
+    }
+
+    static float normalizeHologramTextScale(double value) {
+        if (!Double.isFinite(value)) {
+            return DEFAULT_HOLOGRAM_TEXT_SCALE;
+        }
+        return (float) Math.max(MINIMUM_HOLOGRAM_TEXT_SCALE,
+                Math.min(value, MAXIMUM_HOLOGRAM_TEXT_SCALE));
+    }
+
+    static float normalizeTradeFeedbackValue(double value, double fallback, double minimum, double maximum) {
+        final double finiteValue = Double.isFinite(value) ? value : fallback;
+        return (float) Math.max(minimum, Math.min(finiteValue, maximum));
+    }
+
+    static int normalizeTradeFeedbackParticleCount(int value) {
+        return clamp(value, 0, 16);
     }
 
 }

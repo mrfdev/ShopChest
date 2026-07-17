@@ -114,6 +114,10 @@ message.vendor-not-enough-money=&cVendor has not enough money.
 # Set the message when the shop is out of stock.
 message.out-of-stock=&cShop out of stock.
 
+# Set the compact status shown instead of the buy price on an empty shop.
+message.hologram-out-of-stock=[Out of stock]
+message.hologram-more-item-details=+%DETAIL-COUNT% more
+
 # Set the message the vendor gets when his shop is out of stock
 # Usable Placeholders: %AMOUNT%, %ITEMNAME%
 message.vendor-out-of-stock=&cYour shop that sells &6%AMOUNT% x %ITEMNAME% &cis out of stock.
@@ -210,22 +214,6 @@ message.item-selected=&aItem has been selected: &6%ITEMNAME%
 # Set the message when the player closes the creative menu to select an item.
 message.creation-cancelled=&cShop creation has been cancelled.
 
-# Set the message when an update is available.
-# Usable Placeholders: %VERSION%
-message.update.update-available=&6&lVersion &c&l%VERSION% &6&lof &c&lShopChest &6&lis available &c&lhere.
-
-# Set the message you get when hovering over the available message.
-message.update.click-to-download=Click to download
-
-# Set the message when no update is available.
-message.update.no-update=&6&lNo new update available.
-
-# Set the message when the update checker is started.
-message.update.checking=&6&lChecking for updates...
-
-# Set the message when an error occurs while checking for updates.
-message.update.error=&c&lError while checking for updates.
-
 # Set the message when a not permitted player tries to create a shop.
 message.noPermission.create=&cYou don't have permission to create a shop.
 
@@ -258,9 +246,6 @@ message.noPermission.remove-admin=&cYou don't have permission to remove an admin
 
 # Set the message when a not permitted player tries to reload the shops.
 message.noPermission.reload=&cYou don't have permission to reload the shops.
-
-# Set the message when a not permitted player tries to check for updates.
-message.noPermission.update=&cYou don't have permission to check for updates.
 
 # Set the message when a not permitted player tries to change configuration values.
 message.noPermission.config=&cYou don't have permission to change configuration values.
@@ -304,10 +289,6 @@ message.commandDescription.removeall=&a/%COMMAND% removeall - Remove all shops o
 # Usable Placeholders: %COMMAND%
 message.commandDescription.reload=&a/%COMMAND% reload - Reload shops.
 
-# Set the command description message for '/shops update' when you type '/shops'.
-# Usable Placeholders: %COMMAND%
-message.commandDescription.update=&a/%COMMAND% update - Check for Updates.
-
 # Set the command description message for '/shops limits' when you type '/shops'.
 # Usable Placeholders: %COMMAND%
 message.commandDescription.limits=&a/%COMMAND% limits - View shop limits.
@@ -331,3 +312,54 @@ message.config.added=&6Added &a%VALUE% &6to &a%PROPERTY%&6.
 # Set the message a player gets after removing a value from a list in the configuration per command
 # Usable Placeholders: %PROPERTY%, %VALUE%
 message.config.removed=&6Removed &a%VALUE% &6from &a%PROPERTY%&6.
+
+# Modern, permission-aware command help. Missing keys in an existing language
+# file use these defaults automatically.
+message.help.header=&6ShopChest &fCommands
+message.help.player-header=&ePlayer commands
+message.help.staff-header=&cStaff commands
+message.help.footer=&7Need setup help? Use &b/%COMMAND% info&7.
+message.help.command.help=&a/%COMMAND% help &7- Show commands available to you.
+message.help.command.create=&a/%COMMAND% create <amount> <buy-price> <sell-price> &7- Create a shop using your held item.
+message.help.command.create-admin=&a/%COMMAND% create <amount> <buy-price> <sell-price> [normal|admin] &7- Create a player or admin shop.
+message.help.command.remove=&a/%COMMAND% remove &7- Click one of your shops to remove it.
+message.help.command.info=&a/%COMMAND% info &7- Learn how ShopChest works and open the player guide.
+message.help.command.inspect=&a/%COMMAND% inspect &7- Click a shop to view its details.
+message.help.command.limits=&a/%COMMAND% limits &7- View your used and available shop slots.
+message.help.command.open=&a/%COMMAND% open &7- Click one of your shops to open its chest.
+message.help.command.removeall=&a/%COMMAND% removeall <player> &7- Remove all shops owned by a player. &8[shopchest.remove.other]
+message.help.command.reload=&a/%COMMAND% reload &7- Reload configuration, data, and loaded shops. &8[shopchest.reload]
+message.help.command.config=&a/%COMMAND% config <set|add|remove> <property> <value> &7- Change global settings. &8[shopchest.config]
+
+# Short player onboarding shown by '/shops info'.
+message.info.header=&6ShopChest &7v%VERSION%
+message.info.intro=&fCreate persistent chest shops where players can buy from you or sell items to you.
+message.info.step-place=&e1. &fPlace a chest and hold the exact item you want to trade.
+message.info.step-create=&e2. &fRun &a/%COMMAND% create <amount> <buy-price> <sell-price>&f.
+message.info.step-chest=&e3. &fClick the chest within 15 seconds, then add sale stock or leave room for purchases.
+message.info.price-hint=&7Set either price to &f0 &7to disable that trade direction. Use &f/%COMMAND% help &7for every available command.
+message.info.guide=&b&nOpen the ShopChest player guide
+
+# Database-backed shop lists. Player rows are informational; authorized staff
+# rows are clickable and teleport through a permission-checked internal action.
+message.help.command.list=&a/%COMMAND% list [page] &7- List every shop you own and its location.
+message.help.command.admin=&a/%COMMAND% admin list <player> [page] &7- List and teleport to a player's shops. &8[shopchest.admin.list]
+message.noPermission.admin-list=&cYou don't have permission to list other players' shops.
+message.shopList.loading=&7Loading registered shops...
+message.shopList.header=&6Your shops &7- Page %PAGE%/%PAGES% &8(%AMOUNT% total)
+message.shopList.admin-header=&6%PLAYER%'s shops &7- Page %PAGE%/%PAGES% &8(%AMOUNT% total)
+message.shopList.empty=&eYou have not created any shops.
+message.shopList.admin-empty=&e%PLAYER% has no registered shops.
+message.shopList.entry=&e#%SHOP-ID% &f%AMOUNT% x %ITEMNAME% &8- &b%WORLD% &7(%X%, %Y%, %Z%)
+message.shopList.click-teleport=&aClick to teleport to this shop.
+message.shopList.previous=&b\u00AB Previous
+message.shopList.next=&bNext \u00BB
+message.shopList.invalid-page=&cPage must be a positive whole number.
+message.shopList.player-not-found=&cNo player named %PLAYER% was found in the local server cache.
+message.shopList.error=&cThe shop list could not be loaded. Check the server log for details.
+message.admin.header=&6ShopChest &cAdministration
+message.admin.list=&a/%COMMAND% admin list <player> [page] &7- List every registered shop and click a row to teleport.
+message.admin.teleport-target-expired=&cThat shop location is no longer cached. Run the admin list command again.
+message.admin.teleport-world-unavailable=&cThat shop's world is not currently available.
+message.admin.teleport-success=&aTeleported to shop #%SHOP-ID%.
+message.admin.teleport-failed=&cCould not teleport to shop #%SHOP-ID%.

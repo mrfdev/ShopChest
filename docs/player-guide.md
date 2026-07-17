@@ -2,7 +2,7 @@
 
 ## Introduction
 
-ShopChest lets players turn ordinary chests into shops. A shop can sell items to other players, buy items from them, or do both. The floating item shows the product, while the hologram shows the owner, quantity, and active prices.
+ShopChest lets players turn ordinary chests into shops. A shop can sell items to other players, buy items from them, or do both. The floating item shows the product, while the hologram shows the owner, quantity, active prices, and useful enchantment or potion details.
 
 ## Quick Start
 
@@ -11,6 +11,14 @@ ShopChest lets players turn ordinary chests into shops. A shop can sell items to
 3. Run `/shops create <amount> <buy-price> <sell-price>`.
 4. Click the chest within 15 seconds.
 5. Put stock in the chest when players should be able to buy from you. Leave room in it when players should be able to sell to you.
+
+When an enabled buy side cannot supply the full configured purchase amount, its
+hologram price changes to `[Out of stock]`. A separately enabled sell side
+remains visible and usable.
+
+Enchanted books and other enchanted products list their enchantments and
+levels. Potions list their localized effects, amplifiers, and durations. Dense
+items are kept readable with two details per line and a short overflow summary.
 
 Example: `/shops create 8 40 20` creates a shop that trades 8 held items at a time. Other players pay 40 to buy that bundle and receive 20 when selling that bundle to the shop.
 
@@ -24,10 +32,11 @@ The default setup charges 5 economy units to create a normal shop and allows 5 n
 
 ## Commands
 
-- `/shops` - Show command help.
-- `/shops info` - Show the ShopChest name, installed version, starting commands, and a clickable link to this guide.
+- `/shops` or `/shops help` - Show the player commands available to you. Permitted staff actions appear in a separate section.
+- `/shops info` - Show a short introduction, numbered creation instructions, the installed version, and a clickable link to this guide.
 - `/shops create <amount> <buy-price> <sell-price>` - Prepare a shop using the held item, then click a chest within 15 seconds.
 - `/shops limits` - Show used and available normal-shop slots.
+- `/shops list [page]` - List every shop you created with its item, world, and block coordinates. The locations are informational and do not teleport you.
 - `/shops inspect` - Enter inspection mode, then click a shop within 15 seconds. `/shops info shop` is a compatibility alias.
 - `/shops open` - Enter open mode, then click one of your shops within 15 seconds.
 - `/shops remove` - Enter removal mode, then click one of your shops within 15 seconds.

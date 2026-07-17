@@ -45,11 +45,8 @@ tasks.shadowJar {
         include(project(":nms:interface"))
         include(project(":nms:paper"))
         include(dependency("org.codemc.worldguardwrapper:worldguardwrapper"))
-        include(dependency("org.bstats:bstats-base"))
-        include(dependency("org.bstats:bstats-bukkit"))
         include(dependency("com.zaxxer:HikariCP"))
     }
-    relocate("org.bstats", "de.epiceric.shopchest.dependencies.bstats")
     relocate("org.codemc.worldguardwrapper", "de.epiceric.shopchest.dependencies.worldguardwrapper")
     relocate("com.zaxxer.hikari", "de.epiceric.shopchest.dependencies.hikari")
 }
@@ -60,7 +57,6 @@ dependencies {
     implementation(project(":nms:paper"))
     // Shaded api
     implementation("org.codemc.worldguardwrapper:worldguardwrapper:1.2.0-SNAPSHOT")
-    implementation("org.bstats:bstats-bukkit:3.0.2")
     implementation("com.zaxxer:HikariCP:6.3.0")
     // Used api
     implementation("com.github.MilkBowl:VaultAPI:1.7")
@@ -78,6 +74,13 @@ dependencies {
     // Using implementation makes shadow to include them in the final jar.
     // Local dependencies are not handled well and can't be excluded (see https://github.com/GradleUp/shadow/issues/142)
     compileOnly(files("../lib/AreaShop-2.6.0.jar", "../lib/IslandWorld-8.5.jar"))
+    testImplementation("io.papermc.paper:paper-api:26.2.build.60-beta")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.13.4")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.13.4")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 project.base.archivesName.set(rootProject.name)

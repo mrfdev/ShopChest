@@ -7,8 +7,6 @@ import org.bukkit.inventory.ItemStack;
 import org.inventivetalent.reflection.resolver.minecraft.NMSClassResolver;
 import org.inventivetalent.reflection.resolver.minecraft.OBCClassResolver;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -22,26 +20,6 @@ public class TextComponentHelperImpl implements TextComponentHelper {
 
     public TextComponentHelperImpl(ShopChestDebug debug) {
         this.debug = debug;
-    }
-
-    @Override
-    public void sendUpdateMessage(Player player, String updateMessage, String hoverMessage, String downloadUrl) {
-        JsonBuilder jb = new JsonBuilder(debug);
-        Map<String, JsonBuilder.Part> hoverEvent = new HashMap<>();
-        hoverEvent.put("action", new JsonBuilder.Part("show_text"));
-        hoverEvent.put("value", new JsonBuilder.Part(hoverMessage));
-
-        Map<String, JsonBuilder.Part> clickEvent = new HashMap<>();
-        clickEvent.put("action", new JsonBuilder.Part("open_url"));
-        clickEvent.put("value", new JsonBuilder.Part(downloadUrl));
-
-        JsonBuilder.PartMap rootPart = JsonBuilder.parse(updateMessage).toMap();
-
-        rootPart.setValue("hoverEvent", new JsonBuilder.PartMap(hoverEvent));
-        rootPart.setValue("clickEvent", new JsonBuilder.PartMap(clickEvent));
-
-        jb.setRootPart(rootPart);
-        jb.sendJson(player);
     }
 
     @Override
