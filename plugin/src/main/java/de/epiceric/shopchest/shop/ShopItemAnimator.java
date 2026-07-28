@@ -59,6 +59,14 @@ public final class ShopItemAnimator {
         return items.size();
     }
 
+    public void refresh() {
+        for (ShopItem item : items) {
+            if (item.exists()) {
+                item.applyAnimation(elapsedTicks);
+            }
+        }
+    }
+
     private void tick() {
         elapsedTicks += ShopItemAnimation.UPDATE_INTERVAL_TICKS;
 

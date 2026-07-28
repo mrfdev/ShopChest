@@ -1,7 +1,9 @@
 package de.epiceric.shopchest.listeners;
 
 import de.epiceric.shopchest.ShopChest;
+import de.epiceric.shopchest.config.Config;
 import de.epiceric.shopchest.config.Placeholder;
+import de.epiceric.shopchest.display.TextComponentHelper;
 import de.epiceric.shopchest.language.Message;
 import de.epiceric.shopchest.language.MessageRegistry;
 import de.epiceric.shopchest.language.Replacement;
@@ -35,10 +37,19 @@ public class NotifyPlayerOnJoinListener implements Listener {
                 plugin.getShopDatabase().getRevenue(p, result, new Callback<Double>(plugin) {
                     @Override
                     public void onResult(Double result) {
-                        if (result != 0) {
-                            final MessageRegistry messageRegistry = ShopChest.getInstance().getLanguageManager().getMessageRegistry();
-                            p.sendMessage(messageRegistry.getMessage(Message.REVENUE_WHILE_OFFLINE,
-                                    new Replacement(Placeholder.REVENUE, String.valueOf(result))));
+                        if (p.isOnline() && result != null && Double.isFinite(result)
+                                && Math.abs(result) > 0.0000001) {
+                            final MessageRegistry messageRegistry =
+                                    plugin.getLanguageManager().getMessageRegistry();
+                            p.sendMessage(TextComponentHelper.getClickableActionMessage(
+                                    messageRegistry.getMessage(
+                                            Message.REVENUE_WHILE_OFFLINE,
+                                            new Replacement(Placeholder.REVENUE, result)),
+                                    messageRegistry.getMessage(Message.REVENUE_WHILE_OFFLINE_ACTION),
+                                    messageRegistry.getMessage(
+                                            Message.REVENUE_WHILE_OFFLINE_HOVER,
+                                            new Replacement(Placeholder.COMMAND, Config.mainCommandName)),
+                                    "/" + Config.mainCommandName + " recent"));
                         }
                     }
                 });

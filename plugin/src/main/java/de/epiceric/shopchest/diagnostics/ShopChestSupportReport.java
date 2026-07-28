@@ -57,6 +57,9 @@ public record ShopChestSupportReport(
                 + " | build " + build.build()
                 + " | target Java " + build.javaTarget()
                 + " / Paper " + build.paperTarget());
+        lines.add("Compiled API: " + build.paperApiCoordinate()
+                + " | server release " + build.paperChannel()
+                + " build #" + build.paperBuild());
         lines.add("Runtime: " + Bukkit.getName()
                 + " " + Bukkit.getMinecraftVersion()
                 + " | " + Bukkit.getVersion());
@@ -64,7 +67,7 @@ public record ShopChestSupportReport(
                 + " | " + System.getProperty("java.vm.name", "unknown")
                 + " | " + System.getProperty("os.name", "unknown")
                 + " " + System.getProperty("os.arch", "unknown"));
-        lines.add("Platform: Paper API 26.2+"
+        lines.add("Platform: Paper API " + build.paperTarget() + "+"
                 + " | displays TextDisplay + ItemDisplay"
                 + " | per-player entity visibility");
         lines.add("Item naming: runtime translation keys " + itemNames.translatableItems()
@@ -183,6 +186,11 @@ public record ShopChestSupportReport(
 
         if (vault == null || !vault.isEnabled()) {
             warnings.add("Vault is missing or disabled; economy trades cannot operate.");
+        }
+        if (!"unknown".equals(build.version())
+                && !plugin.getPluginMeta().getVersion().equals(build.version())) {
+            warnings.add("Generated plugin version " + plugin.getPluginMeta().getVersion()
+                    + " differs from embedded release version " + build.version() + ".");
         }
         if (plugin.getEconomy() == null) {
             warnings.add("No Vault economy provider is registered.");

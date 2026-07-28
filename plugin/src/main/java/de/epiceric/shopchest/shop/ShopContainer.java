@@ -1,6 +1,7 @@
 package de.epiceric.shopchest.shop;
 
 import de.epiceric.shopchest.ShopChest;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -17,9 +18,11 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.persistence.PersistentDataType;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -29,6 +32,7 @@ import java.util.Set;
 public final class ShopContainer {
 
     private static final String DISPLAY_FACING_KEY = "display-facing";
+    private static final String SHOP_DISPLAY_FACING_KEY = "shop-display-facing";
 
     private static final Set<Material> SUPPORTED_MATERIALS = Collections.unmodifiableSet(EnumSet.of(
             Material.CHEST,
@@ -104,7 +108,8 @@ public final class ShopContainer {
                 Collections.unmodifiableSet(new LinkedHashSet<>(locations)),
                 resolveFacing(
                         directionalFacing(container.getBlockData()),
-                        storedFacing(plugin, state)));
+                        storedFacing(plugin, state, DISPLAY_FACING_KEY),
+                        storedFacing(plugin, state, SHOP_DISPLAY_FACING_KEY)));
     }
 
     public static Set<Location> locationsOf(InventoryHolder inventoryHolder) {
@@ -144,6 +149,17 @@ public final class ShopContainer {
     }
 
     static BlockFace resolveFacing(BlockFace blockFacing, BlockFace storedFacing) {
+        return resolveFacing(blockFacing, storedFacing, null);
+    }
+
+    static BlockFace resolveFacing(
+            BlockFace blockFacing,
+            BlockFace storedFacing,
+            BlockFace shopFacing
+    ) {
+        if (isHorizontal(shopFacing)) {
+            return shopFacing;
+        }
         if (isHorizontal(blockFacing)) {
             return blockFacing;
         }
@@ -167,13 +183,17 @@ public final class ShopContainer {
                 || facing == BlockFace.WEST;
     }
 
-    private static BlockFace storedFacing(ShopChest plugin, BlockState state) {
+    private static BlockFace storedFacing(
+            ShopChest plugin,
+            BlockState state,
+            String keyName
+    ) {
         if (plugin == null || !(state instanceof TileState tileState)) {
             return null;
         }
 
         String stored = tileState.getPersistentDataContainer().get(
-                new NamespacedKey(plugin, DISPLAY_FACING_KEY),
+                new NamespacedKey(plugin, keyName),
                 PersistentDataType.STRING);
         if (stored == null) {
             return null;
@@ -207,6 +227,81 @@ public final class ShopContainer {
                 PersistentDataType.STRING,
                 horizontalFacing(facing).name());
         tileState.update();
+    }
+
+    /**
+     * Stores a shop-specific display direction on every physical container
+     * block, or removes it when {@code facing} is {@code null}.
+     *
+     * @return whether every block accepted the update
+     */
+    public boolean setShopDisplayFacing(ShopChest plugin, BlockFace facing) {
+        if (!Bukkit.isPrimaryThread()) {
+            throw new IllegalStateException("Shop display facing must be changed on the server thread");
+        }
+        if (plugin == null || (facing != null && !isHorizontal(facing))) {
+            return false;
+        }
+
+        final NamespacedKey key = new NamespacedKey(plugin, SHOP_DISPLAY_FACING_KEY);
+        final List<FacingSnapshot> snapshots = new ArrayList<>(locations.size());
+        for (Location location : locations) {
+            final BlockState state = location.getBlock().getState();
+            if (!(state instanceof TileState tileState)) {
+                return false;
+            }
+            snapshots.add(new FacingSnapshot(
+                    location,
+                    tileState.getPersistentDataContainer().get(
+                            key,
+                            PersistentDataType.STRING)));
+        }
+
+        try {
+            for (FacingSnapshot snapshot : snapshots) {
+                final TileState tileState = (TileState) snapshot.location().getBlock().getState();
+                writeFacing(tileState, key, facing == null ? null : facing.name());
+                if (!tileState.update()) {
+                    restoreFacings(snapshots, key);
+                    return false;
+                }
+            }
+            return true;
+        } catch (RuntimeException exception) {
+            restoreFacings(snapshots, key);
+            return false;
+        }
+    }
+
+    private static void restoreFacings(
+            List<FacingSnapshot> snapshots,
+            NamespacedKey key
+    ) {
+        for (FacingSnapshot snapshot : snapshots) {
+            final BlockState state = snapshot.location().getBlock().getState();
+            if (state instanceof TileState tileState) {
+                writeFacing(tileState, key, snapshot.facing());
+                tileState.update();
+            }
+        }
+    }
+
+    private static void writeFacing(
+            TileState tileState,
+            NamespacedKey key,
+            String facing
+    ) {
+        if (facing == null) {
+            tileState.getPersistentDataContainer().remove(key);
+        } else {
+            tileState.getPersistentDataContainer().set(
+                    key,
+                    PersistentDataType.STRING,
+                    facing);
+        }
+    }
+
+    private record FacingSnapshot(Location location, String facing) {
     }
 
     public Inventory getInventory() {

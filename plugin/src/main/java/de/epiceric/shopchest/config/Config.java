@@ -8,6 +8,7 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Registry;
 import org.bukkit.Sound;
+import org.bukkit.entity.TextDisplay;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
@@ -20,6 +21,12 @@ public class Config {
     static final float DEFAULT_HOLOGRAM_TEXT_SCALE = 0.5f;
     static final float MINIMUM_HOLOGRAM_TEXT_SCALE = 0.5f;
     static final float MAXIMUM_HOLOGRAM_TEXT_SCALE = 1.25f;
+    static final int DEFAULT_HOLOGRAM_TEXT_OPACITY = 255;
+    static final double DEFAULT_FLOATING_ICON_HEIGHT = 1.21D;
+    static final float DEFAULT_FLOATING_ICON_SCALE = 0.45F;
+    static final float DEFAULT_FLOATING_ICON_BOB_AMPLITUDE = 0.06F;
+    static final double DEFAULT_FLOATING_ICON_BOB_PERIOD_SECONDS = 3.14D;
+    static final double DEFAULT_FLOATING_ICON_ROTATION_PERIOD_SECONDS = 6.28D;
     static final int DEFAULT_HOLOGRAM_MAX_ITEM_DETAIL_ENTRIES = 7;
     static final int DEFAULT_HOLOGRAM_ITEM_DETAILS_PER_LINE = 2;
     static final int DEFAULT_TRADE_INTERACTION_COOLDOWN_MILLIS = 250;
@@ -323,6 +330,26 @@ public class Config {
     public static int hologramBackgroundColor;
 
     /**
+     * TextDisplay foreground opacity from 0 through 255
+     **/
+    public static int hologramTextOpacity;
+
+    /**
+     * Whether TextDisplay glyphs render with their native shadow
+     **/
+    public static boolean hologramTextShadowed;
+
+    /**
+     * Whether TextDisplay text remains visible through blocks
+     **/
+    public static boolean hologramTextSeeThrough;
+
+    /**
+     * Alignment of text inside the complete TextDisplay panel
+     **/
+    public static TextDisplay.TextAlignment hologramTextAlignment;
+
+    /**
      * Semantic text colors used by shop holograms
      **/
     public static HologramColorPalette hologramColors;
@@ -346,6 +373,25 @@ public class Config {
      * Whether the TextDisplay panel keeps the chest's facing direction
      **/
     public static boolean hologramFixedFacing;
+
+    /**
+     * Floating product icon anchor height above the shop block
+     **/
+    public static double floatingIconHeight;
+
+    /**
+     * Uniform floating product icon scale
+     **/
+    public static float floatingIconScale;
+
+    /**
+     * Floating product icon animation controls
+     **/
+    public static boolean floatingIconBobbingEnabled;
+    public static float floatingIconBobAmplitude;
+    public static double floatingIconBobPeriodSeconds;
+    public static boolean floatingIconRotationEnabled;
+    public static double floatingIconRotationPeriodSeconds;
 
     /**
      * The maximum distance between a player and a shop to see the hologram
@@ -593,6 +639,11 @@ public class Config {
         hologramTextScale = normalizeHologramTextScale(
                 plugin.getConfig().getDouble("hologram-text-scale", DEFAULT_HOLOGRAM_TEXT_SCALE));
         hologramBackgroundColor = getHologramBackgroundColor();
+        hologramTextOpacity = normalizeHologramTextOpacity(
+                plugin.getConfig().getInt("hologram-text-opacity", DEFAULT_HOLOGRAM_TEXT_OPACITY));
+        hologramTextShadowed = plugin.getConfig().getBoolean("hologram-text-shadowed", false);
+        hologramTextSeeThrough = plugin.getConfig().getBoolean("hologram-text-see-through", false);
+        hologramTextAlignment = getHologramTextAlignment();
         hologramColors = HologramColorPalette.load(
                 key -> plugin.getConfig().getString(HologramColorPalette.CONFIG_PREFIX + key),
                 plugin.getLogger()::warning);
@@ -602,6 +653,20 @@ public class Config {
         hologramItemDetailsPerLine = clamp(plugin.getConfig().getInt(
                 "hologram-item-details-per-line", DEFAULT_HOLOGRAM_ITEM_DETAILS_PER_LINE), 1, 4);
         hologramFixedFacing = plugin.getConfig().getBoolean("hologram-fixed-facing", true);
+        floatingIconHeight = normalizeFloatingIconHeight(
+                plugin.getConfig().getDouble("floating-icon-height", DEFAULT_FLOATING_ICON_HEIGHT));
+        floatingIconScale = normalizeFloatingIconScale(
+                plugin.getConfig().getDouble("floating-icon-scale", DEFAULT_FLOATING_ICON_SCALE));
+        floatingIconBobbingEnabled = plugin.getConfig().getBoolean("floating-icon-bobbing-enabled", true);
+        floatingIconBobAmplitude = normalizeFloatingIconBobAmplitude(plugin.getConfig().getDouble(
+                "floating-icon-bob-amplitude", DEFAULT_FLOATING_ICON_BOB_AMPLITUDE));
+        floatingIconBobPeriodSeconds = normalizeFloatingIconBobPeriodSeconds(plugin.getConfig().getDouble(
+                "floating-icon-bob-period-seconds", DEFAULT_FLOATING_ICON_BOB_PERIOD_SECONDS));
+        floatingIconRotationEnabled = plugin.getConfig().getBoolean("floating-icon-rotation-enabled", true);
+        floatingIconRotationPeriodSeconds = normalizeFloatingIconRotationPeriodSeconds(
+                plugin.getConfig().getDouble(
+                        "floating-icon-rotation-period-seconds",
+                        DEFAULT_FLOATING_ICON_ROTATION_PERIOD_SECONDS));
         maximalDistance = plugin.getConfig().getDouble("maximal-distance");
         maximalItemDistance = plugin.getConfig().getDouble("maximal-item-distance");
         shopCreationPriceNormal = plugin.getConfig().getDouble("shop-creation-price.normal");
@@ -627,6 +692,20 @@ public class Config {
         }
 
         return (opacity << 24) | Integer.parseInt(hexColor, 16);
+    }
+
+    private TextDisplay.TextAlignment getHologramTextAlignment() {
+        final String configuredAlignment = plugin.getConfig().getString(
+                "hologram-text-alignment", TextDisplay.TextAlignment.CENTER.name());
+        try {
+            return TextDisplay.TextAlignment.valueOf(configuredAlignment == null
+                    ? TextDisplay.TextAlignment.CENTER.name()
+                    : configuredAlignment.strip().toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            plugin.getLogger().warning("Invalid hologram-text-alignment '" + configuredAlignment
+                    + "'. Using CENTER.");
+            return TextDisplay.TextAlignment.CENTER;
+        }
     }
 
     private TradeFeedbackEffect getTradeFeedbackEffect(
@@ -691,10 +770,26 @@ public class Config {
             plugin.getConfig().set("hologram-text-scale", DEFAULT_HOLOGRAM_TEXT_SCALE);
             changed = true;
         }
+        changed |= addDefaultIfMissing("hologram-text-opacity", DEFAULT_HOLOGRAM_TEXT_OPACITY);
+        changed |= addDefaultIfMissing("hologram-text-shadowed", false);
+        changed |= addDefaultIfMissing("hologram-text-see-through", false);
+        changed |= addDefaultIfMissing(
+                "hologram-text-alignment", TextDisplay.TextAlignment.CENTER.name());
         changed |= addDefaultIfMissing(
                 "hologram-max-item-detail-entries", DEFAULT_HOLOGRAM_MAX_ITEM_DETAIL_ENTRIES);
         changed |= addDefaultIfMissing(
                 "hologram-item-details-per-line", DEFAULT_HOLOGRAM_ITEM_DETAILS_PER_LINE);
+        changed |= addDefaultIfMissing("floating-icon-height", DEFAULT_FLOATING_ICON_HEIGHT);
+        changed |= addDefaultIfMissing("floating-icon-scale", DEFAULT_FLOATING_ICON_SCALE);
+        changed |= addDefaultIfMissing("floating-icon-bobbing-enabled", true);
+        changed |= addDefaultIfMissing(
+                "floating-icon-bob-amplitude", DEFAULT_FLOATING_ICON_BOB_AMPLITUDE);
+        changed |= addDefaultIfMissing(
+                "floating-icon-bob-period-seconds", DEFAULT_FLOATING_ICON_BOB_PERIOD_SECONDS);
+        changed |= addDefaultIfMissing("floating-icon-rotation-enabled", true);
+        changed |= addDefaultIfMissing(
+                "floating-icon-rotation-period-seconds",
+                DEFAULT_FLOATING_ICON_ROTATION_PERIOD_SECONDS);
         for (HologramColorPalette.Role role : HologramColorPalette.Role.values()) {
             final String path = HologramColorPalette.CONFIG_PREFIX + role.configKey();
             if (!plugin.getConfig().contains(path, true)) {
@@ -746,6 +841,53 @@ public class Config {
         }
         return (float) Math.max(MINIMUM_HOLOGRAM_TEXT_SCALE,
                 Math.min(value, MAXIMUM_HOLOGRAM_TEXT_SCALE));
+    }
+
+    static int normalizeHologramTextOpacity(int value) {
+        return clamp(value, 0, 255);
+    }
+
+    static double normalizeFloatingIconHeight(double value) {
+        if (!Double.isFinite(value)) {
+            return DEFAULT_FLOATING_ICON_HEIGHT;
+        }
+        return Math.max(0.25D, Math.min(value, 4.0D));
+    }
+
+    static float normalizeFloatingIconScale(double value) {
+        if (!Double.isFinite(value)) {
+            return DEFAULT_FLOATING_ICON_SCALE;
+        }
+        return (float) Math.max(0.1D, Math.min(value, 2.0D));
+    }
+
+    static float normalizeFloatingIconBobAmplitude(double value) {
+        if (!Double.isFinite(value)) {
+            return DEFAULT_FLOATING_ICON_BOB_AMPLITUDE;
+        }
+        return (float) Math.max(0.0D, Math.min(value, 0.5D));
+    }
+
+    static double normalizeFloatingIconBobPeriodSeconds(double value) {
+        return normalizeFloatingIconPeriod(
+                value, DEFAULT_FLOATING_ICON_BOB_PERIOD_SECONDS, 0.5D, 60.0D);
+    }
+
+    static double normalizeFloatingIconRotationPeriodSeconds(double value) {
+        return normalizeFloatingIconPeriod(
+                value, DEFAULT_FLOATING_ICON_ROTATION_PERIOD_SECONDS, 0.5D, 120.0D);
+    }
+
+    private static double normalizeFloatingIconPeriod(
+            double value,
+            double fallback,
+            double minimum,
+            double maximum
+    ) {
+        if (!Double.isFinite(value)) {
+            return fallback;
+        }
+        return Math.max(minimum, Math.min(value, maximum));
     }
 
     static float normalizeTradeFeedbackValue(double value, double fallback, double minimum, double maximum) {

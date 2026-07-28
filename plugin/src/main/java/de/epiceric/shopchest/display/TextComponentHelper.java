@@ -1,6 +1,7 @@
 package de.epiceric.shopchest.display;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -17,14 +18,39 @@ public final class TextComponentHelper {
     private TextComponentHelper() {
     }
 
+    public static Component getClickableActionMessage(
+            String summary,
+            String actionLabel,
+            String hoverText,
+            String command
+    ) {
+        return LEGACY_COMPONENT_SERIALIZER.deserialize(summary)
+                .append(Component.space())
+                .append(LEGACY_COMPONENT_SERIALIZER.deserialize(actionLabel)
+                        .hoverEvent(LEGACY_COMPONENT_SERIALIZER.deserialize(hoverText))
+                        .clickEvent(ClickEvent.runCommand(command)));
+    }
+
     public static Consumer<Player> getSendableItemInfo(
             String message,
             String itemPlaceholder,
             ItemStack itemStack,
             String productName
     ) {
-        final Component replacement = LEGACY_COMPONENT_SERIALIZER.deserialize(productName)
-                .hoverEvent(itemStack.asHoverEvent());
+        return getSendableItemInfo(
+                message,
+                itemPlaceholder,
+                itemStack,
+                LEGACY_COMPONENT_SERIALIZER.deserialize(productName));
+    }
+
+    public static Consumer<Player> getSendableItemInfo(
+            String message,
+            String itemPlaceholder,
+            ItemStack itemStack,
+            Component productName
+    ) {
+        final Component replacement = productName.hoverEvent(itemStack.asHoverEvent());
         Component component = Component.empty();
         final Matcher matcher = Pattern.compile(itemPlaceholder, Pattern.LITERAL).matcher(message);
         if (matcher.find()) {

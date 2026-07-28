@@ -105,7 +105,7 @@ public class ClickType {
     }
 
     public enum EnumClickType {
-        CREATE, REMOVE, INFO, OPEN, SELECT_ITEM
+        CREATE, EDIT, REMOVE, INFO, OPEN, SELECT_ITEM
     }
 
     public static class CreateClickType extends ClickType {
@@ -216,6 +216,19 @@ public class ClickType {
          */
         public ShopType getShopType() {
             return shopType;
+        }
+    }
+
+    public static class EditClickType extends ClickType {
+        private final ShopEditOperation operation;
+
+        public EditClickType(ShopEditOperation operation) {
+            super(EnumClickType.EDIT);
+            this.operation = operation;
+        }
+
+        public ShopEditOperation getOperation() {
+            return operation;
         }
     }
 

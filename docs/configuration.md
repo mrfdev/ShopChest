@@ -76,6 +76,10 @@ by the built-in config migration are added to existing files automatically.
 | `hologram-text-scale` | `0.50` | Uniform size of the TextDisplay text and background. Values are clamped from `0.50` through `1.25`, and loaded holograms update immediately. |
 | `hologram-background-color` | `#315B7D` | Six-digit hex color used for the unified panel background. The default is a muted, readable blue. |
 | `hologram-background-opacity` | `112` | Panel background alpha from `0` (transparent) through `255` (opaque). |
+| `hologram-text-opacity` | `255` | Text alpha from `0` (invisible) through `255` (fully opaque). |
+| `hologram-text-shadowed` | `false` | Enables Minecraft's native shadow behind each text glyph. |
+| `hologram-text-see-through` | `false` | Allows text to remain visible through blocks. Keep this disabled unless that behavior is intentional. |
+| `hologram-text-alignment` | `CENTER` | Aligns text inside the panel. Accepted values are `LEFT`, `CENTER`, and `RIGHT`. |
 | `hologram-colors.owner` | `#DCE7FF` | Global pastel color for the shop owner name. |
 | `hologram-colors.quantity` | `#D8E1EA` | Global pastel color for the trade quantity and `x` marker. |
 | `hologram-colors.item` | `#FFE29A` | Global pastel color for the product name. |
@@ -90,11 +94,23 @@ by the built-in config migration are added to existing files automatically.
 | `hologram-max-item-detail-entries` | `7` | Maximum enchantments and potion effects shown before a localized `+N more` summary. Values are clamped from `1` through `32`. |
 | `hologram-item-details-per-line` | `2` | Enchantment and potion detail entries placed on each panel line. Values are clamped from `1` through `4`. |
 | `hologram-fixed-facing` | `true` | Keeps the panel aligned with the front of its container. Set to `false` to restore center billboarding toward each viewer. |
+| `floating-icon-height` | `1.21` | Product icon's central height above the shop block, clamped from `0.25` through `4.0` blocks. |
+| `floating-icon-scale` | `0.45` | Uniform product icon size, clamped from `0.10` through `2.0`. |
+| `floating-icon-bobbing-enabled` | `true` | Enables the restrained vertical floating animation. |
+| `floating-icon-bob-amplitude` | `0.06` | Maximum travel above and below the configured icon height, clamped from `0` through `0.50` blocks. |
+| `floating-icon-bob-period-seconds` | `3.14` | Seconds per complete bob cycle, clamped from `0.50` through `60`. Larger values move more slowly. |
+| `floating-icon-rotation-enabled` | `true` | Enables rotation around the vertical axis. |
+| `floating-icon-rotation-period-seconds` | `6.28` | Seconds per complete rotation, clamped from `0.50` through `120`. Larger values rotate more slowly. |
 | `maximal-distance` | `2` | Hologram visibility radius in blocks. |
 | `maximal-item-distance` | `40` | Floating product visibility radius in blocks. |
 | `append-potion-level-to-item-name` | `false` | Adds a Roman-numeral potion level when the product has no custom name. |
 | `enable-vendor-messages` | `true` | Notifies online vendors about trades and empty stock. |
 | `enable-vendor-bungee-messages` | `false` | Publishes vendor notifications through the BungeeCord plugin channel. |
+
+Every display setting in this table can be changed while the server is running
+with `/shops config set <key> <value>`. Text panels, icon locations, and icon
+animations refresh in place; no shop reload, entity recreation, or server
+restart is required. Boolean values and text alignment provide tab completion.
 
 ### Item Name Localization
 

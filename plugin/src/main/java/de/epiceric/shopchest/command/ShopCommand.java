@@ -7,22 +7,24 @@ import de.epiceric.shopchest.language.Message;
 import de.epiceric.shopchest.language.MessageRegistry;
 import de.epiceric.shopchest.language.Replacement;
 import de.epiceric.shopchest.utils.ClickType.SelectClickType;
+import de.epiceric.shopchest.utils.ClickType.EditClickType;
 import de.epiceric.shopchest.utils.Permissions;
+import de.epiceric.shopchest.shop.Shop;
+import io.papermc.paper.command.brigadier.BasicCommand;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.Bukkit;
-import org.bukkit.command.*;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.permissions.PermissionAttachmentInfo;
-import org.bukkit.plugin.Plugin;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 public class ShopCommand {
 
@@ -30,8 +32,7 @@ public class ShopCommand {
 
     private final ShopChest plugin;
     private final String name;
-    private final String fallbackPrefix;
-    private final PluginCommand pluginCommand;
+    private final Command commandContext;
     private final ShopCommandExecutor executor;
 
     private final List<ShopSubCommand> subCommands = new ArrayList<>();
@@ -45,9 +46,8 @@ public class ShopCommand {
 
         this.plugin = plugin;
         this.name = Config.mainCommandName.toLowerCase(Locale.ENGLISH).trim();
-        this.fallbackPrefix = plugin.getName().toLowerCase(Locale.ENGLISH).trim();
-        this.pluginCommand = createPluginCommand();
         this.executor = new ShopCommandExecutor(plugin);
+        this.commandContext = new CommandContext(name);
 
         ShopTabCompleter tabCompleter = new ShopTabCompleter(plugin);
 
@@ -56,26 +56,26 @@ public class ShopCommand {
         addSubCommand(new ShopSubCommand("create", true, executor, tabCompleter) {
             @Override
             public String getHelpMessage(CommandSender sender) {
-                boolean receiveCreateMessage = sender.hasPermission(Permissions.CREATE);
-                if (!receiveCreateMessage) {
-                    for (PermissionAttachmentInfo permInfo : sender.getEffectivePermissions()) {
-                        String perm = permInfo.getPermission();
-                        if (perm.startsWith(Permissions.CREATE) && sender.hasPermission(perm)) {
-                            receiveCreateMessage = true;
-                            break;
-                        }
-                    }
-                }
-
                 final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
 
                 if (sender.hasPermission(Permissions.CREATE_ADMIN)) {
                     return messageRegistry.getMessage(Message.HELP_COMMAND_CREATE_ADMIN, cmdReplacement);
-                } else if (receiveCreateMessage) {
+                } else if (hasCreationPermission(sender)) {
                     return messageRegistry.getMessage(Message.HELP_COMMAND_CREATE, cmdReplacement);
                 }
 
                 return "";
+            }
+        });
+
+        addSubCommand(new ShopSubCommand("edit", true, executor, tabCompleter) {
+            @Override
+            public String getHelpMessage(CommandSender sender) {
+                if (!hasCreationPermission(sender)) {
+                    return "";
+                }
+                final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+                return messageRegistry.getMessage(Message.HELP_COMMAND_EDIT, cmdReplacement);
             }
         });
 
@@ -158,6 +158,17 @@ public class ShopCommand {
             }
         });
 
+        addSubCommand(new ShopSubCommand("debug", false, ShopSubCommand.HelpSection.STAFF, executor, tabCompleter) {
+            @Override
+            public String getHelpMessage(CommandSender sender) {
+                if (!sender.hasPermission(Permissions.ADMIN_DEBUG)) {
+                    return "";
+                }
+                final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+                return messageRegistry.getMessage(Message.HELP_COMMAND_DEBUG, cmdReplacement);
+            }
+        });
+
         addSubCommand(new ShopSubCommand("removeall", false, ShopSubCommand.HelpSection.STAFF, executor, tabCompleter) {
             @Override
             public String getHelpMessage(CommandSender sender) {
@@ -198,10 +209,6 @@ public class ShopCommand {
         commandCreated = true;
     }
 
-    public PluginCommand getCommand() {
-        return pluginCommand;
-    }
-
     /**
      * Call the second part of the create method after the player
      * has selected an item from the creative inventory.
@@ -210,26 +217,24 @@ public class ShopCommand {
         executor.create2(player, clickType);
     }
 
-    private PluginCommand createPluginCommand() {
-        plugin.debug("Creating plugin command");
-        try {
-            Constructor<PluginCommand> c = PluginCommand.class.getDeclaredConstructor(String.class, Plugin.class);
-            c.setAccessible(true);
+    /**
+     * Apply an edit after the player has selected one of their shops.
+     */
+    public void editShopAfterSelected(Player player, Shop shop, EditClickType clickType) {
+        executor.edit2(player, shop, clickType);
+    }
 
-            PluginCommand cmd = c.newInstance(name, plugin);
-            cmd.setDescription("Manage players' shops or this plugin.");
-            cmd.setUsage("/" + name);
-            cmd.setExecutor(new ShopBaseCommandExecutor());
-            cmd.setTabCompleter(new ShopBaseTabCompleter());
-
-            return cmd;
-        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | InstantiationException e) {
-            plugin.getLogger().severe("Failed to create command");
-            plugin.debug("Failed to create plugin command");
-            plugin.debug(e);
+    private boolean hasCreationPermission(CommandSender sender) {
+        if (sender.hasPermission(Permissions.CREATE)) {
+            return true;
         }
-
-        return null;
+        for (PermissionAttachmentInfo permInfo : sender.getEffectivePermissions()) {
+            final String permission = permInfo.getPermission();
+            if (permission.startsWith(Permissions.CREATE) && sender.hasPermission(permission)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void addSubCommand(ShopSubCommand subCommand) {
@@ -242,57 +247,11 @@ public class ShopCommand {
     }
 
     private void register() {
-        if (pluginCommand == null) return;
-
         plugin.debug("Registering command " + name);
-
-        try {
-            Field fCommandMap = Bukkit.getPluginManager().getClass().getDeclaredField("commandMap");
-            fCommandMap.setAccessible(true);
-
-            Object commandMapObject = fCommandMap.get(Bukkit.getPluginManager());
-            if (commandMapObject instanceof CommandMap) {
-                CommandMap commandMap = (CommandMap) commandMapObject;
-                commandMap.register(fallbackPrefix, pluginCommand);
-            }
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            plugin.getLogger().severe("Failed to register command");
-            plugin.debug("Failed to register plugin command");
-            plugin.debug(e);
-        }
-    }
-
-    public void unregister() {
-        if (pluginCommand == null) return;
-
-        plugin.debug("Unregistering command " + name);
-
-        try {
-            Field fCommandMap = Bukkit.getPluginManager().getClass().getDeclaredField("commandMap");
-            fCommandMap.setAccessible(true);
-
-            Object commandMapObject = fCommandMap.get(Bukkit.getPluginManager());
-            if (commandMapObject instanceof CommandMap) {
-                CommandMap commandMap = (CommandMap) commandMapObject;
-                pluginCommand.unregister(commandMap);
-
-                Field fKnownCommands = SimpleCommandMap.class.getDeclaredField("knownCommands");
-                fKnownCommands.setAccessible(true);
-
-                Object knownCommandsObject = fKnownCommands.get(commandMap);
-                if (knownCommandsObject instanceof Map) {
-                    Map<?, ?> knownCommands = (Map<?, ?>) knownCommandsObject;
-                    knownCommands.remove(fallbackPrefix + ":" + name);
-                    if (pluginCommand.equals(knownCommands.get(name))) {
-                        knownCommands.remove(name);
-                    }
-                }
-            }
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            plugin.getLogger().severe("Failed to unregister command");
-            plugin.debug("Failed to unregister plugin command");
-            plugin.debug(e);
-        }
+        plugin.registerCommand(
+                name,
+                "Manage players' shops or this plugin.",
+                new PaperShopCommand());
     }
 
     /**
@@ -408,6 +367,45 @@ public class ShopCommand {
             return new ArrayList<>();
         }
 
+    }
+
+    private final class PaperShopCommand implements BasicCommand {
+
+        @Override
+        public void execute(CommandSourceStack source, String[] args) {
+            commandContext.execute(source.getSender(), name, args);
+        }
+
+        @Override
+        public Collection<String> suggest(CommandSourceStack source, String[] args) {
+            return commandContext.tabComplete(source.getSender(), name, args);
+        }
+    }
+
+    private final class CommandContext extends Command {
+
+        private final ShopBaseCommandExecutor commandExecutor = new ShopBaseCommandExecutor();
+        private final ShopBaseTabCompleter tabCompleter = new ShopBaseTabCompleter();
+
+        private CommandContext(String commandName) {
+            super(commandName);
+            setDescription("Manage players' shops or this plugin.");
+            setUsage("/" + commandName);
+        }
+
+        @Override
+        public boolean execute(CommandSender sender, String commandLabel, String[] args) {
+            return commandExecutor.onCommand(sender, this, commandLabel, args);
+        }
+
+        @Override
+        public List<String> tabComplete(
+                CommandSender sender,
+                String alias,
+                String[] args
+        ) {
+            return tabCompleter.onTabComplete(sender, this, alias, args);
+        }
     }
 
 }

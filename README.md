@@ -18,13 +18,13 @@ Player-facing documentation is published at
 
 | Component | Supported target |
 | --- | --- |
-| Minecraft / Paper | Paper 26.2 build 60 beta |
-| Server runtime | Java 25 |
+| Minecraft / Paper | Paper 26.2 build 84 stable |
+| Server runtime | Java 25; Java 26.0.2 compatibility smoke-tested |
 | Plugin bytecode | Java 25 |
 | Build toolchain | Gradle wrapper with a Java 25 toolchain |
 | Required plugins | Vault and a Vault-compatible economy provider |
 | Optional price advisory | CMI |
-| Plugin version | 1.15.1 |
+| Plugin version | 1.15.2 |
 
 The exact compile target is declared in
 [`plugin/build.gradle.kts`](plugin/build.gradle.kts). The deployable jar uses
@@ -76,7 +76,8 @@ tests, test-server startup, and focused shop testing pass.
 - Recent purchase and sale history with earned, spent, and net totals when
   economy logging is enabled
 - Staff shop lookup with authorized click-to-teleport rows
-- Privacy-conscious support diagnostics through `/shops admin debug`
+- Privacy-conscious support status plus command, permission, and internal
+  hologram-placeholder catalogs through `/shops debug`
 - SQLite by default or MySQL for shared/networked storage
 - Built-in legacy schema migration and database-backed unloaded-chunk lookup
 - Protection hooks for WorldGuard, Towny, PlotSquared, BentoBox,
@@ -94,7 +95,7 @@ inventory blocks not listed above.
 1. Paper 26.2 running on Java 25.
 2. Vault.
 3. A Vault-compatible economy plugin registered before ShopChest enables.
-4. The shaded `1MB-ShopChest-v1.15.1-<build>-j25-26.2.jar`.
+4. The shaded `1MB-ShopChest-v1.15.2-<build>-j25-26.2.jar`.
 
 Vault alone does not provide an economy. ShopChest disables itself when Vault,
 an economy provider, or its configured database is unavailable.
@@ -171,6 +172,8 @@ Useful player commands:
 
 ```text
 /shops info
+/shops edit amount 16
+/shops edit holograms faceme
 /shops limits
 /shops list
 /shops recent
@@ -193,6 +196,8 @@ requires a clean server restart.
 | `/shops help` | Shows the same player and permitted staff command index. | None |
 | `/shops info` | Shows an introduction, creation steps, version, and player-guide link. | None |
 | `/shops create <amount> <buy-price> <sell-price> [normal]` | Selects the held item and starts a 15-second container selection. | `shopchest.create`, or matching directional/material nodes |
+| `/shops edit <amount\|buy\|sell> <value>` | Changes one trade setting after a 15-second selection of an owned shop. | The same directional/material nodes required to create the resulting shop |
+| `/shops edit holograms <reset\|faceme\|north\|south\|east\|west>` | Changes the text panel and floating-icon orientation after selecting an owned shop. | The same ownership and admin-shop rules as other edits |
 | `/shops limits` | Shows used slots and the effective normal-shop limit. | None |
 | `/shops list [page]` | Lists owned shops. Hover rows for prices, stock, type, world, and coordinates. | None |
 | `/shops recent [page]` | Shows recorded purchases, sales, shop income, spending, and net change. | `shopchest.recent` |
@@ -208,7 +213,9 @@ requires a clean server restart.
 | `/shops create <amount> <buy-price> <sell-price> admin` | Creates an unlimited-stock admin shop. | `shopchest.create.admin` |
 | `/shops admin` | Shows the permitted administration commands. | `shopchest.admin.list` or `shopchest.admin.debug` |
 | `/shops admin list <player> [page]` | Lists a player's shops. In-game rows can teleport authorized staff. | `shopchest.admin.list` |
-| `/shops admin debug` | Generates a copyable platform, dependency, database, config, translation, and shop-state report. | `shopchest.admin.debug` |
+| `/shops debug [status]` | Generates a copyable platform, dependency, database, config, translation, and shop-state report. | `shopchest.admin.debug` |
+| `/shops debug <commands\|permissions\|placeholders> [page]` | Lists documented runtime commands, declared and dynamic permissions, or internal hologram placeholders. | `shopchest.admin.debug` |
+| `/shops admin debug` | Compatibility alias for `/shops debug status`. | `shopchest.admin.debug` |
 | `/shops removeall <player>` | Removes all normal and admin shops owned by a player. | `shopchest.remove.other` |
 | `/shops reload` | Reloads config, language, hologram format, database connection, visibility tasks, and loaded shops. | `shopchest.reload` |
 | `/shops config set <property> <value>` | Sets a scalar configuration value. | `shopchest.config` |
@@ -226,6 +233,18 @@ requires a clean server restart.
 
 # Customer-sell-only shop
 /shops create 64 0 25
+
+# Change one setting on an owned shop, then click it within 15 seconds
+/shops edit amount 16
+/shops edit buy 75
+/shops edit sell 0
+
+# Face both displays toward the side where you stand when clicking the shop
+/shops edit holograms faceme
+
+# Use an exact direction, or return to the container's automatic front
+/shops edit holograms west
+/shops edit holograms reset
 
 # Unlimited admin shop
 /shops create 1 100 0 admin
@@ -271,12 +290,12 @@ means granted to server operators by default.
 | `shopchest.recent` | `true` | Views the player's recorded transaction history. |
 | `shopchest.admin` | `op` | Parent permission for ShopChest administration. |
 | `shopchest.admin.list` | `op` | Lists another player's shops and teleports to an authorized listed shop. |
-| `shopchest.admin.debug` | `op` | Generates the ShopChest support report. |
+| `shopchest.admin.debug` | `op` | Uses `/shops debug` for support status and metadata catalogs. |
 | `shopchest.limit.*` | `op` | Removes the normal-shop limit. |
 
 No permission is required for `/shops`, `/shops help`, `/shops info`,
-`/shops limits`, `/shops list`, `/shops inspect`, or managing a player's own
-normal shops.
+`/shops limits`, `/shops list`, `/shops inspect`, or removing a player's own
+normal shops. Editing uses the creation permissions described below.
 
 ### Dynamic shop limits
 
@@ -307,6 +326,18 @@ shopchest.create.sell.<MATERIAL>[.<durability>]
 
 Material names use Bukkit enum names such as `DIAMOND` and `OAK_LOG`. The broad
 `shopchest.create` node overrides material-specific requirements.
+
+`/shops edit` reuses these creation permissions for the shop's resulting buy
+and sell directions. It does not charge another creation fee or consume a shop
+slot. Players can edit only shops they own, and editing an admin shop also
+requires `shopchest.create.admin`. The product, owner, container, and normal or
+admin type cannot be changed through this command.
+
+Display orientation is stored on every physical container block, including
+both halves of a double chest, and survives restarts. `faceme` resolves to the
+side where the player stands when selecting the shop. The explicit compass
+options are useful for tightly arranged market stalls, while `reset` resumes
+the container's automatic orientation.
 
 ## Hologram Placeholders
 
@@ -353,7 +384,7 @@ calculations, and layout examples. Run `/shops reload` after editing
 ### Prerequisites
 
 - Git
-- A Java 25 JDK
+- A Java 25 JDK; release builds use JDK 25.0.4
 - Network access for the Gradle wrapper and Maven dependencies
 
 The repository includes the Gradle wrapper; a separate Gradle installation is
@@ -363,20 +394,23 @@ not required.
 git clone https://github.com/mrfdev/ShopChest.git
 cd ShopChest
 
-export JAVA_HOME=/path/to/jdk-25
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-25.0.4.jdk/Contents/Home
 java -version
 ./gradlew --version
-./gradlew clean build :plugin:shadowJar
+./gradlew clean build
 ```
 
 The build runs the test suite and writes the deployable shaded jar to:
 
 ```text
-plugin/build/libs/1MB-ShopChest-v1.15.1-<build>-j25-26.2.jar
+plugin/build/libs/1MB-ShopChest-v1.15.2-<build>-j25-26.2.jar
 ```
 
-`<build>` is the zero-padded Git commit count. Deploy the `1MB-ShopChest-...jar`,
-not an unshaded intermediate artifact. Test reports are available under
+`<build>` is the shared zero-padded release build from `gradle.properties`,
+normally aligned with the Git commit count. Release verification permits only
+the current commit count or its single pending release increment. The build
+disables the ambiguous unshaded jar and assembles only the deployable
+`1MB-ShopChest-...jar`. Test reports are available under
 `plugin/build/reports/tests/test/`.
 
 Local `servers/`, Gradle output, logs, and test-server jars are ignored and must
@@ -401,13 +435,26 @@ Useful settings:
 /shops config set hologram-text-scale 0.50
 /shops config set hologram-background-color #315B7D
 /shops config set hologram-background-opacity 112
+/shops config set hologram-text-opacity 255
+/shops config set hologram-text-shadowed false
+/shops config set hologram-text-see-through false
+/shops config set hologram-text-alignment CENTER
 /shops config set hologram-max-item-name-length 40
+/shops config set floating-icon-height 1.21
+/shops config set floating-icon-scale 0.45
+/shops config set floating-icon-bobbing-enabled true
+/shops config set floating-icon-bob-amplitude 0.06
+/shops config set floating-icon-bob-period-seconds 3.14
+/shops config set floating-icon-rotation-enabled true
+/shops config set floating-icon-rotation-period-seconds 6.28
 /shops config set shop-limits.default 10
 ```
 
 The bundled display defaults use a `0.50` text scale, `#315B7D` background,
 and opacity `112`. Color settings are global server presentation choices;
-players cannot customize individual shop colors.
+players cannot customize individual shop colors. All display commands above
+save to `config.yml` and update loaded displays immediately. Animation periods
+are measured in seconds; increasing a period slows that animation.
 
 `/shops recent` reads database-backed history. New rows are recorded only while
 `enable-economy-log` is enabled; disabling it preserves existing history.
@@ -422,7 +469,7 @@ shops report unlimited stock.
 - Do not delete or replace the database while registered shops still exist in
   the worlds.
 - Keep only one ShopChest jar in the top-level `plugins/` directory.
-- Use `/shops admin debug` for support reports. It excludes database
+- Use `/shops debug` for support reports. It excludes database
   credentials, filesystem paths, player names, world names, and individual
   shop coordinates.
 - A clean restart is required after changing the main command, database engine,
@@ -463,4 +510,4 @@ linked above.
 Report reproducible source issues at
 <https://github.com/mrfdev/ShopChest/issues>. Include the Paper build,
 ShopChest artifact name, relevant configuration, reproduction steps, and full
-exception or `/shops admin debug` report where applicable.
+exception or `/shops debug` report where applicable.

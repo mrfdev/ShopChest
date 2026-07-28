@@ -11,5 +11,5 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:26.2.build.60-beta")
+    compileOnly("io.papermc.paper:paper-api:${providers.gradleProperty("shopchestPaperApiVersion").get()}")
 }

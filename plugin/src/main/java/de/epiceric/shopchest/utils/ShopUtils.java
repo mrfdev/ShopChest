@@ -24,6 +24,7 @@ import de.epiceric.shopchest.config.Config;
 import de.epiceric.shopchest.event.ShopsLoadedEvent;
 import de.epiceric.shopchest.shop.Shop;
 import de.epiceric.shopchest.shop.Shop.ShopType;
+import de.epiceric.shopchest.shop.ShopContainer;
 
 public class ShopUtils {
 
@@ -161,6 +162,7 @@ public class ShopUtils {
         }
 
         if (removeFromDatabase) {
+            clearDisplayFacing(shop);
             if (shop.getShopType() != ShopType.ADMIN) {
                 playerShopAmount.compute(shop.getVendor().getUniqueId(), (uuid, amount) -> amount == null ? 0 : Math.max(0, amount - 1));
             }
@@ -211,6 +213,7 @@ public class ShopUtils {
 
         // Database#removeShop removes shop by ID so this only needs to be called once
         if (removeFromDatabase) {
+            clearDisplayFacing(first);
             if (!isAdmin) {
                 playerShopAmount.compute(vendorUuid, (uuid, amount) -> amount == null ? 0 : Math.max(0, amount - 1));
             }
@@ -227,6 +230,13 @@ public class ShopUtils {
      */
     public void removeShopById(int shopId, boolean removeFromDatabase) {
         removeShopById(shopId, removeFromDatabase, null);
+    }
+
+    private void clearDisplayFacing(Shop shop) {
+        final ShopContainer container = shop.getContainer();
+        if (container != null) {
+            container.setShopDisplayFacing(plugin, null);
+        }
     }
 
     /**

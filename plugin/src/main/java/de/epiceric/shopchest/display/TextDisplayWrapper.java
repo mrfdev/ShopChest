@@ -74,8 +74,10 @@ public final class TextDisplayWrapper {
         display.setLineWidth(data.lineWidth());
         display.setBackgroundColor(Color.fromARGB(data.backgroundColor()));
         display.setBillboard(data.fixedFacing() ? Display.Billboard.FIXED : Display.Billboard.CENTER);
-        display.setSeeThrough(false);
-        display.setShadowed(false);
+        display.setTextOpacity((byte) data.textOpacity());
+        display.setSeeThrough(data.seeThrough());
+        display.setShadowed(data.shadowed());
+        display.setAlignment(data.alignment());
         display.setDefaultBackground(false);
         display.setTransformation(new Transformation(
                 new Vector3f(),

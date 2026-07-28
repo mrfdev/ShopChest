@@ -2,6 +2,9 @@
 
 ShopChest does not register a PlaceholderAPI expansion. The placeholders below belong only to `plugins/ShopChest/hologram-format.yml` and are replaced while ShopChest builds its own shop holograms.
 
+Staff with `shopchest.admin.debug` can also review this catalog in game through
+`/shops debug placeholders [page]`.
+
 | Placeholder | Output |
 | --- | --- |
 | `%VENDOR%` | Shop owner's current name. |

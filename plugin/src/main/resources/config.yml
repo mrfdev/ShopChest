@@ -119,6 +119,15 @@ hologram-text-scale: 0.50
 hologram-background-color: "#315B7D"
 hologram-background-opacity: 112
 
+# Set the remaining native TextDisplay presentation options. Text opacity ranges
+# from 0 (invisible) through 255 (fully opaque). Alignment may be LEFT, CENTER,
+# or RIGHT. See-through text remains disabled by default so shop details do not
+# show through walls.
+hologram-text-opacity: 255
+hologram-text-shadowed: false
+hologram-text-see-through: false
+hologram-text-alignment: CENTER
+
 # Set the global text palette used by every shop hologram. Players cannot
 # override these colors. Each value must be a six-digit RGB hex color.
 # Labels and values remain separate so the display is understandable without
@@ -151,6 +160,18 @@ hologram-item-details-per-line: 2
 # Set whether the text panel should stay aligned with the front of its chest.
 # Set this to false to make the panel rotate toward each viewer instead.
 hologram-fixed-facing: true
+
+# Set the floating product icon's position, size, and animation. Height and bob
+# amplitude are measured in blocks. Animation periods are measured in seconds;
+# a larger period means slower motion. Values are bounded to keep accidental
+# commands from creating unusably large or excessively fast displays.
+floating-icon-height: 1.21
+floating-icon-scale: 0.45
+floating-icon-bobbing-enabled: true
+floating-icon-bob-amplitude: 0.06
+floating-icon-bob-period-seconds: 3.14
+floating-icon-rotation-enabled: true
+floating-icon-rotation-period-seconds: 6.28
 
 # Set whether players should be allowed to buy or sell less items
 # than the vendor has specified, in case the player does not have enough

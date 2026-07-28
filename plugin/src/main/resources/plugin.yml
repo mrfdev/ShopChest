@@ -7,7 +7,7 @@ author: EpicEric
 description: Create persistent container shops and trade items with other players.
 softdepend: [CMI, WorldGuard, Towny, AuthMe, PlotSquared, uSkyBlock, ASkyBlock, IslandWorld, GriefPrevention, AreaShop, Multiverse-Core, MultiWorld, BentoBox]
 depend: [Vault]
-api-version: '26.2'
+api-version: '${paperVersion}'
 
 permissions:
   shopchest.*:
@@ -96,7 +96,7 @@ permissions:
     description: Allows listing another player's shops and teleporting to them.
     default: op
   shopchest.admin.debug:
-    description: Allows generating a ShopChest support diagnostics report.
+    description: Allows ShopChest support status, command, permission, and placeholder diagnostics.
     default: op
   shopchest.recent:
     description: Allows viewing your own recent ShopChest transactions.

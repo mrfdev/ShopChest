@@ -185,10 +185,6 @@ public class ShopChest extends JavaPlugin {
             return;
         }
 
-        if (getShopCommand() != null) {
-            getShopCommand().unregister();
-        }
-
         ClickType.clear();
 
         if (updater != null) {

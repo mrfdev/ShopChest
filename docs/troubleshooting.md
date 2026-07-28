@@ -22,7 +22,7 @@ After `/shops create`, the player must click a supported container within 15 sec
 - Every block occupied by the container has air directly above it and is not already a shop.
 - A protection integration did not deny the location.
 
-Start with `/shops admin debug` and copy its support report. This snapshot does
+Start with `/shops debug` and copy its support report. This snapshot does
 not require verbose logging and excludes credentials, filesystem paths, player
 names, world names, and individual shop locations. Enable `enable-debug-log`
 and restart only when the snapshot is insufficient; `debug.txt` can grow
@@ -37,7 +37,7 @@ optional administrator override layer; a missing entry is expected and does
 not mean the item is unsupported. Custom and renamed items keep their own
 display name.
 
-Run `/shops admin debug` and inspect `Item naming`. Runtime translation-key
+Run `/shops debug` and inspect `Item naming`. Runtime translation-key
 coverage should match the total runtime item count. The report also identifies
 invalid overrides, while known failure values such as `ERROR`, `unknown item`,
 and `not configured` are ignored instead of reaching a hologram. A
@@ -68,7 +68,7 @@ Blue entity outlines or direction lines are normally the client's entity-hitbox 
 
 Keep `remove-shop-on-error: false` while recovering temporarily unavailable worlds or blocked containers; otherwise failed records may be deleted. Stop the server before moving databases. ShopChest migrates known legacy schemas but does not transfer data between SQLite and MySQL automatically.
 
-For a report, run `/shops admin debug`, click **Copy full support report**, and
+For a report, run `/shops debug`, click **Copy full support report**, and
 include the result with exact reproduction steps and the complete first
 exception with its `Caused by` chain. Console can run the same command and gets
 the full report as plain text. Never publish database passwords or verbose

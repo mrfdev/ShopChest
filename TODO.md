@@ -4,8 +4,8 @@ This backlog tracks planned work for the 1MoreBlock ShopChest fork. The current
 working Paper 26.2 build remains the baseline while these changes are developed
 and tested.
 
-Last audited against the source tree, automated tests, and Paper 26.2 build 60
-beta on 2026-07-17. Checked items have corresponding implementation or
+Last audited against the source tree, automated tests, and Paper 26.2 build 84
+stable on 2026-07-28. Checked items have corresponding implementation or
 verification evidence; unchecked items remain unimplemented or intentionally
 shelved.
 
@@ -30,6 +30,9 @@ shelved.
 - [x] Add a configurable, slightly smaller TextDisplay font scale so holograms
   occupy less space and remain distinct when shop chests are placed next to
   each other, without sacrificing readability.
+- [x] Expose bounded, live-reloading administrator controls for the complete
+  text panel and floating product icon, including text opacity/shadow/alignment,
+  icon height and scale, and optional bob/rotation timing.
 - [x] Show an `[Out of stock]` state when an enabled normal-shop buy side cannot
   supply one complete configured purchase, while preserving any independently
   enabled sell price.
@@ -68,7 +71,7 @@ shelved.
   - Warnings are limited to one customer-price warning and one shop-payout
     warning per proposal. Admin shops and items without positive CMI worth data
     are skipped silently.
-  - Verified on Paper 26.2 build 60 with CMI 9.8.8.5 loading 1,532 worth
+  - Verified on Paper 26.2 build 84 stable with CMI 9.8.8.5 loading 1,532 worth
     entries; startup, `/shops reload`, diagnostics, and existing shop visuals
     remained clean.
 
@@ -101,6 +104,11 @@ shelved.
   database-backed history distinguishes the player's own trades from customer
   activity at their normal shops, paginates eight entries at a time, and uses
   compact rows with detailed date, unit-price, and shop-location hover text.
+- [x] Reformat the join-time "while you were offline" revenue summary as a
+  compact Adventure message with a useful hover tooltip and a click action that
+  runs `/shops recent`.
+  - The action follows the configured root command, falls back cleanly for
+    existing language files, and is sent only while the player remains online.
 - [x] Add or confirm `/shops list` so a player can locate all shops they own.
   Player and admin views use compact rows with detailed hover text, and loaded
   shops that cannot fulfill one complete purchase are marked out of stock.
@@ -111,17 +119,19 @@ shelved.
   useful maintenance commands.
 - [x] Add `/shops admin list <player>` to find every shop registered to a player.
   In-game staff retain click-to-teleport on the compact, stock-aware rows.
-- [x] Add `/shops admin debug` under the `shopchest.admin.debug` permission with
+- [x] Add `/shops debug` under the `shopchest.admin.debug` permission with
   actionable plugin, platform, dependency, database, and shop-state diagnostics
   suitable for support reports. The database snapshot runs asynchronously,
   console receives plain text, and players can copy a full report that excludes
-  credentials, file paths, player names, and world names.
+  credentials, file paths, player names, and world names. Staff can also inspect
+  paginated command, permission, and internal hologram-placeholder catalogs;
+  `/shops admin debug` remains a compatibility alias for status.
 
 ## Items and localization
 
 - [x] Audit the locale data for every vanilla item introduced in Minecraft
   26.1, 26.1.2, and 26.2 so supported items never render as `ERROR` or
-  `unknown item`. Paper 26.2 build 60 reports usable translation keys for all
+  `unknown item`. Paper 26.2 build 84 stable reports usable translation keys for all
   1,537 runtime item materials, including a zero-override server test.
 - [x] Replace version-specific generated item-name lists with automatic vanilla
   item naming where possible.
@@ -132,7 +142,7 @@ shelved.
   - `items-<locale>.lang` remains an optional administrator override layer;
     missing entries use runtime translation keys and known error sentinels are
     ignored.
-  - Startup and `/shops admin debug` audit the current server's complete item
+  - Startup and `/shops debug` audit the current server's complete item
     registry, so future vanilla items are recognized without regenerating a
     language file.
 
@@ -140,7 +150,7 @@ shelved.
 
 - [x] Audit and simplify the supported platform matrix around Paper 26.2 and
   newer releases.
-  - Paper 26.2 build 60 beta and Java 25 are the verified baseline.
+  - Paper 26.2 build 84 stable and Java 25 are the verified baseline.
   - Older Paper/Minecraft and Spigot are explicitly unsupported.
   - Newer Paper releases remain compatibility targets and must pass the
     platform contract, clean build, and test-server checks before deployment.
@@ -164,21 +174,61 @@ shelved.
     server thread instead of the old custom updater thread.
 - [x] Audit Paper 26.2 deprecations and add upgrade-focused tests that expose API
   breakage before moving to a future Paper release.
-  - The exact Paper 26.2 build 60 API compiles with Java 25 and
+  - The exact Paper 26.2 build 84 stable API compiles with Java 25 and
     `-Xlint:deprecation` without plugin-source deprecation warnings.
   - Platform contract tests assert the descriptor target and the required
     display, spawning, and per-player visibility methods.
 
 ## Feature exploration
 
-- [ ] Review the existing data model and integrations for additional useful,
+- [x] Review the existing data model and integrations for additional useful,
   low-maintenance player and staff features.
-- [ ] Collect and evaluate feature suggestions, prioritizing reliability,
+- [x] Collect and evaluate feature suggestions, prioritizing reliability,
   discoverability, server performance, and straightforward future upgrades.
-  - Audit status: no separate, reviewed proposal set has been produced yet.
+  The initial reviewed proposal set is tracked below.
+
+## Approved feature proposals
+
+- [x] Add `/shops edit` so a shop owner can safely update the configured trade
+  amount, customer buy price, or customer sell price without removing and
+  recreating the shop.
+  - Reuse creation price bounds, directional and material permissions, CMI
+    worth advisories, ownership checks, and exact product metadata.
+  - Persist the complete validated update before refreshing the loaded
+    hologram, stock state, and player-facing shop information.
+  - Do not charge another shop-creation fee or silently change the shop item,
+    owner, container, or normal/admin type.
+  - Implemented as a 15-second owner-only shop selector with field-specific
+    `amount`, `buy`, and `sell` updates. The complete proposed terms are
+    validated and persisted atomically before the loaded shop and hologram are
+    refreshed on the server thread.
+  - Also supports `holograms reset|faceme|north|south|east|west` for a persisted
+    per-shop text-panel and floating-icon orientation. Double-chest overrides
+    are stored on both physical container blocks and cleared when the shop is
+    removed.
+- [ ] Add a compact shop-health summary showing how many owned shops are out of
+  stock, full, unavailable, or otherwise need attention.
+  - Prefer enhancing `/shops list` and `/shops info` over adding noisy recurring
+    messages.
+- [ ] Add `/shops admin audit [player]` as a dry-run maintenance report for
+  missing worlds, missing or unsupported containers, blocked display space,
+  invalid products, and stale database records.
+  - Do not force-load large numbers of chunks or mutate records during the
+    audit.
+- [ ] Add owner statistics for purchases, sales, earnings, and spending over a
+  bounded configurable period, building on the existing economy log and its
+  indexes.
+- [ ] Improve staff maintenance with filters for owner, world, product, shop
+  state, and age, followed by explicit confirmed actions for selected invalid
+  shops.
+  - Keep database scans asynchronous and avoid bulk chunk loading.
 
 ## Shelved future ideas
 
+- [ ] Explore a stable public API and Paper events for shop creation, editing,
+  removal, successful trades, and failed trades.
+  - Audit status: intentionally shelved until a concrete integration needs a
+    public contract that can be maintained across future releases.
 - [ ] Explore configurable item groups such as `#stone`, `#glass`, `#wool`, or
   `#dirt`, with each group defining a set of eligible blocks or items. A shop
   could trade a group instead of one exact item, allowing the buyer to select

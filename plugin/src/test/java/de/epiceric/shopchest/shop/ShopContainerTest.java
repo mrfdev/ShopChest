@@ -64,4 +64,26 @@ class ShopContainerTest {
         assertEquals(BlockFace.SOUTH, ShopContainer.resolveFacing(BlockFace.UP, null));
         assertEquals(BlockFace.EAST, ShopContainer.resolveFacing(BlockFace.EAST, BlockFace.WEST));
     }
+
+    @Test
+    void shopOverrideTakesPriorityOverNativeAndVerticalContainerFacing() {
+        assertEquals(
+                BlockFace.NORTH,
+                ShopContainer.resolveFacing(
+                        BlockFace.SOUTH,
+                        BlockFace.WEST,
+                        BlockFace.NORTH));
+        assertEquals(
+                BlockFace.EAST,
+                ShopContainer.resolveFacing(
+                        BlockFace.UP,
+                        BlockFace.WEST,
+                        BlockFace.EAST));
+        assertEquals(
+                BlockFace.SOUTH,
+                ShopContainer.resolveFacing(
+                        BlockFace.SOUTH,
+                        BlockFace.WEST,
+                        null));
+    }
 }

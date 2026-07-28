@@ -1,6 +1,7 @@
 package de.epiceric.shopchest.shop;
 
 import de.epiceric.shopchest.ShopChest;
+import de.epiceric.shopchest.config.Config;
 import org.bukkit.Location;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.ItemDisplay;
@@ -18,7 +19,7 @@ public class ShopItem {
 
     private final Set<UUID> viewers = ConcurrentHashMap.newKeySet();
     private final ItemStack itemStack;
-    private final Location location;
+    private Location location;
     private final ItemDisplay display;
     private final ShopChest plugin;
     private final float animationPhase;
@@ -50,6 +51,14 @@ public class ShopItem {
      */
     public Location getLocation() {
         return location.clone();
+    }
+
+    /**
+     * Moves the display while preserving its viewers and animation state.
+     */
+    public void setLocation(Location location) {
+        this.location = location.clone();
+        display.teleport(this.location);
     }
 
     /**
@@ -136,7 +145,15 @@ public class ShopItem {
     }
 
     void applyAnimation(long elapsedTicks) {
-        display.setTransformation(ShopItemAnimation.at(elapsedTicks, animationPhase));
+        display.setTransformation(ShopItemAnimation.at(
+                elapsedTicks,
+                animationPhase,
+                Config.floatingIconScale,
+                Config.floatingIconBobbingEnabled,
+                Config.floatingIconBobAmplitude,
+                Config.floatingIconBobPeriodSeconds,
+                Config.floatingIconRotationEnabled,
+                Config.floatingIconRotationPeriodSeconds));
         display.setInterpolationDelay(0);
         display.setInterpolationDuration(ShopItemAnimation.UPDATE_INTERVAL_TICKS);
     }

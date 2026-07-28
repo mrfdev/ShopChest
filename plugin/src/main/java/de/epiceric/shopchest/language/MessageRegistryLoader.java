@@ -25,6 +25,12 @@ public class MessageRegistryLoader {
     private void registerAll(@NotNull String[] messages) {
         register(messages, Message.SHOP_CREATED, "message.shop-created", "&6You were withdrawn &c%CREATION-PRICE% &6to create this shop.");
         register(messages, Message.ADMIN_SHOP_CREATED, "message.admin-shop-created", "&6You were withdrawn &c%CREATION-PRICE% &6to create this admin shop.");
+        register(messages, Message.SHOP_EDITED, "message.shop-edited", "&aShop updated: &f%AMOUNT%x %ITEMNAME% &8| &7Buy &f%BUY-PRICE% &8| &7Sell &f%SELL-PRICE%");
+        register(messages, Message.SHOP_EDIT_PENDING, "message.shop-edit-pending", "&eThat shop is already being updated. Try again in a moment.");
+        register(messages, Message.SHOP_EDIT_FAILED, "message.shop-edit-failed", "&cThe shop could not be updated. Its previous settings are still active.");
+        register(messages, Message.SHOP_DISPLAY_ORIENTATION_UPDATED, "message.shop-display-orientation-updated", "&aThe shop hologram and icon now face &f%VALUE%&a.");
+        register(messages, Message.SHOP_DISPLAY_ORIENTATION_RESET, "message.shop-display-orientation-reset", "&aThe shop hologram and icon now use the container's automatic orientation.");
+        register(messages, Message.SHOP_DISPLAY_ORIENTATION_FAILED, "message.shop-display-orientation-failed", "&cThe shop display orientation could not be changed.");
         register(messages, Message.CHEST_ALREADY_SHOP, "message.chest-already-shop", "&cChest already shop.");
         register(messages, Message.CHEST_BLOCKED, "message.chest-blocked", "&cThere must not be a block above the chest.");
         register(messages, Message.DOUBLE_CHEST_BLOCKED, "message.double-chest-blocked", "&cThere must not be a block above the chest.");
@@ -35,6 +41,7 @@ public class MessageRegistryLoader {
         register(messages, Message.SHOP_CREATE_NOT_ENOUGH_MONEY, "message.shop-create-not-enough-money", "&cNot enough money. You need &6%CREATION-PRICE% &cto create a shop.");
         register(messages, Message.SHOP_INFO_VENDOR, "message.shopInfo.vendor", "&6Vendor: &e%VENDOR%");
         register(messages, Message.SHOP_INFO_PRODUCT, "message.shopInfo.product", "&6Product: &e%AMOUNT% x %ITEMNAME%");
+        register(messages, Message.SHOP_INFO_ITEM_DETAILS, "message.shopInfo.item-details", "&6Details: %ITEM-DETAILS%");
         register(messages, Message.SHOP_INFO_STOCK, "message.shopInfo.stock", "&6In Stock: &e%STOCK%");
         register(messages, Message.SHOP_INFO_CHEST_SPACE, "message.shopInfo.chest-space", "&6Space in chest: &e%CHEST-SPACE%");
         register(messages, Message.SHOP_INFO_PRICE, "message.shopInfo.price", "&6Price: Buy: &e%BUY-PRICE%&6 Sell: &e%SELL-PRICE%");
@@ -48,7 +55,9 @@ public class MessageRegistryLoader {
         register(messages, Message.SELL_SUCCESS_ADMIN, "message.sell-success-admin", "&aYou sold &6%AMOUNT% x %ITEMNAME%&a for &6%SELL-PRICE%&a.");
         register(messages, Message.SOMEONE_BOUGHT, "message.someone-bought", "&6%PLAYER% &abought &6%AMOUNT% x %ITEMNAME%&a for &6%BUY-PRICE%&a from your shop.");
         register(messages, Message.SOMEONE_SOLD, "message.someone-sold", "&6%PLAYER% &asold &6%AMOUNT% x %ITEMNAME%&a for &6%SELL-PRICE%&a to your shop.");
-        register(messages, Message.REVENUE_WHILE_OFFLINE, "message.revenue-while-offline", "&6While you were offline, your shops have made a revenue of &c%REVENUE%&6.");
+        register(messages, Message.REVENUE_WHILE_OFFLINE, "message.revenue-while-offline.summary", "&6While you were offline &8- &7Shop revenue: &f%REVENUE%");
+        register(messages, Message.REVENUE_WHILE_OFFLINE_ACTION, "message.revenue-while-offline.action", "&b&n[View recent trades]");
+        register(messages, Message.REVENUE_WHILE_OFFLINE_HOVER, "message.revenue-while-offline.hover", "&7Click to run &f/%COMMAND% recent &7and review the transactions behind this total.");
         register(messages, Message.NOT_ENOUGH_INVENTORY_SPACE, "message.not-enough-inventory-space", "&cNot enough space in inventory.");
         register(messages, Message.CHEST_NOT_ENOUGH_INVENTORY_SPACE, "message.chest-not-enough-inventory-space", "&cShop is full.");
         register(messages, Message.NOT_ENOUGH_MONEY, "message.not-enough-money", "&cNot enough money.");
@@ -61,9 +70,13 @@ public class MessageRegistryLoader {
         register(messages, Message.ERROR_OCCURRED, "message.error-occurred", "&cAn error occurred: %ERROR%");
         register(messages, Message.AMOUNT_PRICE_NOT_NUMBER, "message.amount-and-price-not-number", "&cAmount and price must be a number.");
         register(messages, Message.AMOUNT_IS_ZERO, "message.amount-is-zero", "&cAmount must be greater than 0.");
+        register(messages, Message.PRICES_INVALID, "message.prices-invalid", "&cPrices must be finite numbers greater than or equal to 0.");
+        register(messages, Message.EDIT_UNKNOWN_FIELD, "message.edit-unknown-field", "&cChoose one setting to edit: amount, buy, sell, or holograms.");
+        register(messages, Message.EDIT_UNKNOWN_HOLOGRAM_ORIENTATION, "message.edit-unknown-hologram-orientation", "&cChoose a hologram orientation: reset, faceme, north, south, east, or west.");
         register(messages, Message.PRICES_CONTAIN_DECIMALS, "message.prices-contain-decimals", "&cPrices must not contain decimals.");
         register(messages, Message.NO_ITEM_IN_HAND, "message.no-item-in-hand", "&cNo item in hand");
         register(messages, Message.CLICK_CHEST_CREATE, "message.click-chest-to-create-shop", "&aClick a chest within 15 seconds to create a shop.");
+        register(messages, Message.CLICK_CHEST_EDIT, "message.click-shop-to-edit", "&aClick one of your shops within 15 seconds to apply the change.");
         register(messages, Message.CLICK_CHEST_REMOVE, "message.click-chest-to-remove-shop", "&aClick a shop within 15 seconds to remove it.");
         register(messages, Message.CLICK_CHEST_INFO, "message.click-chest-for-info", "&aClick a shop within 15 seconds to retrieve information.");
         register(messages, Message.CLICK_CHEST_OPEN, "message.click-chest-to-open-shop", "&aClick a shop within 15 seconds to open it.");
@@ -92,6 +105,9 @@ public class MessageRegistryLoader {
         register(messages, Message.NO_PERMISSION_CREATE, "message.noPermission.create", "&cYou don't have permission to create a shop.");
         register(messages, Message.NO_PERMISSION_CREATE_ADMIN, "message.noPermission.create-admin", "&cYou don't have permission to create an admin shop.");
         register(messages, Message.NO_PERMISSION_CREATE_PROTECTED, "message.noPermission.create-protected", "&cYou don't have permission to create a shop on a protected chest.");
+        register(messages, Message.NO_PERMISSION_EDIT, "message.noPermission.edit", "&cYou don't have permission to use those trade settings for this item.");
+        register(messages, Message.NO_PERMISSION_EDIT_OTHERS, "message.noPermission.edit-others", "&cYou can only edit shops that you own.");
+        register(messages, Message.NO_PERMISSION_EDIT_ADMIN, "message.noPermission.edit-admin", "&cYou don't have permission to edit an admin shop.");
         register(messages, Message.NO_PERMISSION_OPEN_OTHERS, "message.noPermission.open-others", "&cYou don't have permission to open this chest.");
         register(messages, Message.NO_PERMISSION_BUY, "message.noPermission.buy", "&cYou don't have permission to buy something.");
         register(messages, Message.NO_PERMISSION_SELL, "message.noPermission.sell", "&cYou don't have permission to sell something.");
@@ -125,6 +141,7 @@ public class MessageRegistryLoader {
         register(messages, Message.HELP_COMMAND_HELP, "message.help.command.help", "&a/%COMMAND% help &7- Show commands available to you.");
         register(messages, Message.HELP_COMMAND_CREATE, "message.help.command.create", "&a/%COMMAND% create <amount> <buy-price> <sell-price> &7- Create a shop using your held item.");
         register(messages, Message.HELP_COMMAND_CREATE_ADMIN, "message.help.command.create-admin", "&a/%COMMAND% create <amount> <buy-price> <sell-price> [normal|admin] &7- Create a player or admin shop.");
+        register(messages, Message.HELP_COMMAND_EDIT, "message.help.command.edit", "&a/%COMMAND% edit <amount|buy|sell|holograms> <value> &7- Change one setting, then click one of your shops.");
         register(messages, Message.HELP_COMMAND_REMOVE, "message.help.command.remove", "&a/%COMMAND% remove &7- Click one of your shops to remove it.");
         register(messages, Message.HELP_COMMAND_INFO, "message.help.command.info", "&a/%COMMAND% info &7- Learn how ShopChest works and open the player guide.");
         register(messages, Message.HELP_COMMAND_INSPECT, "message.help.command.inspect", "&a/%COMMAND% inspect &7- Click a shop to view its details.");
@@ -134,6 +151,7 @@ public class MessageRegistryLoader {
         register(messages, Message.HELP_COMMAND_RELOAD, "message.help.command.reload", "&a/%COMMAND% reload &7- Reload configuration, data, and loaded shops. &8[shopchest.reload]");
         register(messages, Message.HELP_COMMAND_CONFIG, "message.help.command.config", "&a/%COMMAND% config <set|add|remove> <property> <value> &7- Change global settings. &8[shopchest.config]");
         register(messages, Message.INFO_HEADER, "message.info.header", "&6ShopChest &7v%VERSION%");
+        register(messages, Message.INFO_BUILD, "message.info.build", "&8Build %BUILD% &7| Java %JAVA-TARGET% &7| Paper API %PAPER-API%");
         register(messages, Message.INFO_INTRO, "message.info.intro", "&fCreate persistent chest shops where players can buy from you or sell items to you.");
         register(messages, Message.INFO_STEP_PLACE, "message.info.step-place", "&e1. &fPlace a chest and hold the exact item you want to trade.");
         register(messages, Message.INFO_STEP_CREATE, "message.info.step-create", "&e2. &fRun &a/%COMMAND% create <amount> <buy-price> <sell-price>&f.");
@@ -143,6 +161,7 @@ public class MessageRegistryLoader {
         register(messages, Message.HELP_COMMAND_LIST, "message.help.command.list", "&a/%COMMAND% list [page] &7- List every shop you own and its location.");
         register(messages, Message.HELP_COMMAND_RECENT, "message.help.command.recent", "&a/%COMMAND% recent [page] &7- Show your latest purchases, sales, earnings, and spending.");
         register(messages, Message.HELP_COMMAND_ADMIN, "message.help.command.admin", "&a/%COMMAND% admin <list|debug> ... &7- Shop administration and support diagnostics.");
+        register(messages, Message.HELP_COMMAND_DEBUG, "message.help.command.debug", "&a/%COMMAND% debug [status|commands|permissions|placeholders] [page] &7- Show support status and ShopChest metadata. &8[shopchest.admin.debug]");
         register(messages, Message.NO_PERMISSION_RECENT, "message.noPermission.recent", "&cYou do not have permission to view recent shop activity.");
         register(messages, Message.NO_PERMISSION_ADMIN, "message.noPermission.admin", "&cYou do not have permission to use ShopChest administration commands.");
         register(messages, Message.NO_PERMISSION_ADMIN_LIST, "message.noPermission.admin-list", "&cYou don't have permission to list other players' shops.");

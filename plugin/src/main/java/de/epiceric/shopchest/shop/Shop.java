@@ -54,10 +54,10 @@ public class Shop {
 
     private final ShopChest plugin;
     private final OfflinePlayer vendor;
-    private final ShopProduct product;
+    private ShopProduct product;
     private final Location location;
-    private final double buyPrice;
-    private final double sellPrice;
+    private double buyPrice;
+    private double sellPrice;
     private final ShopType shopType;
 
     private boolean created;
@@ -185,12 +185,7 @@ public class Shop {
      */
     private void createItem() {
         plugin.debug("Creating item (#" + id + ")");
-
-        Location itemLocation;
-
-        itemLocation = holoLocation.clone();
-        itemLocation.setY(location.getY() + 1.15);
-        item = new ShopItem(plugin, product.getItemStack(), itemLocation);
+        item = new ShopItem(plugin, product.getItemStack(), getItemLocation());
     }
 
     /**
@@ -289,17 +284,48 @@ public class Shop {
     }
 
     /**
+     * Applies already validated and persisted trading terms.
+     * <p><b>Has to be called synchronously!</b></p>
+     */
+    public void applyTerms(ShopTerms terms) {
+        if (!Bukkit.isPrimaryThread()) {
+            throw new IllegalStateException("Shop terms must be applied on the server thread");
+        }
+
+        product = new ShopProduct(product.getItemStack(), terms.amount());
+        buyPrice = terms.buyPrice();
+        sellPrice = terms.sellPrice();
+        updateHologramText();
+    }
+
+    /**
      * Recalculate and move the hologram without recreating the shop item.
      * <p><b>Has to be called synchronously!</b></p>
      */
     public void updateHologramLocation() {
-        if (hologram == null || !hologram.exists()) return;
+        updateDisplayLocation();
+    }
+
+    /**
+     * Recalculate and move both display entities without recreating them.
+     * <p><b>Has to be called synchronously!</b></p>
+     */
+    public void updateDisplayLocation() {
+        if (!Bukkit.isPrimaryThread()) {
+            throw new IllegalStateException("Shop displays must be moved on the server thread");
+        }
+        if (!hasHologram() && !hasItem()) return;
 
         PreCreateResult preResult = preCreateHologram();
         if (preResult == null) return;
 
         holoLocation = getHologramLocation(preResult.container);
-        hologram.setLocation(holoLocation);
+        if (hasHologram()) {
+            hologram.setLocation(holoLocation);
+        }
+        if (hasItem()) {
+            item.setLocation(getItemLocation());
+        }
     }
 
     private Component[] getHologramText(Inventory inventory) {
@@ -443,6 +469,12 @@ public class Shop {
         holoLocation.setPitch(0f);
 
         return holoLocation;
+    }
+
+    private Location getItemLocation() {
+        final Location itemLocation = holoLocation.clone();
+        itemLocation.setY(location.getY() + Config.floatingIconHeight);
+        return itemLocation;
     }
 
     private static String getLegacyDisplayName(ItemStack itemStack) {

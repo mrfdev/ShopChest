@@ -3,13 +3,16 @@ package de.epiceric.shopchest.listeners;
 import de.epiceric.shopchest.ShopChest;
 import de.epiceric.shopchest.config.Config;
 import de.epiceric.shopchest.config.Placeholder;
+import de.epiceric.shopchest.config.hologram.HologramColorPalette;
+import de.epiceric.shopchest.config.hologram.HologramItemDetails;
+import de.epiceric.shopchest.display.HologramTextFormatter;
+import de.epiceric.shopchest.display.TextComponentHelper;
 import de.epiceric.shopchest.event.*;
 import de.epiceric.shopchest.external.PlotSquaredOldShopFlag;
 import de.epiceric.shopchest.external.PlotSquaredShopFlag;
 import de.epiceric.shopchest.language.Message;
 import de.epiceric.shopchest.language.MessageRegistry;
 import de.epiceric.shopchest.language.Replacement;
-import de.epiceric.shopchest.display.TextComponentHelper;
 import de.epiceric.shopchest.shop.Shop;
 import de.epiceric.shopchest.shop.ShopContainer;
 import de.epiceric.shopchest.shop.Shop.ShopType;
@@ -17,7 +20,9 @@ import de.epiceric.shopchest.shop.ShopProduct;
 import de.epiceric.shopchest.sql.Database;
 import de.epiceric.shopchest.utils.*;
 import de.epiceric.shopchest.utils.ClickType.CreateClickType;
+import de.epiceric.shopchest.utils.ClickType.EditClickType;
 import fr.xephi.authme.api.v3.AuthMeApi;
+import net.kyori.adventure.text.Component;
 import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
@@ -169,6 +174,10 @@ public class ShopInteractListener implements Listener {
             switch (clickType.getClickType()) {
                 case INFO:
                     info(p, shop);
+                    break;
+                case EDIT:
+                    plugin.getShopCommand().editShopAfterSelected(
+                            p, shop, (EditClickType) clickType);
                     break;
                 case REMOVE:
                     remove(p, shop);
@@ -661,8 +670,29 @@ public class ShopInteractListener implements Listener {
                         new Replacement(Placeholder.AMOUNT, String.valueOf(product.getAmount()))),
                 Placeholder.ITEM_NAME.toString(),
                 product.getItemStack(),
-                product.getLocalizedName()
+                product.getLocalizedNameComponent()
         );
+        final HologramItemDetails itemDetails = HologramItemDetails.from(
+                product.getItemStack(),
+                Config.hologramColors.textColor(HologramColorPalette.Role.DETAILS),
+                Config.hologramColors.textColor(HologramColorPalette.Role.SEPARATOR));
+        final Component itemDetailsMessage = itemDetails.isEmpty()
+                ? Component.empty()
+                : HologramTextFormatter.replaceComponents(
+                        messageRegistry.getMessage(Message.SHOP_INFO_ITEM_DETAILS),
+                        Map.of(
+                                Placeholder.ITEM_DETAILS.toString(),
+                                itemDetails.combined(
+                                        Config.hologramMaxItemDetailEntries,
+                                        Config.hologramItemDetailsPerLine,
+                                        hiddenCount -> HologramTextFormatter.fromLegacy(
+                                                        messageRegistry.getMessage(
+                                                                Message.HOLOGRAM_MORE_ITEM_DETAILS,
+                                                                new Replacement(
+                                                                        Placeholder.DETAIL_COUNT,
+                                                                        hiddenCount)))
+                                                .color(Config.hologramColors.textColor(
+                                                        HologramColorPalette.Role.SEPARATOR)))));
 
         String disabled = messageRegistry.getMessage(Message.SHOP_INFO_DISABLED);
 
@@ -682,6 +712,7 @@ public class ShopInteractListener implements Listener {
         executor.sendMessage(" ");
         if (shop.getShopType() != ShopType.ADMIN) executor.sendMessage(vendorString);
         productMessage.accept(executor);
+        if (!itemDetails.isEmpty()) executor.sendMessage(itemDetailsMessage);
         if (shop.getShopType() != ShopType.ADMIN && shop.getBuyPrice() > 0) executor.sendMessage(stock);
         if (shop.getShopType() != ShopType.ADMIN && shop.getSellPrice() > 0) executor.sendMessage(chestSpace);
         executor.sendMessage(priceString);

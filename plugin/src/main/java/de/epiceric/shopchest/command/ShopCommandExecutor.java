@@ -4,19 +4,25 @@ import de.epiceric.shopchest.ShopChest;
 import de.epiceric.shopchest.config.Config;
 import de.epiceric.shopchest.config.Placeholder;
 import de.epiceric.shopchest.diagnostics.ShopChestSupportReport;
+import de.epiceric.shopchest.diagnostics.PluginBuildInfo;
 import de.epiceric.shopchest.event.*;
 import de.epiceric.shopchest.language.Message;
 import de.epiceric.shopchest.language.MessageRegistry;
 import de.epiceric.shopchest.language.Replacement;
 import de.epiceric.shopchest.display.HologramTextFormatter;
 import de.epiceric.shopchest.shop.Shop;
+import de.epiceric.shopchest.shop.ShopContainer;
+import de.epiceric.shopchest.shop.ShopDisplayOrientation;
 import de.epiceric.shopchest.shop.Shop.ShopType;
 import de.epiceric.shopchest.shop.ShopProduct;
+import de.epiceric.shopchest.shop.ShopTerms;
+import de.epiceric.shopchest.shop.ShopTermsValidator;
 import de.epiceric.shopchest.sql.DatabaseDiagnostics;
 import de.epiceric.shopchest.sql.RecentTransaction;
 import de.epiceric.shopchest.sql.RecentTransactionPage;
 import de.epiceric.shopchest.utils.*;
 import de.epiceric.shopchest.utils.ClickType.CreateClickType;
+import de.epiceric.shopchest.utils.ClickType.EditClickType;
 import de.epiceric.shopchest.utils.ClickType.SelectClickType;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -26,6 +32,7 @@ import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.block.BlockFace;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.InventoryHolder;
@@ -39,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
 class ShopCommandExecutor implements CommandExecutor {
@@ -49,11 +57,13 @@ class ShopCommandExecutor implements CommandExecutor {
     private static final int SHOP_LIST_ITEM_NAME_LENGTH = 36;
     private static final int RECENT_PAGE_SIZE = 8;
     private static final int RECENT_ITEM_NAME_LENGTH = 32;
+    private static final int DEBUG_PAGE_SIZE = 8;
     private static final LegacyComponentSerializer LEGACY_SERIALIZER = LegacyComponentSerializer.legacySection();
 
     private final ShopChest plugin;
     private final ShopUtils shopUtils;
     private final Map<UUID, Map<Integer, Location>> adminTeleportTargets = new ConcurrentHashMap<>();
+    private final java.util.Set<Integer> pendingShopEdits = ConcurrentHashMap.newKeySet();
     private static final Enchantment UNBREAKING_ENCHANT = Enchantment.UNBREAKING;
 
     ShopCommandExecutor(ShopChest plugin) {
@@ -105,6 +115,8 @@ class ShopCommandExecutor implements CommandExecutor {
                 }
             } else if (subCommand.getName().equalsIgnoreCase("admin")) {
                 return handleAdminCommand(sender, args);
+            } else if (subCommand.getName().equalsIgnoreCase("debug")) {
+                return handleDebugCommand(sender, args);
             } else if (subCommand.getName().equalsIgnoreCase("info")) {
                 if (args.length >= 2 && args[1].equalsIgnoreCase("shop")) {
                     if (sender instanceof Player) {
@@ -139,6 +151,11 @@ class ShopCommandExecutor implements CommandExecutor {
                         } else {
                             return false;
                         }
+                    } else if (subCommand.getName().equalsIgnoreCase("edit")) {
+                        if (args.length != 3) {
+                            return false;
+                        }
+                        edit(args, p);
                     } else if (subCommand.getName().equalsIgnoreCase("remove")) {
                         remove(p);
                     } else if (subCommand.getName().equalsIgnoreCase("inspect")) {
@@ -357,11 +374,20 @@ class ShopCommandExecutor implements CommandExecutor {
 
     private void sendPluginInfo(CommandSender sender) {
         final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+        final PluginBuildInfo build = PluginBuildInfo.load(plugin);
         final Replacement command = new Replacement(Placeholder.COMMAND, Config.mainCommandName);
         final Replacement version = new Replacement(Placeholder.VERSION, plugin.getPluginMeta().getVersion());
 
         sender.sendMessage(" ");
         sender.sendMessage(messageRegistry.getMessage(Message.INFO_HEADER, version));
+        sender.sendMessage(messageRegistry.getMessage(
+                Message.INFO_BUILD,
+                new Replacement(Placeholder.BUILD, build.build()),
+                new Replacement(Placeholder.JAVA_TARGET, build.javaTarget()),
+                new Replacement(Placeholder.PAPER_TARGET, build.paperTarget()),
+                new Replacement(Placeholder.PAPER_BUILD, build.paperBuild()),
+                new Replacement(Placeholder.PAPER_CHANNEL, build.paperChannel()),
+                new Replacement(Placeholder.PAPER_API, build.paperApiVersion())));
         sender.sendMessage(messageRegistry.getMessage(Message.INFO_INTRO));
         sender.sendMessage(messageRegistry.getMessage(Message.INFO_STEP_PLACE));
         sender.sendMessage(messageRegistry.getMessage(Message.INFO_STEP_CREATE, command));
@@ -457,6 +483,170 @@ class ShopCommandExecutor implements CommandExecutor {
                 || sender.hasPermission(Permissions.ADMIN_DEBUG);
     }
 
+    private boolean handleDebugCommand(CommandSender sender, String[] args) {
+        final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+        if (!sender.hasPermission(Permissions.ADMIN_DEBUG)) {
+            sender.sendMessage(messageRegistry.getMessage(Message.NO_PERMISSION_ADMIN_DEBUG));
+            return true;
+        }
+        if (args.length > 3) {
+            sendDebugUsage(sender);
+            return true;
+        }
+
+        final String section = args.length >= 2 ? args[1].toLowerCase(java.util.Locale.ROOT) : "status";
+        if (section.equals("status") || section.equals("overview")) {
+            if (args.length == 3) {
+                sendDebugUsage(sender);
+            } else {
+                sendAdminDebug(sender);
+            }
+            return true;
+        }
+
+        final String canonicalSection;
+        switch (section) {
+            case "commands" -> canonicalSection = "commands";
+            case "permissions", "perms" -> canonicalSection = "permissions";
+            case "placeholders", "placeholder" -> canonicalSection = "placeholders";
+            default -> {
+                sendDebugUsage(sender);
+                return true;
+            }
+        }
+
+        final Integer page = parsePage(sender, args.length == 3 ? args[2] : null);
+        if (page == null) {
+            return true;
+        }
+        switch (canonicalSection) {
+            case "commands" -> sendDebugCommands(sender, page);
+            case "permissions" -> sendDebugPermissions(sender, page);
+            case "placeholders" -> sendDebugPlaceholders(sender, page);
+            default -> throw new IllegalStateException(
+                    "Unexpected debug section " + canonicalSection);
+        }
+        return true;
+    }
+
+    private void sendDebugUsage(CommandSender sender) {
+        sender.sendMessage(Component.text(
+                "Usage: /" + Config.mainCommandName
+                        + " debug [status|commands|permissions|placeholders] [page]",
+                NamedTextColor.YELLOW));
+    }
+
+    private void sendDebugCommands(CommandSender sender, int requestedPage) {
+        sendDebugPage(
+                sender,
+                "Commands",
+                ShopDebugCatalog.commands(Config.mainCommandName),
+                requestedPage,
+                "commands",
+                (target, entry) -> {
+                    target.sendMessage(Component.text(entry.usage(), NamedTextColor.AQUA));
+                    Component details = Component.text("  " + entry.description(), NamedTextColor.GRAY);
+                    if (!entry.permission().isBlank()) {
+                        details = details.append(Component.text(
+                                " [" + entry.permission() + "]",
+                                NamedTextColor.DARK_GRAY));
+                    }
+                    target.sendMessage(details);
+                });
+    }
+
+    private void sendDebugPermissions(CommandSender sender, int requestedPage) {
+        final List<ShopDebugCatalog.PermissionEntry> entries = new ArrayList<>();
+        plugin.getPluginMeta().getPermissions().stream()
+                .map(permission -> new ShopDebugCatalog.PermissionEntry(
+                        permission.getName(),
+                        permission.getDefault().name().toLowerCase(java.util.Locale.ROOT),
+                        permission.getDescription()))
+                .forEach(entries::add);
+        entries.addAll(ShopDebugCatalog.dynamicPermissions());
+        entries.sort(Comparator.comparing(
+                ShopDebugCatalog.PermissionEntry::node,
+                String.CASE_INSENSITIVE_ORDER));
+
+        sendDebugPage(
+                sender,
+                "Permissions",
+                entries,
+                requestedPage,
+                "permissions",
+                (target, entry) -> {
+                    target.sendMessage(Component.text(entry.node(), NamedTextColor.AQUA)
+                            .append(Component.text(
+                                    " default=" + entry.defaultValue(),
+                                    NamedTextColor.DARK_GRAY)));
+                    target.sendMessage(Component.text(
+                            "  " + entry.description(),
+                            NamedTextColor.GRAY));
+                });
+    }
+
+    private void sendDebugPlaceholders(CommandSender sender, int requestedPage) {
+        sender.sendMessage(Component.text(
+                "These are internal hologram-format.yml tokens, not PlaceholderAPI placeholders.",
+                NamedTextColor.GRAY));
+        sendDebugPage(
+                sender,
+                "Placeholders",
+                ShopDebugCatalog.placeholders(),
+                requestedPage,
+                "placeholders",
+                (target, entry) -> target.sendMessage(
+                        Component.text(entry.token(), NamedTextColor.AQUA)
+                                .append(Component.text(
+                                        " - " + entry.description(),
+                                        NamedTextColor.GRAY))));
+    }
+
+    private <T> void sendDebugPage(
+            CommandSender sender,
+            String title,
+            List<T> entries,
+            int requestedPage,
+            String section,
+            BiConsumer<CommandSender, T> rowRenderer
+    ) {
+        final PageSlice<T> page = PageSlice.of(entries, requestedPage, DEBUG_PAGE_SIZE);
+        sender.sendMessage(" ");
+        sender.sendMessage(Component.text("ShopChest Debug ", NamedTextColor.GOLD)
+                .append(Component.text(title, NamedTextColor.YELLOW))
+                .append(Component.text(
+                        " - Page " + page.page() + "/" + page.pageCount()
+                                + " (" + page.totalEntries() + " entries)",
+                        NamedTextColor.DARK_GRAY)));
+        page.entries().forEach(entry -> rowRenderer.accept(sender, entry));
+        sendDebugNavigation(sender, section, page);
+        sender.sendMessage(" ");
+    }
+
+    private void sendDebugNavigation(
+            CommandSender sender,
+            String section,
+            PageSlice<?> page
+    ) {
+        Component navigation = Component.text(
+                "Page " + page.page() + "/" + page.pageCount(),
+                NamedTextColor.DARK_GRAY);
+        final String commandPrefix = "/" + Config.mainCommandName + " debug " + section + " ";
+        if (page.page() > 1) {
+            navigation = Component.text("\u00ab Previous", NamedTextColor.AQUA)
+                    .clickEvent(ClickEvent.runCommand(commandPrefix + (page.page() - 1)))
+                    .append(Component.text("  ", NamedTextColor.DARK_GRAY))
+                    .append(navigation);
+        }
+        if (page.page() < page.pageCount()) {
+            navigation = navigation
+                    .append(Component.text("  ", NamedTextColor.DARK_GRAY))
+                    .append(Component.text("Next \u00bb", NamedTextColor.AQUA)
+                            .clickEvent(ClickEvent.runCommand(commandPrefix + (page.page() + 1))));
+        }
+        sender.sendMessage(navigation);
+    }
+
     private void sendAdminHelp(CommandSender sender) {
         final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
         final Replacement command = new Replacement(Placeholder.COMMAND, Config.mainCommandName);
@@ -525,6 +715,7 @@ class ShopCommandExecutor implements CommandExecutor {
 
     private boolean isDebugSummaryLine(String line) {
         return line.startsWith("Plugin:")
+                || line.startsWith("Compiled API:")
                 || line.startsWith("Runtime:")
                 || line.startsWith("Java:")
                 || line.startsWith("Platform:")
@@ -943,6 +1134,63 @@ class ShopCommandExecutor implements CommandExecutor {
         });
     }
 
+    private void edit(String[] args, Player player) {
+        final MessageRegistry messages = plugin.getLanguageManager().getMessageRegistry();
+        final String fieldName = args[1].toLowerCase(java.util.Locale.ROOT);
+
+        if (fieldName.equals("holograms")) {
+            final ShopDisplayOrientation orientation;
+            try {
+                orientation = ShopDisplayOrientation.parse(args[2]);
+            } catch (IllegalArgumentException exception) {
+                player.sendMessage(messages.getMessage(Message.EDIT_UNKNOWN_HOLOGRAM_ORIENTATION));
+                return;
+            }
+            ClickType.setPlayerClickType(
+                    player,
+                    new EditClickType(new ShopEditOperation.Holograms(orientation)));
+            player.sendMessage(messages.getMessage(Message.CLICK_CHEST_EDIT));
+            return;
+        }
+
+        if (!fieldName.equals("amount")
+                && !fieldName.equals("buy")
+                && !fieldName.equals("sell")) {
+            player.sendMessage(messages.getMessage(Message.EDIT_UNKNOWN_FIELD));
+            return;
+        }
+
+        final ShopEditRequest request;
+        try {
+            request = ShopEditRequest.parse(fieldName, args[2]);
+        } catch (NumberFormatException exception) {
+            player.sendMessage(messages.getMessage(Message.AMOUNT_PRICE_NOT_NUMBER));
+            return;
+        }
+
+        if (request.field() == ShopEditRequest.Field.AMOUNT && request.value() <= 0) {
+            player.sendMessage(messages.getMessage(Message.AMOUNT_IS_ZERO));
+            return;
+        }
+        if (request.field() != ShopEditRequest.Field.AMOUNT
+                && (!Double.isFinite(request.value()) || request.value() < 0)) {
+            player.sendMessage(messages.getMessage(Message.PRICES_INVALID));
+            return;
+        }
+        if (request.field() != ShopEditRequest.Field.AMOUNT
+                && !Config.allowDecimalsInPrice
+                && request.value() != Math.rint(request.value())) {
+            player.sendMessage(messages.getMessage(Message.PRICES_CONTAIN_DECIMALS));
+            return;
+        }
+
+        ClickType.setPlayerClickType(
+                player,
+                new EditClickType(new ShopEditOperation.Terms(request)));
+        player.sendMessage(messages.getMessage(Message.CLICK_CHEST_EDIT));
+        plugin.debug(player.getName() + " can now select a shop to edit");
+    }
+
     /**
      * A given player creates a shop
      * @param args Arguments of the entered command
@@ -1042,104 +1290,14 @@ class ShopCommandExecutor implements CommandExecutor {
         int amount = selectClickType.getAmount();
         double buyPrice = selectClickType.getBuyPrice();
         double sellPrice = selectClickType.getSellPrice();
-        boolean buyEnabled = buyPrice > 0;
-        boolean sellEnabled = sellPrice > 0;
         ShopType shopType = selectClickType.getShopType();
 
-        // Check if item on blacklist
-        for (String item :Config.blacklist) {
-            ItemStack is = ItemUtils.getItemStack(item);
-
-            if (is == null) {
-                plugin.getLogger().warning("Invalid item found in blacklist: " + item);
-                plugin.debug("Invalid item in blacklist: " + item);
-                continue;
-            }
-
-            if (ItemUtils.isSameTypeAndDamage(is, itemStack)) {
-                p.sendMessage(messageRegistry.getMessage(Message.CANNOT_SELL_ITEM));
-                plugin.debug(p.getName() + "'s item is on the blacklist");
-                return;
-            }
-        }
-
-        // Check if prices lower than minimum price
-        for (String key :Config.minimumPrices) {
-            ItemStack is = ItemUtils.getItemStack(key);
-            double minPrice = plugin.getConfig().getDouble("minimum-prices." + key);
-
-            if (is == null) {
-                plugin.getLogger().warning("Invalid item found in minimum-prices: " + key);
-                plugin.debug("Invalid item in minimum-prices: " + key);
-                continue;
-            }
-
-            if (ItemUtils.isSameTypeAndDamage(is, itemStack)) {
-                if (buyEnabled) {
-                    if ((buyPrice < amount * minPrice) && (buyPrice > 0)) {
-                        p.sendMessage(messageRegistry.getMessage(Message.BUY_PRICE_TOO_LOW, new Replacement(Placeholder.MIN_PRICE, String.valueOf(amount * minPrice))));
-                        plugin.debug(p.getName() + "'s buy price is lower than the minimum");
-                        return;
-                    }
-                }
-
-                if (sellEnabled) {
-                    if ((sellPrice < amount * minPrice) && (sellPrice > 0)) {
-                        p.sendMessage(messageRegistry.getMessage(Message.SELL_PRICE_TOO_LOW, new Replacement(Placeholder.MIN_PRICE, String.valueOf(amount * minPrice))));
-                        plugin.debug(p.getName() + "'s sell price is lower than the minimum");
-                        return;
-                    }
-                }
-            }
-        }
-
-        // Check if prices higher than maximum price
-        for (String key :Config.maximumPrices) {
-            ItemStack is = ItemUtils.getItemStack(key);
-            double maxPrice = plugin.getConfig().getDouble("maximum-prices." + key);
-
-            if (is == null) {
-                plugin.getLogger().warning("Invalid item found in maximum-prices: " + key);
-                plugin.debug("Invalid item in maximum-prices: " + key);
-                continue;
-            }
-
-            if (ItemUtils.isSameTypeAndDamage(is, itemStack)) {
-                if (buyEnabled) {
-                    if ((buyPrice > amount * maxPrice) && (buyPrice > 0)) {
-                        p.sendMessage(messageRegistry.getMessage(Message.BUY_PRICE_TOO_HIGH, new Replacement(Placeholder.MAX_PRICE, String.valueOf(amount * maxPrice))));
-                        plugin.debug(p.getName() + "'s buy price is higher than the maximum");
-                        return;
-                    }
-                }
-
-                if (sellEnabled) {
-                    if ((sellPrice > amount * maxPrice) && (sellPrice > 0)) {
-                        p.sendMessage(messageRegistry.getMessage(Message.SELL_PRICE_TOO_HIGH, new Replacement(Placeholder.MAX_PRICE, String.valueOf(amount * maxPrice))));
-                        plugin.debug(p.getName() + "'s sell price is higher than the maximum");
-                        return;
-                    }
-                }
-            }
-        }
-
-
-        if (sellEnabled && buyEnabled) {
-            if (Config.buyGreaterOrEqualSell) {
-                if (buyPrice < sellPrice) {
-                    p.sendMessage(messageRegistry.getMessage(Message.BUY_PRICE_TOO_LOW, new Replacement(Placeholder.MIN_PRICE, String.valueOf(sellPrice))));
-                    plugin.debug(p.getName() + "'s buy price is lower than the sell price");
-                    return;
-                }
-            }
-        }
-
-        if (UNBREAKING_ENCHANT.canEnchantItem(itemStack)) {
-            if (ItemUtils.getDamage(itemStack) > 0 && !Config.allowBrokenItems) {
-                p.sendMessage(messageRegistry.getMessage(Message.CANNOT_SELL_BROKEN_ITEM));
-                plugin.debug(p.getName() + "'s item is broken");
-                return;
-            }
+        if (!validateShopProposal(
+                p,
+                itemStack,
+                new ShopTerms(amount, buyPrice, sellPrice),
+                Message.NO_PERMISSION_CREATE)) {
+            return;
         }
 
         double creationPrice = (shopType == Shop.ShopType.NORMAL) ?Config.shopCreationPriceNormal :Config.shopCreationPriceAdmin;
@@ -1164,6 +1322,283 @@ class ShopCommandExecutor implements CommandExecutor {
         } else {
             plugin.debug("Shop pre create event cancelled");
         }
+    }
+
+    protected void edit2(Player player, Shop selectedShop, EditClickType clickType) {
+        final MessageRegistry messages = plugin.getLanguageManager().getMessageRegistry();
+
+        if (!player.getUniqueId().equals(selectedShop.getVendor().getUniqueId())) {
+            player.sendMessage(messages.getMessage(Message.NO_PERMISSION_EDIT_OTHERS));
+            return;
+        }
+        if (selectedShop.getShopType() == ShopType.ADMIN
+                && !player.hasPermission(Permissions.CREATE_ADMIN)) {
+            player.sendMessage(messages.getMessage(Message.NO_PERMISSION_EDIT_ADMIN));
+            return;
+        }
+
+        if (clickType.getOperation() instanceof ShopEditOperation.Holograms holograms) {
+            editDisplayOrientation(player, selectedShop, holograms.orientation());
+            return;
+        }
+        if (!(clickType.getOperation() instanceof ShopEditOperation.Terms terms)) {
+            player.sendMessage(messages.getMessage(Message.SHOP_EDIT_FAILED));
+            return;
+        }
+
+        final ShopTerms proposedTerms = terms.request().applyTo(
+                ShopTerms.from(selectedShop));
+        if (!validateShopProposal(
+                player,
+                selectedShop.getProduct().getItemStack(),
+                proposedTerms,
+                Message.NO_PERMISSION_EDIT)) {
+            return;
+        }
+
+        final int shopId = selectedShop.getID();
+        if (!pendingShopEdits.add(shopId)) {
+            player.sendMessage(messages.getMessage(Message.SHOP_EDIT_PENDING));
+            return;
+        }
+
+        plugin.getShopDatabase().updateShopTerms(
+                shopId,
+                proposedTerms,
+                new Callback<Void>(plugin) {
+                    @Override
+                    public void onResult(Void result) {
+                        pendingShopEdits.remove(shopId);
+                        final Shop activeShop = shopUtils.getShop(selectedShop.getLocation());
+                        if (activeShop != null && activeShop.getID() == shopId) {
+                            activeShop.applyTerms(proposedTerms);
+                        }
+
+                        if (player.isOnline()) {
+                            plugin.getCmiWorthPriceAdvisor().advise(
+                                    player,
+                                    new ShopProduct(
+                                            selectedShop.getProduct().getItemStack(),
+                                            proposedTerms.amount()),
+                                    proposedTerms.buyPrice(),
+                                    proposedTerms.sellPrice(),
+                                    selectedShop.getShopType());
+                            player.sendMessage(messages.getMessage(
+                                    Message.SHOP_EDITED,
+                                    new Replacement(Placeholder.AMOUNT, proposedTerms.amount()),
+                                    new Replacement(
+                                            Placeholder.ITEM_NAME,
+                                            selectedShop.getProduct().getLocalizedName()),
+                                    new Replacement(
+                                            Placeholder.BUY_PRICE,
+                                            proposedTerms.buyPrice()),
+                                    new Replacement(
+                                            Placeholder.SELL_PRICE,
+                                            proposedTerms.sellPrice())));
+                        }
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable) {
+                        pendingShopEdits.remove(shopId);
+                        if (throwable != null) {
+                            plugin.debug(throwable);
+                        }
+                        if (player.isOnline()) {
+                            player.sendMessage(messages.getMessage(Message.SHOP_EDIT_FAILED));
+                        }
+                    }
+                });
+    }
+
+    private void editDisplayOrientation(
+            Player player,
+            Shop selectedShop,
+            ShopDisplayOrientation orientation
+    ) {
+        final MessageRegistry messages = plugin.getLanguageManager().getMessageRegistry();
+        final ShopContainer container = selectedShop.getContainer();
+        if (container == null) {
+            player.sendMessage(messages.getMessage(Message.SHOP_DISPLAY_ORIENTATION_FAILED));
+            return;
+        }
+
+        final BlockFace facing = orientation.resolve(
+                container.getCenter(),
+                player.getLocation());
+        if (!container.setShopDisplayFacing(plugin, facing)) {
+            player.sendMessage(messages.getMessage(Message.SHOP_DISPLAY_ORIENTATION_FAILED));
+            return;
+        }
+
+        selectedShop.updateDisplayLocation();
+        if (orientation == ShopDisplayOrientation.RESET) {
+            player.sendMessage(messages.getMessage(Message.SHOP_DISPLAY_ORIENTATION_RESET));
+        } else {
+            player.sendMessage(messages.getMessage(
+                    Message.SHOP_DISPLAY_ORIENTATION_UPDATED,
+                    new Replacement(
+                            Placeholder.VALUE,
+                            facing.name().toLowerCase(java.util.Locale.ROOT))));
+        }
+        plugin.debug("Updated shop display orientation (#"
+                + selectedShop.getID() + "): "
+                + (facing == null ? "automatic" : facing));
+    }
+
+    private boolean validateShopProposal(
+            Player player,
+            ItemStack itemStack,
+            ShopTerms terms,
+            Message permissionFailure
+    ) {
+        final MessageRegistry messages = plugin.getLanguageManager().getMessageRegistry();
+        final int amount = terms.amount();
+        final double buyPrice = terms.buyPrice();
+        final double sellPrice = terms.sellPrice();
+
+        if (itemStack == null) {
+            player.sendMessage(messages.getMessage(Message.NO_ITEM_IN_HAND));
+            return false;
+        }
+
+        final boolean buyEnabled = buyPrice > 0;
+        final boolean sellEnabled = sellPrice > 0;
+        final java.util.Optional<ShopTermsValidator.Failure> basicFailure =
+                ShopTermsValidator.validate(
+                        terms,
+                        Config.allowDecimalsInPrice,
+                        Config.buyGreaterOrEqualSell);
+        if (basicFailure.isPresent()) {
+            sendShopTermsFailure(player, terms, basicFailure.get());
+            return false;
+        }
+        if (!Utils.hasPermissionToCreateShop(
+                player, itemStack, buyEnabled, sellEnabled)) {
+            player.sendMessage(messages.getMessage(permissionFailure));
+            return false;
+        }
+
+        for (String item : Config.blacklist) {
+            final ItemStack configuredItem = ItemUtils.getItemStack(item);
+            if (configuredItem == null) {
+                plugin.getLogger().warning("Invalid item found in blacklist: " + item);
+                plugin.debug("Invalid item in blacklist: " + item);
+                continue;
+            }
+            if (ItemUtils.isSameTypeAndDamage(configuredItem, itemStack)) {
+                player.sendMessage(messages.getMessage(Message.CANNOT_SELL_ITEM));
+                return false;
+            }
+        }
+
+        if (!validateConfiguredPriceBounds(
+                player,
+                itemStack,
+                amount,
+                buyPrice,
+                sellPrice,
+                buyEnabled,
+                sellEnabled)) {
+            return false;
+        }
+
+        if (UNBREAKING_ENCHANT.canEnchantItem(itemStack)
+                && ItemUtils.getDamage(itemStack) > 0
+                && !Config.allowBrokenItems) {
+            player.sendMessage(messages.getMessage(Message.CANNOT_SELL_BROKEN_ITEM));
+            return false;
+        }
+
+        return true;
+    }
+
+    private void sendShopTermsFailure(
+            Player player,
+            ShopTerms terms,
+            ShopTermsValidator.Failure failure
+    ) {
+        final MessageRegistry messages = plugin.getLanguageManager().getMessageRegistry();
+        switch (failure) {
+            case AMOUNT_NOT_POSITIVE ->
+                    player.sendMessage(messages.getMessage(Message.AMOUNT_IS_ZERO));
+            case INVALID_PRICE ->
+                    player.sendMessage(messages.getMessage(Message.PRICES_INVALID));
+            case DECIMALS_NOT_ALLOWED ->
+                    player.sendMessage(messages.getMessage(Message.PRICES_CONTAIN_DECIMALS));
+            case NO_TRADE_DIRECTION ->
+                    player.sendMessage(messages.getMessage(Message.BUY_SELL_DISABLED));
+            case BUY_BELOW_SELL ->
+                    player.sendMessage(messages.getMessage(
+                            Message.BUY_PRICE_TOO_LOW,
+                            new Replacement(
+                                    Placeholder.MIN_PRICE,
+                                    String.valueOf(terms.sellPrice()))));
+        }
+    }
+
+    private boolean validateConfiguredPriceBounds(
+            Player player,
+            ItemStack itemStack,
+            int amount,
+            double buyPrice,
+            double sellPrice,
+            boolean buyEnabled,
+            boolean sellEnabled
+    ) {
+        final MessageRegistry messages = plugin.getLanguageManager().getMessageRegistry();
+
+        for (String key : Config.minimumPrices) {
+            final ItemStack configuredItem = ItemUtils.getItemStack(key);
+            if (configuredItem == null) {
+                plugin.getLogger().warning("Invalid item found in minimum-prices: " + key);
+                continue;
+            }
+            if (!ItemUtils.isSameTypeAndDamage(configuredItem, itemStack)) {
+                continue;
+            }
+
+            final double minimum = amount * plugin.getConfig().getDouble("minimum-prices." + key);
+            if (buyEnabled && buyPrice < minimum) {
+                player.sendMessage(messages.getMessage(
+                        Message.BUY_PRICE_TOO_LOW,
+                        new Replacement(Placeholder.MIN_PRICE, String.valueOf(minimum))));
+                return false;
+            }
+            if (sellEnabled && sellPrice < minimum) {
+                player.sendMessage(messages.getMessage(
+                        Message.SELL_PRICE_TOO_LOW,
+                        new Replacement(Placeholder.MIN_PRICE, String.valueOf(minimum))));
+                return false;
+            }
+        }
+
+        for (String key : Config.maximumPrices) {
+            final ItemStack configuredItem = ItemUtils.getItemStack(key);
+            if (configuredItem == null) {
+                plugin.getLogger().warning("Invalid item found in maximum-prices: " + key);
+                continue;
+            }
+            if (!ItemUtils.isSameTypeAndDamage(configuredItem, itemStack)) {
+                continue;
+            }
+
+            final double maximum = amount * plugin.getConfig().getDouble("maximum-prices." + key);
+            if (buyEnabled && buyPrice > maximum) {
+                player.sendMessage(messages.getMessage(
+                        Message.BUY_PRICE_TOO_HIGH,
+                        new Replacement(Placeholder.MAX_PRICE, String.valueOf(maximum))));
+                return false;
+            }
+            if (sellEnabled && sellPrice > maximum) {
+                player.sendMessage(messages.getMessage(
+                        Message.SELL_PRICE_TOO_HIGH,
+                        new Replacement(Placeholder.MAX_PRICE, String.valueOf(maximum))));
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -1238,6 +1673,7 @@ class ShopCommandExecutor implements CommandExecutor {
         String value = args[3];
         boolean updateHologramLocations = isHologramLocationProperty(property);
         boolean updateHologramDisplays = isHologramDisplayProperty(property);
+        boolean updateFloatingIconAnimation = isFloatingIconAnimationProperty(property);
 
         if (args[1].equalsIgnoreCase("set")) {
             plugin.getShopChestConfig().set(property, value);
@@ -1262,13 +1698,17 @@ class ShopCommandExecutor implements CommandExecutor {
                 shop.updateHologramText();
             }
         }
+        if (updateFloatingIconAnimation) {
+            plugin.getShopItemAnimator().refresh();
+        }
 
         return true;
     }
 
     private boolean isHologramLocationProperty(String property) {
         return property.equalsIgnoreCase("hologram-lift")
-                || property.equalsIgnoreCase("hologram-fixed-bottom");
+                || property.equalsIgnoreCase("hologram-fixed-bottom")
+                || property.equalsIgnoreCase("floating-icon-height");
     }
 
     private boolean isHologramDisplayProperty(String property) {
@@ -1276,11 +1716,24 @@ class ShopCommandExecutor implements CommandExecutor {
                 || property.equalsIgnoreCase("hologram-text-scale")
                 || property.equalsIgnoreCase("hologram-background-color")
                 || property.equalsIgnoreCase("hologram-background-opacity")
+                || property.equalsIgnoreCase("hologram-text-opacity")
+                || property.equalsIgnoreCase("hologram-text-shadowed")
+                || property.equalsIgnoreCase("hologram-text-see-through")
+                || property.equalsIgnoreCase("hologram-text-alignment")
                 || property.equalsIgnoreCase("hologram-max-item-name-length")
                 || property.equalsIgnoreCase("hologram-max-item-detail-entries")
                 || property.equalsIgnoreCase("hologram-item-details-per-line")
                 || property.equalsIgnoreCase("hologram-fixed-facing")
                 || property.regionMatches(true, 0, "hologram-colors.", 0, "hologram-colors.".length());
+    }
+
+    private boolean isFloatingIconAnimationProperty(String property) {
+        return property.equalsIgnoreCase("floating-icon-scale")
+                || property.equalsIgnoreCase("floating-icon-bobbing-enabled")
+                || property.equalsIgnoreCase("floating-icon-bob-amplitude")
+                || property.equalsIgnoreCase("floating-icon-bob-period-seconds")
+                || property.equalsIgnoreCase("floating-icon-rotation-enabled")
+                || property.equalsIgnoreCase("floating-icon-rotation-period-seconds");
     }
 
     private void removeAll(CommandSender sender, String[] args) {

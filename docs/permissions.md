@@ -23,7 +23,7 @@ Defaults below come from `plugin.yml`. `true` means all players, and `op` means 
 | `shopchest.recent` | `true` | Uses `/shops recent` to view the player's own recorded transaction history. |
 | `shopchest.admin` | `op` | Parent permission for ShopChest administration commands. |
 | `shopchest.admin.list` | `op` | Lists another player's registered shops and allows in-game staff to teleport to a listed shop. |
-| `shopchest.admin.debug` | `op` | Generates a copyable plugin, platform, dependency, database, configuration, and loaded-shop support report. |
+| `shopchest.admin.debug` | `op` | Uses `/shops debug` for the copyable support report and command, permission, and internal-placeholder catalogs. |
 | `shopchest.limit.*` | `op` | Removes the normal-shop limit. |
 
 ## Dynamic Permissions
@@ -39,7 +39,12 @@ Creation permissions can be narrowed by material and legacy durability value:
 
 Material names use Bukkit enum names such as `DIAMOND` or `OAK_LOG`. A general permission such as `shopchest.create` overrides the need for its material-specific form.
 
+`/shops edit` uses these same directional and material permissions for the
+complete resulting shop. Editing an owned admin shop additionally requires
+`shopchest.create.admin`; there is no permission to edit another player's shop.
+The command never changes ownership or shop type.
+
 No permission is required for `/shops`, `/shops info`, `/shops limits`,
-`/shops list`, `/shops inspect`, or managing a player's own normal shop after
-it has been created. `shopchest.recent` is granted to all players by default,
-but can be revoked independently.
+`/shops list`, `/shops inspect`, or removing a player's own normal shop.
+Editing is the exception described above. `shopchest.recent` is granted to all
+players by default, but can be revoked independently.

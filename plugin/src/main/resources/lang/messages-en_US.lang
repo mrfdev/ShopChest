@@ -6,6 +6,14 @@ message.shop-created=&6You were withdrawn &c%CREATION-PRICE% &6to create this sh
 # Usable Placeholders: %CREATION-PRICE%
 message.admin-shop-created=&6You were withdrawn &c%CREATION-PRICE% &6to create this admin shop.
 
+# Shop terms are persisted before this confirmation is shown.
+message.shop-edited=&aShop updated: &f%AMOUNT%x %ITEMNAME% &8| &7Buy &f%BUY-PRICE% &8| &7Sell &f%SELL-PRICE%
+message.shop-edit-pending=&eThat shop is already being updated. Try again in a moment.
+message.shop-edit-failed=&cThe shop could not be updated. Its previous settings are still active.
+message.shop-display-orientation-updated=&aThe shop hologram and icon now face &f%VALUE%&a.
+message.shop-display-orientation-reset=&aThe shop hologram and icon now use the container's automatic orientation.
+message.shop-display-orientation-failed=&cThe shop display orientation could not be changed.
+
 # Set the message when the clicked chest already is a shop.
 message.chest-already-shop=&cContainer is already a shop.
 
@@ -42,6 +50,10 @@ message.shopInfo.vendor=&6Vendor: &e%VENDOR%
 # Set the product message the player gets after entering '/shops info'.
 # Usable Placeholders: %AMOUNT%, %ITEMNAME%
 message.shopInfo.product=&6Product: &e%AMOUNT% x %ITEMNAME%
+
+# Set the enchantment or potion details shown by '/shops inspect' and the shop-info tool.
+# Usable Placeholders: %ITEM-DETAILS%
+message.shopInfo.item-details=&6Details: %ITEM-DETAILS%
 
 # Set the in-stock message the player after entering '/shops info'.
 # Usable Placeholders=%STOCK%
@@ -92,9 +104,12 @@ message.someone-bought=&6%PLAYER% &abought &6%AMOUNT% x %ITEMNAME%&a for &6%BUY-
 # Usable Placeholders: %AMOUNT%, %ITEMNAME%, %SELL-PRICE%, %PLAYER%
 message.someone-sold=&6%PLAYER% &asold &6%AMOUNT% x %ITEMNAME%&a for &6%SELL-PRICE%&a to your shop.
 
-# Set the message when a player joins and made a revenue while he was offline.
+# Set the compact revenue summary and recent-trades action shown after joining.
 # Usable Placeholders: %REVENUE%
-message.revenue-while-offline=&6While you were offline, your shops have made a revenue of &c%REVENUE%&6.
+message.revenue-while-offline.summary=&6While you were offline &8- &7Shop revenue: &f%REVENUE%
+message.revenue-while-offline.action=&b&n[View recent trades]
+# Usable Placeholders: %COMMAND%
+message.revenue-while-offline.hover=&7Click to run &f/%COMMAND% recent &7and review the transactions behind this total.
 
 # Set the message when the inventory is full when the player is buying something.
 message.not-enough-inventory-space=&cNot enough space in inventory.
@@ -131,6 +146,9 @@ message.amount-and-price-not-number=&cAmount and prices must be numbers.
 
 # Set the message when the argument <AMOUNT> is zero
 message.amount-is-zero=&cAmount must be greater than 0.
+message.prices-invalid=&cPrices must be finite numbers greater than or equal to 0.
+message.edit-unknown-field=&cChoose one setting to edit: amount, buy, sell, or holograms.
+message.edit-unknown-hologram-orientation=&cChoose a hologram orientation: reset, faceme, north, south, east, or west.
 
 # Set the message when the config value "allow-decimals-in-prices" is set to false
 # and a player enters a price with decimals
@@ -141,6 +159,7 @@ message.no-item-in-hand=&cNo item in hand
 
 # Set the message when the player must click a chest to create a shop.
 message.click-chest-to-create-shop=&aClick a supported container within 15 seconds to create a shop.
+message.click-shop-to-edit=&aClick one of your shops within 15 seconds to apply the change.
 
 # Set the message when the player must click a shop to remove it.
 message.click-chest-to-remove-shop=&aClick a shop within 15 seconds to remove it.
@@ -226,6 +245,9 @@ message.noPermission.create-admin=&cYou don't have permission to create an admin
 
 # Set the message when a not permitted player tries to create a shop on a protected chest.
 message.noPermission.create-protected=&cYou don't have permission to create a shop here.
+message.noPermission.edit=&cYou don't have permission to use those trade settings for this item.
+message.noPermission.edit-others=&cYou can only edit shops that you own.
+message.noPermission.edit-admin=&cYou don't have permission to edit an admin shop.
 
 # Set the message when a not permitted player tries to open another player's shop.
 message.noPermission.open-others=&cYou don't have permission to open this shop container.
@@ -326,6 +348,7 @@ message.help.footer=&7Need setup help? Use &b/%COMMAND% info&7.
 message.help.command.help=&a/%COMMAND% help &7- Show commands available to you.
 message.help.command.create=&a/%COMMAND% create <amount> <buy-price> <sell-price> &7- Create a shop using your held item.
 message.help.command.create-admin=&a/%COMMAND% create <amount> <buy-price> <sell-price> [normal|admin] &7- Create a player or admin shop.
+message.help.command.edit=&a/%COMMAND% edit <amount|buy|sell|holograms> <value> &7- Change one setting, then click one of your shops.
 message.help.command.remove=&a/%COMMAND% remove &7- Click one of your shops to remove it.
 message.help.command.info=&a/%COMMAND% info &7- Learn how ShopChest works and open the player guide.
 message.help.command.inspect=&a/%COMMAND% inspect &7- Click a shop to view its details.
@@ -337,6 +360,7 @@ message.help.command.config=&a/%COMMAND% config <set|add|remove> <property> <val
 
 # Short player onboarding shown by '/shops info'.
 message.info.header=&6ShopChest &7v%VERSION%
+message.info.build=&8Build %BUILD% &7| Java %JAVA-TARGET% &7| Paper API %PAPER-API%
 message.info.intro=&fCreate persistent container shops where players can buy from you or sell items to you.
 message.info.step-place=&e1. &fPlace a chest, barrel, shulker box, or copper chest and hold the exact item you want to trade.
 message.info.step-create=&e2. &fRun &a/%COMMAND% create <amount> <buy-price> <sell-price>&f.
@@ -349,6 +373,7 @@ message.info.guide=&b&nOpen the ShopChest player guide
 message.help.command.list=&a/%COMMAND% list [page] &7- List every shop you own and its location.
 message.help.command.recent=&a/%COMMAND% recent [page] &7- Show your latest purchases, sales, earnings, and spending.
 message.help.command.admin=&a/%COMMAND% admin <list|debug> ... &7- Shop administration and support diagnostics.
+message.help.command.debug=&a/%COMMAND% debug [status|commands|permissions|placeholders] [page] &7- Show support status and ShopChest metadata. &8[shopchest.admin.debug]
 message.noPermission.recent=&cYou do not have permission to view recent shop activity.
 message.noPermission.admin=&cYou do not have permission to use ShopChest administration commands.
 message.noPermission.admin-list=&cYou don't have permission to list other players' shops.

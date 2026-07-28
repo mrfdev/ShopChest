@@ -36,6 +36,7 @@ import de.epiceric.shopchest.event.ShopBuySellEvent.Type;
 import de.epiceric.shopchest.shop.Shop;
 import de.epiceric.shopchest.shop.Shop.ShopType;
 import de.epiceric.shopchest.shop.ShopProduct;
+import de.epiceric.shopchest.shop.ShopTerms;
 import de.epiceric.shopchest.utils.Callback;
 import de.epiceric.shopchest.utils.Utils;
 
@@ -630,6 +631,54 @@ public abstract class Database {
                 }
             }
         }.runTaskAsynchronously(plugin);
+    }
+
+    /**
+     * Atomically replaces the editable terms of an existing shop.
+     */
+    public void updateShopTerms(
+            final int shopId,
+            final ShopTerms terms,
+            final Callback<Void> callback
+    ) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                try (Connection con = dataSource.getConnection()) {
+                    updateShopTerms(con, tableShops, shopId, terms);
+                    plugin.debug("Updated shop terms in database (#" + shopId + ")");
+                    if (callback != null) {
+                        callback.callSyncResult(null);
+                    }
+                } catch (SQLException exception) {
+                    if (callback != null) {
+                        callback.callSyncError(exception);
+                    }
+                    plugin.getLogger().severe("Failed to update shop terms");
+                    plugin.debug("Failed to update shop terms (#" + shopId + ")");
+                    plugin.debug(exception);
+                }
+            }
+        }.runTaskAsynchronously(plugin);
+    }
+
+    static void updateShopTerms(
+            Connection connection,
+            String shopsTable,
+            int shopId,
+            ShopTerms terms
+    ) throws SQLException {
+        final String query = "UPDATE " + shopsTable
+                + " SET amount = ?, buyprice = ?, sellprice = ? WHERE id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setInt(1, terms.amount());
+            statement.setDouble(2, terms.buyPrice());
+            statement.setDouble(3, terms.sellPrice());
+            statement.setInt(4, shopId);
+            if (statement.executeUpdate() != 1) {
+                throw new SQLException("Shop #" + shopId + " no longer exists");
+            }
+        }
     }
 
     /**

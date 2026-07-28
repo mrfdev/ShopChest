@@ -37,6 +37,33 @@ you choose the container. It can point out a direct `/sell` resale opportunity o
 price far outside the server's configured worth. The warning is informational:
 your entered price is unchanged and you can continue creating the shop.
 
+## Edit an Existing Shop
+
+Change one setting at a time, then click the shop within 15 seconds:
+
+```text
+/shops edit amount 16
+/shops edit buy 75
+/shops edit sell 0
+/shops edit holograms faceme
+```
+
+The amount is the number of items in one trade. `buy` is what a customer pays
+to buy that bundle, and `sell` is what the shop pays a customer for it. Setting
+a price to `0` disables that direction, but at least one direction must remain
+enabled.
+
+Editing is free and does not consume another shop slot. It keeps the same
+product, owner, container, and shop type. You can edit only shops you own, and
+the server applies the same item and price rules used during creation.
+
+If a fixed hologram faces into a wall or across a double chest instead of
+toward the customer aisle, run `/shops edit holograms faceme` and click the
+shop while standing on the side where customers should read it. Both the text
+panel and rotating item icon use that orientation. You can instead choose an
+exact `north`, `south`, `east`, or `west` direction. Use
+`/shops edit holograms reset` to return to the container's automatic facing.
+
 ## How Players Use It
 
 By default, right-click buys from a shop and left-click sells to it. The server can invert those controls. Sneak while clicking to trade up to one full item stack instead of the shop's normal bundle size. A shop cannot complete a trade when the buyer, vendor, container, or inventory lacks the required money, items, or space.
@@ -48,9 +75,15 @@ The default setup charges 5 economy units to create a normal shop and allows 5 n
 - `/shops` or `/shops help` - Show the player commands available to you. Permitted staff actions appear in a separate section.
 - `/shops info` - Show a short introduction, numbered creation instructions, the installed version, and a clickable link to this guide.
 - `/shops create <amount> <buy-price> <sell-price>` - Prepare a shop using the held item, then click a supported container within 15 seconds.
+- `/shops edit <amount|buy|sell> <value>` - Change one setting, then click one of your shops within 15 seconds.
+- `/shops edit holograms <reset|faceme|north|south|east|west>` - Reorient both shop displays without rotating or recreating the container.
 - `/shops limits` - Show used and available normal-shop slots.
 - `/shops list [page]` - List every shop you created. Hover a compact row for its prices, stock, type, world, and coordinates. Loaded shops that cannot fill one complete purchase are marked `[Out of stock]`; the locations are informational and do not teleport you.
 - `/shops recent [page]` - Review recent purchases and sales, including trades at your normal shops and the money you earned or spent. Hover a compact trade row for its date, per-item price, and shop location. History is available only for trades recorded by the server.
+
+When recorded trades changed your shop balance while you were offline, joining
+shows a compact revenue summary. Hover **View recent trades** for its action and
+click it to run `/shops recent`.
 - `/shops inspect` - Enter inspection mode, then click a shop within 15 seconds. `/shops info shop` is a compatibility alias.
 - `/shops open` - Enter open mode, then click one of your shops within 15 seconds.
 - `/shops remove` - Enter removal mode, then click one of your shops within 15 seconds.

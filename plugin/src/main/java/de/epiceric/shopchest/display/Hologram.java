@@ -163,6 +163,10 @@ public class Hologram {
                 Config.hologramPanelWidth,
                 Config.hologramBackgroundColor,
                 Config.hologramFixedFacing,
-                Config.hologramTextScale);
+                Config.hologramTextScale,
+                Config.hologramTextOpacity,
+                Config.hologramTextShadowed,
+                Config.hologramTextSeeThrough,
+                Config.hologramTextAlignment);
     }
 }

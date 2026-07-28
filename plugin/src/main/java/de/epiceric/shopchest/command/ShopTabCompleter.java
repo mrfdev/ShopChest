@@ -28,6 +28,11 @@ class ShopTabCompleter implements TabCompleter {
         if (command.getName().equalsIgnoreCase(Config.mainCommandName)) {
 
             List<String> createSubCommands = Arrays.asList("admin");
+            List<String> editFields = Arrays.asList("amount", "buy", "sell", "holograms");
+            List<String> editHologramOrientations =
+                    Arrays.asList("reset", "faceme", "north", "south", "east", "west");
+            List<String> debugSections =
+                    Arrays.asList("status", "commands", "permissions", "placeholders");
             List<String> configSubCommands = Arrays.asList("add", "remove", "set");
             List<String> infoSubCommands = Arrays.asList("shop");
             List<String> areaShopRemoveEvents = Arrays.asList("DELETE", "RESELL", "SELL", "UNRENT");
@@ -48,6 +53,11 @@ class ShopTabCompleter implements TabCompleter {
                         adminCommands.add("debug");
                     }
                     return filterCompletions(adminCommands, args[1]);
+                } else if (args[0].equalsIgnoreCase("edit")) {
+                    return filterCompletions(editFields, args[1]);
+                } else if (args[0].equalsIgnoreCase("debug")
+                        && sender.hasPermission(Permissions.ADMIN_DEBUG)) {
+                    return filterCompletions(debugSections, args[1]);
                 } else if (args[0].equals("config")) {
                     if (!args[1].equals("")) {
                         for (String s : configSubCommands) {
@@ -86,7 +96,10 @@ class ShopTabCompleter implements TabCompleter {
                     }
                 }
             } else if (args.length == 3) {
-                if (args[0].equalsIgnoreCase("admin")
+                if (args[0].equalsIgnoreCase("edit")
+                        && args[1].equalsIgnoreCase("holograms")) {
+                    return filterCompletions(editHologramOrientations, args[2]);
+                } else if (args[0].equalsIgnoreCase("admin")
                         && args[1].equalsIgnoreCase("list")
                         && sender.hasPermission(Permissions.ADMIN_LIST)) {
                     return filterCompletions(playerNames, args[2]);
@@ -105,7 +118,14 @@ class ShopTabCompleter implements TabCompleter {
                 }
             } else if (args.length == 4) {
                 if (args[0].equals("config")) {
-                    if (args[2].equals("towny-shop-plots")) {
+                    if (args[1].equalsIgnoreCase("set")
+                            && args[2].equalsIgnoreCase("hologram-text-alignment")) {
+                        return filterCompletions(
+                                Arrays.asList("LEFT", "CENTER", "RIGHT"), args[3]);
+                    } else if (args[1].equalsIgnoreCase("set")
+                            && plugin.getConfig().isBoolean(args[2])) {
+                        return filterCompletions(Arrays.asList("true", "false"), args[3]);
+                    } else if (args[2].equals("towny-shop-plots")) {
                         if (!args[3].equals("")) {
                             for (String s : townyShopPlots) {
                                 if (s.startsWith(args[3])) {

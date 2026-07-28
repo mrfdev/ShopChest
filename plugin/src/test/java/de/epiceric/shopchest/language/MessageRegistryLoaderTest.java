@@ -68,6 +68,29 @@ class MessageRegistryLoaderTest {
     }
 
     @Test
+    void inspectionDetailsFallbackRetainsItsRichComponentPlaceholder() {
+        assertTrue(createRegistry()
+                .getMessage(Message.SHOP_INFO_ITEM_DETAILS)
+                .contains(Placeholder.ITEM_DETAILS.toString()));
+    }
+
+    @Test
+    void offlineRevenueDefaultsProvideCompactSummaryActionAndConfiguredCommandHover() {
+        final MessageRegistry registry = createRegistry();
+
+        assertTrue(registry.getMessage(
+                Message.REVENUE_WHILE_OFFLINE,
+                new Replacement(Placeholder.REVENUE, 25))
+                .contains("$25"));
+        assertTrue(registry.getMessage(Message.REVENUE_WHILE_OFFLINE_ACTION)
+                .contains("View recent trades"));
+        assertTrue(registry.getMessage(
+                Message.REVENUE_WHILE_OFFLINE_HOVER,
+                new Replacement(Placeholder.COMMAND, "shops"))
+                .contains("/shops recent"));
+    }
+
+    @Test
     void oldRecentEntryKeysDoNotPreventTheCompactUpgrade() {
         final MessageRegistry registry = new MessageRegistry(
                 new MessageRegistryLoader(Map.of(
