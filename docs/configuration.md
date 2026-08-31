@@ -45,6 +45,81 @@ warning. Shop creation then continues normally. Missing settings are added to
 existing configuration files automatically, and `/shops reload` refreshes the
 integration and thresholds.
 
+### Storefront Discovery
+
+Storefront profiles, in-game search, advertising eligibility, and catalogue
+exports read a separate public projection of normal shop records. Discovery
+never changes a shop and never force-loads a chunk.
+
+| Key under `storefront-discovery` | Default | Behavior |
+| --- | --- | --- |
+| `location-scope` | `MARKETPLACE` | `MARKETPLACE` includes only the named world and WorldGuard region. `GLOBAL` includes eligible normal shops in every loaded world. Any other value is treated conservatively as marketplace-only. |
+| `marketplace-world` | `general` | Exact world name for `/warp shops` marketplace discovery. |
+| `marketplace-region` | `shops` | Exact WorldGuard region ID for the marketplace. |
+| `search-cooldown-milliseconds` | `1500` | Minimum interval before one sender starts a new material search. Clamped from `0` through `10000`. Paging through a still-valid result does not rebuild it. |
+| `snapshot-seconds` | `30` | Time one viewer's immutable search result remains available for stable pagination. Clamped from `5` through `300`. |
+
+`MARKETPLACE` is the recommended public default. It fails closed if WorldGuard
+is unavailable, the named world is unavailable, the region lookup fails, or a
+shop lies outside the region. Coordinates are displayed as directions but are
+not clickable for ordinary players. A trusted player with
+`shopchest.admin.list` receives a separate, revalidated teleport action.
+
+`GLOBAL` intentionally discloses eligible shop coordinates from every included
+world. It still excludes admin shops, suspended storefronts, and customer-sell-only
+shops from item search. The manually reviewed website export remains limited to
+the configured marketplace even when in-game discovery is global.
+
+The catalogue refreshes in bounded batches at startup, periodically, and after
+shop create/remove or profile moderation changes. Search performs a bounded
+live stock inspection of already-loaded containers. A result can therefore be
+`UNCHECKED` when its chunk or the other half of a double chest is unloaded.
+
+### Storefront Advertising
+
+Advertising Passes are durable database records. The advertising currency is
+not a configurable material or display name; an administrator captures the
+complete genuine AFK Shrine Token ItemStack separately in
+`plugins/ShopChest/advertising-currency.yml`.
+
+| Key under `advertising` | Default | Behavior |
+| --- | --- | --- |
+| `enabled` | `true` | Enables pass purchase, preview, queue processing, and broadcast. Currency capture/status remain staff setup actions. |
+| `token-cost` | `5` | Exact matching AFK Shrine Tokens consumed for one pass. Clamped from `1` through `64`. |
+| `pass-days` | `7` | Pass lifetime from successful issuance. Clamped from `1` through `90`. Passes do not stack. |
+| `broadcasts-per-pass` | `3` | Successful broadcasts included in one pass. Clamped from `1` through `30`. A queued request reserves one until it broadcasts or closes. |
+| `owner-cooldown-hours` | `24` | Minimum delay after one owner's successful broadcast. Clamped from `1` through `168`. |
+| `global-cooldown-minutes` | `30` | Minimum interval between any two successful ShopChest advertisements. Clamped from `1` through `1440`. |
+| `request-ttl-hours` | `48` | Maximum age of a queued request before it is closed and its reservation returned. Clamped from `1` through `168`. |
+| `poll-seconds` | `15` | How often the durable queue checks for the next globally and owner-eligible request. Clamped from `5` through `300`. |
+| `sound` | `minecraft:block.amethyst_block.chime` | Namespaced sound played locally to each online recipient. An invalid or unavailable key disables only the sound for that broadcast. |
+
+The queue is first-in, first-out among eligible requests, stores at most one
+open request per owner, has a fixed safety cap of 100 open requests, and
+persists pass/request/global cooldown state. The
+primary Featured Listing must be in stock when queued and is rechecked before
+broadcast. A temporary stock failure parks the request for a later poll instead
+of spending a use. Title, subtitle, chat, profile link, `/warp shops` link, and
+sound are sent only after the database transaction commits the broadcast.
+This at-most-once ordering prevents duplicate advertisements and double use
+consumption. A server crash in the narrow gap after that durable commit but
+before the public effects can consume one use without displaying its message.
+
+Before enabling purchases on a new or restored server, hold one token obtained
+from the real `/afkshrine` trade and run:
+
+```text
+/shops admin advertise currency capture
+/shops admin advertise currency status
+```
+
+Capture normalizes only the amount to 1 and retains the complete serialized
+ItemStack. Matching then normalizes each candidate amount and calls
+`ItemStack.isSimilar(template)`. Material, name, lore, custom-model data, or a
+guessed PDC key alone never establishes identity. Clear the template with
+`/shops admin advertise currency clear` when purchases must immediately fail
+closed, then capture a new genuine token before reopening the feature.
+
 ### Trade Feedback
 
 Completed and failed trade attempts use separate, container-local effects. Both the
@@ -157,7 +232,7 @@ remote update requests.
 
 ## Protection Integrations
 
-The `enable-*-integration` flags control WorldGuard, Towny, AuthMe, PlotSquared, uSkyBlock, ASkyBlock, BentoBox, IslandWorld, GriefPrevention, and AreaShop hooks. Integrations and custom flags are registered during startup, so restart after changing these values or the installed plugin set.
+The `enable-*-integration` flags control WorldGuard, Towny, AuthMe, PlotSquared, uSkyBlock, ASkyBlock, BentoBox, IslandWorld, GriefPrevention, and AreaShop hooks. Integrations and custom flags are registered during startup, so restart after changing these values or the installed plugin set. Marketplace-scoped public discovery additionally requires the WorldGuard hook to be active and the configured region to exist.
 
 `worldguard-default-flag-values` sets defaults for `create-shop`, `use-shop`, and `use-admin-shop`. `towny-shop-plots` lists allowed plot types by resident, mayor, and king roles. `areashop-remove-shops` selects the AreaShop lifecycle events that remove shops; valid values are `DELETE`, `UNRENT`, `RESELL`, and `SELL`.
 
@@ -165,11 +240,18 @@ The `enable-*-integration` flags control WorldGuard, Towny, AuthMe, PlotSquared,
 
 `database.type` accepts exactly `SQLite` or `MySQL`. `database.table-prefix` defaults to `shopchest_` and may contain only letters, numbers, dashes, and underscores. SQLite stores its file in the plugin data folder. MySQL requires `hostname`, `port`, `database`, `username`, and `password`; `ping-interval` defaults to 3600 seconds and `0` disables keepalive pings.
 
+Storefront Profiles and ordered Featured Listings use dedicated prefixed tables
+instead of adding player-written text to the authoritative shop rows.
+Advertising Passes, requests, and the global dispatch cooldown likewise use
+separate durable tables. This separation lets discovery/presentation features
+be moderated, rebuilt, or disabled without rewriting shop products, prices,
+containers, or ownership.
+
 Database selection, connection details, and table prefix should be changed only while the server is stopped. ShopChest reconnects during `/shops reload`, but moving existing data between SQLite and MySQL is not an automatic migration.
 
 ## Reload Versus Restart
 
-`/shops reload` reloads normal configuration values, language files, the hologram format, CMI worth-price thresholds, shop visibility tasks, database connection, and shops in loaded chunks. Use a full restart for `main-command-name`, database backend changes, debug-file creation, integration registration, or plugin dependency changes. Display and positioning settings changed through `/shops config set` refresh loaded holograms immediately, including any `hologram-colors.*` value.
+`/shops reload` reloads normal configuration values, language files, the hologram format, CMI worth-price thresholds, storefront discovery policy, advertising terms and queue poller, shop visibility tasks, database connection, and shops in loaded chunks. The captured advertising ItemStack is loaded from its dedicated file rather than reconstructed from configuration. Use a full restart for `main-command-name`, database backend changes, debug-file creation, integration registration, or plugin dependency changes. Display and positioning settings changed through `/shops config set` refresh loaded holograms immediately, including any `hologram-colors.*` value.
 
 `/shops admin debug` is independent of `enable-debug-log`. It collects a
 bounded, privacy-conscious runtime snapshot on demand, while the debug log is a

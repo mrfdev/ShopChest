@@ -21,6 +21,26 @@ class ShopDebugCatalogTest {
         assertTrue(commands.stream().anyMatch(entry ->
                 entry.usage().equals("/market admin audit [player|all] [page]")
                         && entry.permission().equals("shopchest.admin.audit")));
+        assertTrue(commands.stream().anyMatch(entry ->
+                entry.usage().equals("/market search <item> [page]")
+                        && entry.permission().equals("shopchest.search")));
+        assertTrue(commands.stream().anyMatch(entry ->
+                entry.usage().equals("/market profile [player|uuid] [shops [page]]")
+                        && entry.permission().equals("shopchest.profile")));
+        assertTrue(commands.stream().anyMatch(entry ->
+                entry.usage().equals("/market advertise [pass|status|cancel]")
+                        && entry.permission().equals("shopchest.advertise")));
+        assertTrue(commands.stream().anyMatch(entry ->
+                entry.usage().equals(
+                        "/market admin storefront <player> <hide|show|suspend|unsuspend|clear>")
+                        && entry.permission().equals("shopchest.admin.storefront")));
+        assertTrue(commands.stream().anyMatch(entry ->
+                entry.usage().equals(
+                        "/market admin advertise currency <status|capture|clear>")
+                        && entry.permission().equals("shopchest.admin.advertise")));
+        assertTrue(commands.stream().anyMatch(entry ->
+                entry.usage().equals("/market admin export marketplace")
+                        && entry.permission().equals("shopchest.admin.export")));
     }
 
     @Test

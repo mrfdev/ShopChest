@@ -1,11 +1,22 @@
 id: shopchest
 name: ShopChest
 category: custom-server-plugin
-summary: Create persistent container shops with holograms and Vault economy trading.
+summary: Create container shops, searchable storefront profiles, and player marketplace advertisements.
 main_command: /shops
 docs_url: https://docs.1moreblock.com/custom-server-plugins/shopchest/
 player_guide: player-guide.md
+staff_documents:
+  commands: commands.md
+  configuration: configuration.md
+  permissions: permissions.md
+  integrations: integrations.md
+  marketplace-snapshot: marketplace-snapshot.md
+  placeholders: placeholders.md
+  storefront-beta-test: storefront-beta-test.md
+  troubleshooting: troubleshooting.md
 technical_readme: ../README.md
+marketplace_snapshot_json: catalogue/marketplace-snapshot.json
+marketplace_snapshot_csv: catalogue/marketplace-snapshot.csv
 java_target: 25
 paper_target: "26.2 build 84 stable"
 official_project: true

@@ -19,6 +19,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.Location;
 import org.bukkit.permissions.PermissionAttachmentInfo;
 
 import java.util.ArrayList;
@@ -103,6 +104,33 @@ public class ShopCommand {
             }
         });
 
+        addSubCommand(new ShopSubCommand("profile", false, executor, tabCompleter) {
+            @Override
+            public String getHelpMessage(CommandSender sender) {
+                return sender.hasPermission(Permissions.PROFILE)
+                        ? "§6/" + name + " profile [player] §7- View or edit a storefront profile"
+                        : "";
+            }
+        });
+
+        addSubCommand(new ShopSubCommand("search", false, executor, tabCompleter) {
+            @Override
+            public String getHelpMessage(CommandSender sender) {
+                return sender.hasPermission(Permissions.SEARCH)
+                        ? "§6/" + name + " search <item> [page] §7- Find in-stock player shops"
+                        : "";
+            }
+        });
+
+        addSubCommand(new ShopSubCommand("advertise", true, executor, tabCompleter) {
+            @Override
+            public String getHelpMessage(CommandSender sender) {
+                return sender.hasPermission(Permissions.ADVERTISE)
+                        ? "§6/" + name + " advertise §7- Preview, purchase, or queue a storefront ad"
+                        : "";
+            }
+        });
+
         addSubCommand(new ShopSubCommand("recent", true, executor, tabCompleter) {
             @Override
             public String getHelpMessage(CommandSender sender) {
@@ -151,7 +179,10 @@ public class ShopCommand {
             public String getHelpMessage(CommandSender sender) {
                 if (sender.hasPermission(Permissions.ADMIN_LIST)
                         || sender.hasPermission(Permissions.ADMIN_AUDIT)
-                        || sender.hasPermission(Permissions.ADMIN_DEBUG)) {
+                        || sender.hasPermission(Permissions.ADMIN_DEBUG)
+                        || sender.hasPermission(Permissions.ADMIN_STOREFRONT)
+                        || sender.hasPermission(Permissions.ADMIN_ADVERTISE)
+                        || sender.hasPermission(Permissions.ADMIN_EXPORT)) {
                     final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
                     return messageRegistry.getMessage(Message.HELP_COMMAND_ADMIN, cmdReplacement);
                 }
@@ -223,6 +254,14 @@ public class ShopCommand {
      */
     public void editShopAfterSelected(Player player, Shop shop, EditClickType clickType) {
         executor.edit2(player, shop, clickType);
+    }
+
+    public void cacheAdminTeleportTargets(Player player, java.util.Map<Integer, Location> targets) {
+        executor.cacheAdminTeleportTargets(player, targets);
+    }
+
+    public void invalidateEphemeralState() {
+        executor.invalidateEphemeralState();
     }
 
     private boolean hasCreationPermission(CommandSender sender) {
@@ -347,7 +386,8 @@ public class ShopCommand {
             if (args.length == 1) {
                 if (!args[0].isEmpty()) {
                     for (String s : subCommandNames) {
-                        if (s.startsWith(args[0])) {
+                        if (s.toLowerCase(Locale.ROOT).startsWith(
+                                args[0].toLowerCase(Locale.ROOT))) {
                             tabCompletions.add(s);
                         }
                     }

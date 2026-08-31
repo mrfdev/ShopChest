@@ -157,8 +157,8 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
             requireText(config, "\"download_filename_pattern\": \"Paper-{version}.jar\"")
             requireText(state, "\"current_build\": $stableBuild")
             requireText(state, "\"current_channel\": \"$channel\"")
-            requireText(launcher, "JAVA_BIN")
-            requireText(launcher, "JAVA_HOME")
+            requireText(launcher, "_javaBin")
+            requireText(launcher, "_minJavaVersion")
             requireThat(!launcher.readText().contains("jdk-25." + "0.2")) {
                 "Maintained server launcher still contains the stale JDK 25.0.2 path."
             }

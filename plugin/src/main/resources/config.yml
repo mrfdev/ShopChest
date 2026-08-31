@@ -237,6 +237,31 @@ cmi-worth-price-warning:
   low-multiplier: 0.50
   high-multiplier: 20.00
 
+# Public discovery is limited to normal customer-buy shops. MARKETPLACE mode
+# discloses coordinates only for shops inside the named WorldGuard region in
+# the named world. Set location-scope to GLOBAL to include eligible shops in
+# every world; ordinary player results still never provide teleport actions.
+storefront-discovery:
+  location-scope: MARKETPLACE
+  marketplace-world: general
+  marketplace-region: shops
+  search-cooldown-milliseconds: 1500
+  snapshot-seconds: 30
+
+# Storefront advertising is purchased with a captured, genuine AFK Shrine
+# Token ItemStack. The plugin fails closed until an administrator captures the
+# token with `/shops admin advertise currency capture` while holding one.
+advertising:
+  enabled: true
+  token-cost: 5
+  pass-days: 7
+  broadcasts-per-pass: 3
+  owner-cooldown-hours: 24
+  global-cooldown-minutes: 30
+  request-ttl-hours: 48
+  poll-seconds: 15
+  sound: minecraft:block.amethyst_block.chime
+
 # Set the items of which a player can't create a shop.
 blacklist:
 # - "DIORITE"

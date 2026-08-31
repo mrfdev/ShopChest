@@ -10,3 +10,5 @@
 # Binary files should be left untouched
 *.jar           binary
 
+# Marketplace exports use RFC 4180 CRLF records and are reviewed byte-for-byte.
+docs/catalogue/*.csv -text whitespace=-trailing-space

@@ -75,7 +75,12 @@ class ShopCommandExecutor implements CommandExecutor {
     private final ShopChest plugin;
     private final ShopUtils shopUtils;
     private final ShopAuditService shopAuditService;
+    private final ShopSearchCommandHandler shopSearchCommandHandler;
+    private final StorefrontProfileCommandHandler storefrontProfileCommandHandler;
+    private final AdvertisingCommandHandler advertisingCommandHandler;
+    private final MarketplaceExportCommandHandler marketplaceExportCommandHandler;
     private final Map<UUID, Map<Integer, Location>> adminTeleportTargets = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> adminTeleportTargetExpiry = new ConcurrentHashMap<>();
     private final Map<AuditCacheKey, AuditCacheEntry> adminAuditCache = new HashMap<>();
     private final java.util.Set<Integer> pendingShopEdits = ConcurrentHashMap.newKeySet();
     private boolean adminAuditInProgress;
@@ -85,6 +90,31 @@ class ShopCommandExecutor implements CommandExecutor {
         this.plugin = plugin;
         this.shopUtils = plugin.getShopUtils();
         this.shopAuditService = new ShopAuditService(plugin);
+        this.shopSearchCommandHandler = new ShopSearchCommandHandler(plugin);
+        this.storefrontProfileCommandHandler = new StorefrontProfileCommandHandler(plugin);
+        this.advertisingCommandHandler = new AdvertisingCommandHandler(plugin);
+        this.marketplaceExportCommandHandler = new MarketplaceExportCommandHandler(plugin);
+    }
+
+    void cacheAdminTeleportTargets(Player player, Map<Integer, Location> targets) {
+        if (!player.hasPermission(Permissions.ADMIN_LIST)) {
+            return;
+        }
+        final Map<Integer, Location> copies = new HashMap<>();
+        targets.forEach((id, location) -> {
+            if (id != null && id >= 0 && location != null) {
+                copies.put(id, location.clone());
+            }
+        });
+        adminTeleportTargets.put(player.getUniqueId(), Map.copyOf(copies));
+        adminTeleportTargetExpiry.put(player.getUniqueId(), System.currentTimeMillis() + 60_000L);
+    }
+
+    void invalidateEphemeralState() {
+        shopSearchCommandHandler.invalidate();
+        advertisingCommandHandler.invalidateDrafts();
+        adminTeleportTargets.clear();
+        adminTeleportTargetExpiry.clear();
     }
 
     @Override
@@ -133,6 +163,12 @@ class ShopCommandExecutor implements CommandExecutor {
                 return handleAdminCommand(sender, args);
             } else if (subCommand.getName().equalsIgnoreCase("debug")) {
                 return handleDebugCommand(sender, args);
+            } else if (subCommand.getName().equalsIgnoreCase("search")) {
+                return shopSearchCommandHandler.handle(sender, args);
+            } else if (subCommand.getName().equalsIgnoreCase("profile")) {
+                return storefrontProfileCommandHandler.handle(sender, args);
+            } else if (subCommand.getName().equalsIgnoreCase("advertise")) {
+                return advertisingCommandHandler.handlePlayer(sender, args);
             } else if (subCommand.getName().equalsIgnoreCase("info")) {
                 if (args.length >= 2 && args[1].equalsIgnoreCase("shop")) {
                     if (sender instanceof Player) {
@@ -513,6 +549,18 @@ class ShopCommandExecutor implements CommandExecutor {
             return true;
         }
 
+        if (args[1].equalsIgnoreCase("storefront")) {
+            return storefrontProfileCommandHandler.handleModeration(sender, args);
+        }
+
+        if (args[1].equalsIgnoreCase("advertise")) {
+            return advertisingCommandHandler.handleAdmin(sender, args);
+        }
+
+        if (args[1].equalsIgnoreCase("export")) {
+            return marketplaceExportCommandHandler.handle(sender, args);
+        }
+
         if (args[1].equalsIgnoreCase("teleport") && args.length == 3) {
             if (!sender.hasPermission(Permissions.ADMIN_LIST)) {
                 sender.sendMessage(messageRegistry.getMessage(Message.NO_PERMISSION_ADMIN_LIST));
@@ -537,7 +585,10 @@ class ShopCommandExecutor implements CommandExecutor {
     private boolean hasAdminCommandPermission(CommandSender sender) {
         return sender.hasPermission(Permissions.ADMIN_LIST)
                 || sender.hasPermission(Permissions.ADMIN_AUDIT)
-                || sender.hasPermission(Permissions.ADMIN_DEBUG);
+                || sender.hasPermission(Permissions.ADMIN_DEBUG)
+                || sender.hasPermission(Permissions.ADMIN_STOREFRONT)
+                || sender.hasPermission(Permissions.ADMIN_ADVERTISE)
+                || sender.hasPermission(Permissions.ADMIN_EXPORT);
     }
 
     private boolean handleDebugCommand(CommandSender sender, String[] args) {
@@ -718,6 +769,20 @@ class ShopCommandExecutor implements CommandExecutor {
         }
         if (sender.hasPermission(Permissions.ADMIN_DEBUG)) {
             sender.sendMessage(messageRegistry.getMessage(Message.ADMIN_HELP_DEBUG, command));
+        }
+        if (sender.hasPermission(Permissions.ADMIN_STOREFRONT)) {
+            sender.sendMessage("§6/" + Config.mainCommandName
+                    + " admin storefront <player> <hide|show|suspend|unsuspend|clear>"
+                    + " §7- Moderate public storefront discovery");
+        }
+        if (sender.hasPermission(Permissions.ADMIN_ADVERTISE)) {
+            sender.sendMessage("§6/" + Config.mainCommandName
+                    + " admin advertise currency <status|capture|clear>"
+                    + " §7- Manage the captured AFK Shrine Token");
+        }
+        if (sender.hasPermission(Permissions.ADMIN_EXPORT)) {
+            sender.sendMessage("§6/" + Config.mainCommandName
+                    + " admin export marketplace §7- Create a reviewed website snapshot");
         }
         sender.sendMessage(" ");
     }
@@ -1154,7 +1219,7 @@ class ShopCommandExecutor implements CommandExecutor {
                     targets.put(shop.getID(), shop.getLocation().clone());
                 }
             }
-            adminTeleportTargets.put(admin.getUniqueId(), Map.copyOf(targets));
+            cacheAdminTeleportTargets(admin, targets);
         }
 
         final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
@@ -1499,12 +1564,26 @@ class ShopCommandExecutor implements CommandExecutor {
         final Location shopLocation = adminTeleportTargets
                 .getOrDefault(player.getUniqueId(), Map.of())
                 .get(shopId);
-        if (shopLocation == null) {
+        final long expiresAt = adminTeleportTargetExpiry.getOrDefault(player.getUniqueId(), 0L);
+        if (shopLocation == null || System.currentTimeMillis() > expiresAt) {
             player.sendMessage(messageRegistry.getMessage(Message.ADMIN_TELEPORT_TARGET_EXPIRED));
             return;
         }
         if (!shopLocation.isWorldLoaded()) {
             player.sendMessage(messageRegistry.getMessage(Message.ADMIN_TELEPORT_WORLD_UNAVAILABLE));
+            return;
+        }
+        final World targetWorld = shopLocation.getWorld();
+        final boolean targetChunkLoaded = targetWorld != null && targetWorld.isChunkLoaded(
+                ChunkCoordinates.fromBlock(shopLocation.getBlockX()),
+                ChunkCoordinates.fromBlock(shopLocation.getBlockZ()));
+        if (!targetChunkLoaded) {
+            player.sendMessage(messageRegistry.getMessage(Message.ADMIN_TELEPORT_TARGET_EXPIRED));
+            return;
+        }
+        final Shop currentShop = shopUtils.getShop(shopLocation);
+        if (currentShop == null || currentShop.getID() != shopId) {
+            player.sendMessage(messageRegistry.getMessage(Message.ADMIN_TELEPORT_TARGET_EXPIRED));
             return;
         }
 
@@ -1542,11 +1621,15 @@ class ShopCommandExecutor implements CommandExecutor {
             return;
         }
 
+        invalidateEphemeralState();
+
         // Reload configurations
         plugin.getShopChestConfig().reload(false, true, true);
         plugin.getHologramFormat().reload();
         plugin.getCmiWorthPriceAdvisor().refresh();
         plugin.getUpdater().restart();
+        plugin.getPublicCatalogue().stop();
+        plugin.getAdvertisingFeature().stop();
 
         // Remove all shops
         for (Shop shop : shopUtils.getShops()) {
@@ -1563,6 +1646,8 @@ class ShopCommandExecutor implements CommandExecutor {
                 shopUtils.loadShops(loadedChunks, new Callback<Integer>(plugin) {
                     @Override
                     public void onResult(Integer result) {
+                        plugin.getPublicCatalogue().start();
+                        plugin.getAdvertisingFeature().start();
                         sender.sendMessage(messageRegistry.getMessage(Message.RELOADED_SHOPS,
                                 new Replacement(Placeholder.AMOUNT, String.valueOf(result))));
                         plugin.debug(sender.getName() + " has reloaded " + result + " shops");
@@ -1829,6 +1914,7 @@ class ShopCommandExecutor implements CommandExecutor {
                         if (activeShop != null && activeShop.getID() == shopId) {
                             activeShop.applyTerms(proposedTerms);
                         }
+                        plugin.getPublicCatalogue().requestRefresh();
 
                         if (player.isOnline()) {
                             plugin.getCmiWorthPriceAdvisor().advise(

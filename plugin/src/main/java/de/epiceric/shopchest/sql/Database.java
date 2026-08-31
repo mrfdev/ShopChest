@@ -302,6 +302,10 @@ public abstract class Database {
                         s.executeUpdate(getQueryCreateTableFields());
                     }
 
+                    // Storefront data is intentionally isolated from authoritative shop rows.
+                    JdbcStorefrontRepository.initialize(con, Config.databaseTablePrefix);
+                    JdbcAdvertisingRepository.initialize(con, Config.databaseTablePrefix);
+
                     // Clean up economy log
                     if (Config.cleanupEconomyLogDays > 0) {
                         cleanUpEconomy(false);
@@ -558,16 +562,16 @@ public abstract class Database {
                             row.sellPrice(),
                             shopType));
                 }
-                callback.onResult(result);
+                callback.onResult(Set.copyOf(result));
             } catch (RuntimeException exception) {
-                plugin.getLogger().severe("Failed to initialize a player's shops on the server thread");
+                plugin.getLogger().severe("Failed to initialize persisted shops on the server thread");
                 plugin.debug(exception);
                 callback.onError(exception);
             }
         });
     }
 
-    private record PersistedShopRow(
+    record PersistedShopRow(
             int id,
             String vendor,
             String product,
@@ -582,6 +586,9 @@ public abstract class Database {
     ) {
     }
 
+    record ChunkQueryCoordinate(String world, int x, int z) {
+    }
+
     /**
      * Get all shops from the database that are located in the given chunks
      * 
@@ -589,103 +596,92 @@ public abstract class Database {
      * @param callback Callback that returns an immutable collection of shops if succeeded
      */
     public void getShopsInChunks(final Chunk[] chunks, final Callback<Collection<Shop>> callback) {
-        // Split chunks into packages containing each {splitSize} chunks at max
-        int splitSize = 80;
-        int parts = (int) Math.ceil(chunks.length / (double) splitSize);
-        Chunk[][] splitChunks = new Chunk[parts][];
-        for (int i = 0; i < parts; i++) {
-            int size = i < parts - 1 ? splitSize : chunks.length % splitSize;
-            Chunk[] tmp = new Chunk[size];
-            System.arraycopy(chunks, i * splitSize, tmp, 0, size);
-            splitChunks[i] = tmp;
+        if (!Bukkit.isPrimaryThread()) {
+            Bukkit.getScheduler().runTask(plugin, () -> getShopsInChunks(chunks, callback));
+            return;
+        }
+
+        final List<ChunkQueryCoordinate> chunkCoordinates = new ArrayList<>(chunks.length);
+        for (Chunk chunk : chunks) {
+            if (chunk != null) {
+                chunkCoordinates.add(new ChunkQueryCoordinate(
+                        chunk.getWorld().getName(), chunk.getX(), chunk.getZ()));
+            }
         }
 
         new BukkitRunnable(){
             @Override
             public void run() {
-                List<Shop> shops = new ArrayList<>();
-
-                // Send a request for each chunk package
-                for (Chunk[] newChunks : splitChunks) {
-
-                    // Map chunks by world
-                    Map<String, Set<Chunk>> chunksByWorld = new HashMap<>();
-                    for (Chunk chunk : newChunks) {
-                        String world = chunk.getWorld().getName();
-                        Set<Chunk> chunksForWorld = chunksByWorld.getOrDefault(world, new HashSet<>());
-                        chunksForWorld.add(chunk);
-                        chunksByWorld.put(world, chunksForWorld);
+                final List<PersistedShopRow> rows = new ArrayList<>();
+                try {
+                    final int splitSize = 80;
+                    for (int offset = 0; offset < chunkCoordinates.size(); offset += splitSize) {
+                        final int end = Math.min(offset + splitSize, chunkCoordinates.size());
+                        try (Connection connection = dataSource.getConnection()) {
+                            rows.addAll(queryPersistedShopRows(
+                                    connection,
+                                    tableShops,
+                                    chunkCoordinates.subList(offset, end)));
+                        }
                     }
-    
-                    // Create query dynamically
-                    String query = "SELECT * FROM " + tableShops + " WHERE ";
-                    for (String world : chunksByWorld.keySet()) {
-                        query += "(world = ? AND (";
-                        int chunkNum = chunksByWorld.get(world).size();
-                        for (int i = 0; i < chunkNum; i++) {
-                            query += "((x BETWEEN ? AND ?) AND (z BETWEEN ? AND ?)) OR ";
-                        }
-                        query += "1=0)) OR ";
+                    if (callback != null) {
+                        hydrateShopsOnServerThread(rows, callback);
                     }
-                    query += "1=0";
-    
-                    try (Connection con = dataSource.getConnection();
-                            PreparedStatement ps = con.prepareStatement(query)) {
-                        int index = 0;
-                        for (String world : chunksByWorld.keySet()) {
-                            ps.setString(++index, world);
-                            for (Chunk chunk : chunksByWorld.get(world)) {
-                                int minX = chunk.getX() * 16;
-                                int minZ = chunk.getZ() * 16;
-                                ps.setInt(++index, minX);
-                                ps.setInt(++index, minX + 15);
-                                ps.setInt(++index, minZ);
-                                ps.setInt(++index, minZ + 15);
-                            }
-                        }
-    
-                        ResultSet rs = ps.executeQuery();
-                        while (rs.next()) {
-                            int id = rs.getInt("id");
-    
-                            plugin.debug("Getting Shop... (#" + id + ")");
-    
-                            int x = rs.getInt("x");
-                            int y = rs.getInt("y");
-                            int z = rs.getInt("z");
-    
-                            World world = plugin.getServer().getWorld(rs.getString("world"));
-                            Location location = new Location(world, x, y, z);
-                            OfflinePlayer vendor = Bukkit.getOfflinePlayer(UUID.fromString(rs.getString("vendor")));
-                            ItemStack itemStack = Utils.decode(rs.getString("product"));
-                            int amount = rs.getInt("amount");
-                            ShopProduct product = new ShopProduct(itemStack, amount);
-                            double buyPrice = rs.getDouble("buyprice");
-                            double sellPrice = rs.getDouble("sellprice");
-                            ShopType shopType = ShopType.valueOf(rs.getString("shoptype"));
-    
-                            plugin.debug("Initializing new shop... (#" + id + ")");
-    
-                            shops.add(new Shop(id, plugin, vendor, product, location, buyPrice, sellPrice, shopType));
-                        }
-                    } catch (SQLException ex) {
-                        if (callback != null) {
-                            callback.callSyncError(ex);
-                        }
-    
-                        plugin.getLogger().severe("Failed to get shops from database");
-                        plugin.debug("Failed to get shops");
-                        plugin.debug(ex);
-
-                        return;
+                } catch (SQLException | RuntimeException exception) {
+                    if (callback != null) {
+                        callback.callSyncError(exception);
                     }
-                }
-    
-                if (callback != null) {
-                    callback.callSyncResult(Collections.unmodifiableCollection(shops));
+                    plugin.getLogger().severe("Failed to get shops from database");
+                    plugin.debug("Failed to get shops");
+                    plugin.debug(exception);
                 }
             };
         }.runTaskAsynchronously(plugin);
+    }
+
+    static List<PersistedShopRow> queryPersistedShopRows(
+            Connection connection,
+            String shopsTable,
+            List<ChunkQueryCoordinate> chunks
+    ) throws SQLException {
+        if (chunks.isEmpty()) {
+            return List.of();
+        }
+        final String clause = "(world=? AND x BETWEEN ? AND ? AND z BETWEEN ? AND ?)";
+        final String query = "SELECT id,vendor,product,amount,world,x,y,z,"
+                + "buyprice,sellprice,shoptype FROM " + shopsTable + " WHERE "
+                + String.join(" OR ", Collections.nCopies(chunks.size(), clause))
+                + " ORDER BY id";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            int parameter = 0;
+            for (ChunkQueryCoordinate chunk : chunks) {
+                final int minX = Math.multiplyExact(chunk.x(), 16);
+                final int minZ = Math.multiplyExact(chunk.z(), 16);
+                statement.setString(++parameter, chunk.world());
+                statement.setInt(++parameter, minX);
+                statement.setInt(++parameter, minX + 15);
+                statement.setInt(++parameter, minZ);
+                statement.setInt(++parameter, minZ + 15);
+            }
+            final List<PersistedShopRow> rows = new ArrayList<>();
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    rows.add(new PersistedShopRow(
+                            resultSet.getInt("id"),
+                            resultSet.getString("vendor"),
+                            resultSet.getString("product"),
+                            resultSet.getInt("amount"),
+                            resultSet.getString("world"),
+                            resultSet.getInt("x"),
+                            resultSet.getInt("y"),
+                            resultSet.getInt("z"),
+                            resultSet.getDouble("buyprice"),
+                            resultSet.getDouble("sellprice"),
+                            resultSet.getString("shoptype")));
+                }
+            }
+            return List.copyOf(rows);
+        }
     }
 
     /**

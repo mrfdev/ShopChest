@@ -105,7 +105,7 @@ public class ShopUtils {
             if (shop.getShopType() != ShopType.ADMIN) {
                 playerShopAmount.compute(shop.getVendor().getUniqueId(), (uuid, amount) -> amount == null ? 1 : amount + 1);
             }
-            plugin.getShopDatabase().addShop(shop, callback);
+            plugin.getShopDatabase().addShop(shop, refreshCatalogueAfter(callback));
         } else {
             if (callback != null) callback.callSyncResult(shop.getID());
         }
@@ -169,7 +169,7 @@ public class ShopUtils {
             if (shop.getShopType() != ShopType.ADMIN) {
                 playerShopAmount.compute(shop.getVendor().getUniqueId(), (uuid, amount) -> amount == null ? 0 : Math.max(0, amount - 1));
             }
-            plugin.getShopDatabase().removeShop(shop, callback);
+            plugin.getShopDatabase().removeShop(shop, refreshCatalogueAfter(callback));
         } else {
             if (callback != null) callback.callSyncResult(null);
         }
@@ -220,7 +220,9 @@ public class ShopUtils {
             if (!isAdmin) {
                 playerShopAmount.compute(vendorUuid, (uuid, amount) -> amount == null ? 0 : Math.max(0, amount - 1));
             }
-            plugin.getShopDatabase().removeShop(toRemove.values().iterator().next(), callback);
+            plugin.getShopDatabase().removeShop(
+                    toRemove.values().iterator().next(),
+                    refreshCatalogueAfter(callback));
         } else {
             if (callback != null) callback.callSyncResult(null);
         }
@@ -240,6 +242,28 @@ public class ShopUtils {
         if (container != null) {
             container.setShopDisplayFacing(plugin, null);
         }
+    }
+
+    /** Rebuilds the derived public projection only after the authoritative write commits. */
+    private <T> Callback<T> refreshCatalogueAfter(Callback<T> delegate) {
+        return new Callback<T>(plugin) {
+            @Override
+            public void onResult(T result) {
+                if (plugin.getPublicCatalogue() != null) {
+                    plugin.getPublicCatalogue().requestRefresh();
+                }
+                if (delegate != null) {
+                    delegate.onResult(result);
+                }
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                if (delegate != null) {
+                    delegate.onError(throwable);
+                }
+            }
+        };
     }
 
     /**

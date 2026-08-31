@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 2,
+  "documentType": "shopchest-marketplace-snapshot",
+  "metadata": {
+    "capturedAt": "2026-08-31T11:31:47.942408Z",
+    "displayTimezone": "Europe/Amsterdam",
+    "sourceVersion": "1.15.2",
+    "banner": "Captured on 31 August 2026 at 13:31 CEST. Prices, stock, storefronts, and directions may have changed. Use /shops search for current availability.",
+    "marketplaceLabel": "/warp shops"
+  },
+  "counts": {
+    "candidates": 1,
+    "published": 1,
+    "inStock": 1,
+    "outOfStock": 0,
+    "unchecked": 0,
+    "excludedUnavailable": 0,
+    "excludedInvalid": 0
+  },
+  "listings": [
+    {
+      "ownerName": "mrfloris",
+      "storefrontName": "JahLion's Gear",
+      "directions": "At /warp shops, look for the lion head on the left",
+      "material": "SAND",
+      "itemName": "Sand",
+      "variantSummary": null,
+      "bundleAmount": 1,
+      "customerBuyPrice": "1.0",
+      "customerBuyUnitPrice": "1.0",
+      "availabilityAtCapture": "IN_STOCK",
+      "locationLabel": null
+    }
+  ]
+}

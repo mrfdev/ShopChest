@@ -434,6 +434,24 @@ public class Config {
      **/
     public static String languageFile;
 
+    /** Public storefront discovery and location-disclosure settings. */
+    public static boolean storefrontGlobalLocationScope;
+    public static String storefrontMarketplaceWorld;
+    public static String storefrontMarketplaceRegion;
+    public static int storefrontSearchCooldownMillis;
+    public static int storefrontSnapshotSeconds;
+
+    /** AFK Shrine Token-backed storefront advertising settings. */
+    public static boolean advertisingEnabled;
+    public static int advertisingTokenCost;
+    public static int advertisingPassDays;
+    public static int advertisingBroadcastsPerPass;
+    public static int advertisingOwnerCooldownHours;
+    public static int advertisingGlobalCooldownMinutes;
+    public static int advertisingRequestTtlHours;
+    public static int advertisingPollSeconds;
+    public static String advertisingSound;
+
     private ShopChest plugin;
 
     public Config(ShopChest plugin) {
@@ -684,6 +702,31 @@ public class Config {
         defaultLimit = plugin.getConfig().getInt("shop-limits.default");
         mainCommandName = plugin.getConfig().getString("main-command-name");
         languageFile = plugin.getConfig().getString("language-file");
+        storefrontGlobalLocationScope = "GLOBAL".equalsIgnoreCase(plugin.getConfig().getString(
+                "storefront-discovery.location-scope", "MARKETPLACE"));
+        storefrontMarketplaceWorld = plugin.getConfig().getString(
+                "storefront-discovery.marketplace-world", "general");
+        storefrontMarketplaceRegion = plugin.getConfig().getString(
+                "storefront-discovery.marketplace-region", "shops");
+        storefrontSearchCooldownMillis = clamp(plugin.getConfig().getInt(
+                "storefront-discovery.search-cooldown-milliseconds", 1500), 0, 10_000);
+        storefrontSnapshotSeconds = clamp(plugin.getConfig().getInt(
+                "storefront-discovery.snapshot-seconds", 30), 5, 300);
+        advertisingEnabled = plugin.getConfig().getBoolean("advertising.enabled", true);
+        advertisingTokenCost = clamp(plugin.getConfig().getInt("advertising.token-cost", 5), 1, 64);
+        advertisingPassDays = clamp(plugin.getConfig().getInt("advertising.pass-days", 7), 1, 90);
+        advertisingBroadcastsPerPass = clamp(plugin.getConfig().getInt(
+                "advertising.broadcasts-per-pass", 3), 1, 30);
+        advertisingOwnerCooldownHours = clamp(plugin.getConfig().getInt(
+                "advertising.owner-cooldown-hours", 24), 1, 168);
+        advertisingGlobalCooldownMinutes = clamp(plugin.getConfig().getInt(
+                "advertising.global-cooldown-minutes", 30), 1, 1_440);
+        advertisingRequestTtlHours = clamp(plugin.getConfig().getInt(
+                "advertising.request-ttl-hours", 48), 1, 168);
+        advertisingPollSeconds = clamp(plugin.getConfig().getInt(
+                "advertising.poll-seconds", 15), 5, 300);
+        advertisingSound = plugin.getConfig().getString(
+                "advertising.sound", "minecraft:block.amethyst_block.chime");
 
         if (langReload) {
             plugin.loadLanguages();
@@ -831,6 +874,22 @@ public class Config {
                 "cmi-worth-price-warning.low-multiplier", DEFAULT_CMI_WORTH_LOW_MULTIPLIER);
         changed |= addDefaultIfMissing(
                 "cmi-worth-price-warning.high-multiplier", DEFAULT_CMI_WORTH_HIGH_MULTIPLIER);
+        changed |= addDefaultIfMissing("storefront-discovery.location-scope", "MARKETPLACE");
+        changed |= addDefaultIfMissing("storefront-discovery.marketplace-world", "general");
+        changed |= addDefaultIfMissing("storefront-discovery.marketplace-region", "shops");
+        changed |= addDefaultIfMissing(
+                "storefront-discovery.search-cooldown-milliseconds", 1500);
+        changed |= addDefaultIfMissing("storefront-discovery.snapshot-seconds", 30);
+        changed |= addDefaultIfMissing("advertising.enabled", true);
+        changed |= addDefaultIfMissing("advertising.token-cost", 5);
+        changed |= addDefaultIfMissing("advertising.pass-days", 7);
+        changed |= addDefaultIfMissing("advertising.broadcasts-per-pass", 3);
+        changed |= addDefaultIfMissing("advertising.owner-cooldown-hours", 24);
+        changed |= addDefaultIfMissing("advertising.global-cooldown-minutes", 30);
+        changed |= addDefaultIfMissing("advertising.request-ttl-hours", 48);
+        changed |= addDefaultIfMissing("advertising.poll-seconds", 15);
+        changed |= addDefaultIfMissing(
+                "advertising.sound", "minecraft:block.amethyst_block.chime");
         if (changed) {
             plugin.saveConfig();
         }

@@ -32,6 +32,9 @@ permissions:
       shopchest.external.bypass: true
       shopchest.admin: true
       shopchest.recent: true
+      shopchest.profile: true
+      shopchest.search: true
+      shopchest.advertise: true
   shopchest.create:
     description: Allows you to create a shop.
     children:
@@ -93,6 +96,9 @@ permissions:
       shopchest.admin.list: true
       shopchest.admin.audit: true
       shopchest.admin.debug: true
+      shopchest.admin.storefront: true
+      shopchest.admin.advertise: true
+      shopchest.admin.export: true
   shopchest.admin.list:
     description: Allows listing another player's shops and teleporting to them.
     default: op
@@ -102,6 +108,24 @@ permissions:
   shopchest.admin.debug:
     description: Allows ShopChest support status, command, permission, and placeholder diagnostics.
     default: op
+  shopchest.admin.storefront:
+    description: Allows hiding or suspending public storefront profiles.
+    default: op
+  shopchest.admin.advertise:
+    description: Allows managing ShopChest advertising and capturing its currency template.
+    default: op
+  shopchest.admin.export:
+    description: Allows creating a reviewed public marketplace snapshot export.
+    default: op
   shopchest.recent:
     description: Allows viewing your own recent ShopChest transactions.
+    default: true
+  shopchest.profile:
+    description: Allows creating and viewing public storefront profiles.
+    default: true
+  shopchest.search:
+    description: Allows searching public customer-buy shop listings.
+    default: true
+  shopchest.advertise:
+    description: Allows buying an advertising pass and queuing a storefront advertisement.
     default: true

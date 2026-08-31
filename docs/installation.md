@@ -7,6 +7,11 @@
 - Vault
 - A Vault-compatible economy provider registered before ShopChest enables
 - CMI is optional; when present, it enables the configurable worth-price advisory
+- WorldGuard is required for the default marketplace-only Storefront Profile,
+  search, advertising, and export scope; `GLOBAL` discovery is available as an
+  intentional alternative
+- A genuine AFK Shrine Token obtained through `/afkshrine` is needed once for
+  administrator currency capture before players can purchase Advertising Passes
 
 ShopChest's own classes target Java 25 bytecode for the supported Paper server.
 
@@ -17,7 +22,14 @@ ShopChest's own classes target Java 25 bytecode for the supported Paper server.
 3. Place the generated `1MB-ShopChest-v1.15.2-<build>-j25-26.2.jar` in `plugins/`. Remove older ShopChest jars so only one top-level jar remains.
 4. Start the server and verify that ShopChest reports its version without disabling itself.
 5. Review `plugins/ShopChest/config.yml` and `hologram-format.yml`.
-6. Run `/shops info`, `/shops limits`, and a controlled create/buy/sell test.
+6. For the recommended `MARKETPLACE` discovery mode, verify that WorldGuard has
+   the configured world and region (defaults: `general` and `shops`).
+7. Hold one genuine AFK Shrine Token in the main hand and run
+   `/shops admin advertise currency capture`, then verify it with
+   `/shops admin advertise currency status`. The setup item is not consumed.
+8. Run `/shops info`, `/shops limits`, and a controlled create/buy/sell test.
+9. Create a beta storefront, run an exact item search, preview an advertisement,
+   and confirm that ordinary location rows do not teleport.
 
 ShopChest disables itself when Vault, an economy provider, or database access
 is unavailable.
@@ -27,8 +39,13 @@ is unavailable.
 1. Stop the server; do not hot-swap or plugin-reload the jar.
 2. Back up `plugins/ShopChest/` and, for MySQL, the configured ShopChest tables.
 3. Replace the old jar with the newly built shaded jar. Keep exactly one ShopChest jar in `plugins/`.
-4. Preserve `config.yml`, `hologram-format.yml`, language files, and database data.
-5. Start the server, watch schema migration messages, and test `/shops info`, `/shops reload`, shop creation, holograms, and both trade directions.
+4. Preserve `config.yml`, `hologram-format.yml`, language files,
+   `advertising-currency.yml`, and database data.
+5. Start the server, watch schema migration messages, and test `/shops info`,
+   `/shops reload`, shop creation, holograms, both trade directions, storefront
+   profiles, search, advertising status, and queue cancellation.
+6. Run `/shops admin advertise currency status`. Recapture only when the
+   authoritative token intentionally changed or the template is absent.
 
 Legacy database migrations create backup tables before converting old unprefixed shop and economy-log schemas. They do not migrate data between database engines.
 

@@ -8,7 +8,7 @@ Vault is a hard dependency. ShopChest also requires an economy provider register
 
 | Plugin | Verified ShopChest behavior |
 | --- | --- |
-| WorldGuard | Registers `create-shop`, `use-shop`, and `use-admin-shop` state flags and checks them during creation and trading. |
+| WorldGuard | Registers `create-shop`, `use-shop`, and `use-admin-shop` state flags and checks them during creation and trading. It also supplies the region membership used by marketplace-scoped storefront discovery. |
 | Towny | Restricts shop creation to configured plot types according to resident, mayor, and king context. |
 | PlotSquared | Registers and evaluates shop flags for supported old and newer PlotSquared API layouts. |
 | BentoBox | Registers a shop flag and checks island access. |
@@ -20,6 +20,37 @@ Vault is a hard dependency. ShopChest also requires an economy provider register
 Each hook has an `enable-*-integration` setting. Most are also listed as soft dependencies so they load before ShopChest when installed. Restart after adding, removing, updating, or toggling an integration.
 
 `shopchest.external.bypass` lets trusted staff bypass integrated region, plot, island, or claim denials while using shops. `shopchest.create.protected` separately bypasses a cancelled creation event.
+
+### `/warp shops` Discovery Scope
+
+The default `storefront-discovery.location-scope: MARKETPLACE` includes a shop
+only when WorldGuard confirms that it is in world `general` and region `shops`,
+or the configured replacements. If WorldGuard is absent, disabled, or cannot
+answer the region lookup, discovery fails closed. This affects public profiles,
+item search, Featured Listing eligibility, and advertising.
+
+`GLOBAL` is available for servers that intentionally want broader in-game
+discovery. Ordinary coordinates remain non-clickable, and the reviewed website
+snapshot remains limited to the configured `/warp shops` marketplace.
+
+## AFK Shrine Token Advertising Currency
+
+AFK Shrine Tokens are earned through the 1MB-Library `/afkshrine` trades, but
+ShopChest does not depend on an AFK Shrine API or guess an internal PDC key.
+An administrator holds one genuine token and runs
+`/shops admin advertise currency capture`. ShopChest serializes that complete
+ItemStack with amount normalized to 1 in its own data folder.
+
+At purchase time a candidate stack is also normalized to amount 1 and accepted
+only when Bukkit's `ItemStack.isSimilar` says it matches the captured template.
+Plain `LIGHT_BLUE_DYE`, renamed dyes, copied display names/lore, and items with
+missing, extra, or changed PDC/components are rejected. A missing or unreadable
+template disables purchases rather than falling back to a weaker identity.
+
+This capture boundary lets the AFK Shrine implementation evolve without making
+ShopChest depend on a guessed token schema. After an intentional token format
+change, staff should clear and recapture the new genuine item during a
+maintenance window.
 
 ## CMI Worth Price Advisory
 

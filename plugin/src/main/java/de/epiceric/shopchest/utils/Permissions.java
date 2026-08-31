@@ -22,6 +22,12 @@ public class Permissions {
     public static final String ADMIN_LIST = "shopchest.admin.list";
     public static final String ADMIN_AUDIT = "shopchest.admin.audit";
     public static final String ADMIN_DEBUG = "shopchest.admin.debug";
+    public static final String ADMIN_STOREFRONT = "shopchest.admin.storefront";
+    public static final String ADMIN_ADVERTISE = "shopchest.admin.advertise";
+    public static final String ADMIN_EXPORT = "shopchest.admin.export";
     public static final String RECENT = "shopchest.recent";
+    public static final String PROFILE = "shopchest.profile";
+    public static final String SEARCH = "shopchest.search";
+    public static final String ADVERTISE = "shopchest.advertise";
 
 }

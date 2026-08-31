@@ -3,6 +3,8 @@ package de.epiceric.shopchest;
 import com.palmergames.bukkit.towny.Towny;
 import com.wasteofplastic.askyblock.ASkyBlock;
 import de.epiceric.shopchest.command.ShopCommand;
+import de.epiceric.shopchest.advertising.AdvertisingFeature;
+import de.epiceric.shopchest.catalog.RuntimePublicCatalogueService;
 import de.epiceric.shopchest.config.Config;
 import de.epiceric.shopchest.config.hologram.HologramFormat;
 import de.epiceric.shopchest.external.BentoBoxShopFlag;
@@ -19,6 +21,8 @@ import de.epiceric.shopchest.listeners.*;
 import de.epiceric.shopchest.shop.Shop;
 import de.epiceric.shopchest.shop.ShopItemAnimator;
 import de.epiceric.shopchest.sql.Database;
+import de.epiceric.shopchest.sql.JdbcStorefrontRepository;
+import de.epiceric.shopchest.sql.JdbcAdvertisingRepository;
 import de.epiceric.shopchest.sql.MySQL;
 import de.epiceric.shopchest.sql.SQLite;
 import de.epiceric.shopchest.utils.*;
@@ -57,6 +61,10 @@ public class ShopChest extends JavaPlugin {
     private ShopCommand shopCommand;
     private Economy econ = null;
     private Database database;
+    private JdbcStorefrontRepository storefrontRepository;
+    private JdbcAdvertisingRepository advertisingRepository;
+    private RuntimePublicCatalogueService publicCatalogue;
+    private AdvertisingFeature advertisingFeature;
     private ShopUtils shopUtils;
     private FileWriter fw;
     private Plugin worldGuard;
@@ -171,6 +179,10 @@ public class ShopChest extends JavaPlugin {
     public void onDisable() {
         debug("Disabling ShopChest...");
 
+        if (shopCommand != null) {
+            shopCommand.invalidateEphemeralState();
+        }
+
         if (shopUtils == null) {
             // Plugin has not been fully enabled (probably due to errors),
             // so only close file writer.
@@ -194,6 +206,13 @@ public class ShopChest extends JavaPlugin {
 
         if (shopItemAnimator != null) {
             shopItemAnimator.stop();
+        }
+
+        if (publicCatalogue != null) {
+            publicCatalogue.stop();
+        }
+        if (advertisingFeature != null) {
+            advertisingFeature.stop();
         }
 
         shopUtils.removeShops();
@@ -304,6 +323,10 @@ public class ShopChest extends JavaPlugin {
                 }, Config.databaseMySqlPingInterval * 20L, Config.databaseMySqlPingInterval * 20L);
             }
         }
+        storefrontRepository = new JdbcStorefrontRepository(this, database);
+        advertisingRepository = new JdbcAdvertisingRepository(this, database);
+        publicCatalogue = new RuntimePublicCatalogueService(this);
+        advertisingFeature = new AdvertisingFeature(this);
     }
 
     private void registerListeners() {
@@ -314,6 +337,10 @@ public class ShopChest extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new NotifyPlayerOnJoinListener(this), this);
         getServer().getPluginManager().registerEvents(new ChestProtectListener(this), this);
         getServer().getPluginManager().registerEvents(new CreativeModeListener(this), this);
+        getServer().getPluginManager().registerEvents(
+                new PublicCatalogueInvalidationListener(this), this);
+        getServer().getPluginManager().registerEvents(
+                new AdvertisingPurchaseLockListener(this), this);
 
         getServer().getPluginManager().registerEvents(new BlockExplodeListener(this), this);
 
@@ -376,6 +403,8 @@ public class ShopChest extends JavaPlugin {
                 shopUtils.loadShops(loadedChunks, new Callback<Integer>(ShopChest.this) {
                     @Override
                     public void onResult(Integer result) {
+                        publicCatalogue.start();
+                        advertisingFeature.start();
                         getLogger().info("Loaded " + result + " shops in already loaded chunks");
                         debug("Loaded " + result + " shops in already loaded chunks");
                     }
@@ -561,6 +590,22 @@ public class ShopChest extends JavaPlugin {
      */
     public Database getShopDatabase() {
         return database;
+    }
+
+    public JdbcStorefrontRepository getStorefrontRepository() {
+        return storefrontRepository;
+    }
+
+    public RuntimePublicCatalogueService getPublicCatalogue() {
+        return publicCatalogue;
+    }
+
+    public JdbcAdvertisingRepository getAdvertisingRepository() {
+        return advertisingRepository;
+    }
+
+    public AdvertisingFeature getAdvertisingFeature() {
+        return advertisingFeature;
     }
 
     /**

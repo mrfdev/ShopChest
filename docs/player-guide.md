@@ -70,6 +70,132 @@ By default, right-click buys from a shop and left-click sells to it. The server 
 
 The default setup charges 5 economy units to create a normal shop and allows 5 normal shops per player. Server ranks and configuration may change both values. Admin shops are not counted toward player limits and have unlimited stock and funds.
 
+## Find Shops and Browse Storefronts
+
+Use an exact base item name to find normal player shops that currently have at
+least one complete bundle available:
+
+```text
+/shops search stone_bricks
+/shops search stone bricks
+/shops search minecraft:stone_bricks
+```
+
+All three examples search the same vanilla material. Search is exact rather
+than fuzzy: `stone_bricks` does not also mean cracked or mossy stone bricks.
+Item metadata is still respected when stock is counted, so a shop is in stock
+only when its container holds its exact configured item variant and full bundle
+amount.
+
+Results show four shops per page with bundle price, unit price, available full
+bundles, storefront, and coordinates. Only in-stock results are listed. A
+summary also mentions matching shops that are out of stock or could not be
+checked because their chunks are unloaded. ShopChest does not load chunks for a
+search. Admin shops, suspended storefronts, and shops that only buy items from
+customers are not search results.
+
+If an item cannot be resolved, ShopChest may show up to three clickable exact
+material suggestions that are actually present in the public shop catalogue.
+Suggestions never broaden the search until you choose one.
+
+The seller's storefront name opens their public profile. Locations are useful
+directions but do not teleport ordinary players. Use the clickable
+`/warp shops` link to visit the marketplace. Trusted staff with the shop-list
+permission receive a separately checked teleport action.
+
+The [searchable marketplace snapshot](https://docs.1moreblock.com/player-guides/custom-server-plugins/shopchest/marketplace-snapshot/)
+can also be searched by owner or item. It clearly shows when its data was
+captured and may be older than the live server. Use the in-game search for a
+fresher stock check.
+
+## Create a Public Storefront Profile
+
+A Storefront Profile describes the seller, while the underlying shop records
+continue to manage products, prices, stock, and locations. Create at least one
+normal shop, then set any of these optional plain-text fields:
+
+```text
+/shops profile set name JahLion's special gear shop!
+/shops profile set advertisement Need protection? I sell OP armor and weapons
+/shops profile set description Overpowered suits, weapons, and adventure gear
+/shops profile set location At /warp shops, look for the lion head on the left
+```
+
+`name` is limited to 32 characters, `advertisement` to 80, `description` to
+180, and `location` to 120. Formatting codes, MiniMessage tags, links,
+placeholders, line breaks, control characters, and hidden formatting characters
+are rejected. Staff can moderate public text without changing the player's
+shops.
+
+Preview your own or another seller's profile, then browse its four-shops-per-page
+listing:
+
+```text
+/shops profile
+/shops profile JahLion
+/shops profile JahLion shops 2
+/shops profile 00000000-0000-0000-0000-000000000000
+```
+
+The overview summarizes how many public shops sell to players and buy from
+players. Customer-Buy Offers show stock; Customer-Sell Offers show whether the
+container has room for at least one complete exact bundle, is full, unchecked,
+or unavailable. Shop pages show each direction separately with its price and
+current stock or capacity state.
+
+Choose up to three ordered Featured Listings for advertising. `/shops list`
+shows each owned shop's `#ID`:
+
+```text
+/shops profile featured add 123
+/shops profile featured remove 123
+/shops profile featured clear
+```
+
+The first Featured Listing is the primary advertised product; the next two can
+support it. Only your eligible normal shops that sell to customers can be
+featured. Remove a field without affecting the others with, for example,
+`/shops profile clear description`.
+
+## Advertise Your Storefront
+
+Storefront advertising uses AFK Shrine Tokens earned through `/afkshrine`
+trades. With the default beta settings, one Advertising Pass costs 5 exact
+tokens, lasts 7 days, and includes 3 successful public broadcasts. Passes do
+not stack, a seller can broadcast at most once every 24 hours, and the whole
+server waits at least 30 minutes between advertisements.
+
+Start with `/shops advertise`. The command shows the pass or queue state and
+clickable previews. A purchase preview never charges automatically: its
+one-use confirmation expires after 60 seconds. Once a pass is active, the same
+dashboard previews an advertisement built from the profile and Featured
+Listings. Confirming that preview either broadcasts when eligible or creates
+one durable queued request.
+
+```text
+/shops advertise
+/shops advertise pass
+/shops advertise status
+/shops advertise cancel
+```
+
+The primary Featured Listing must have one complete exact bundle in stock when
+you queue the advertisement and is checked again before broadcast. A temporarily
+out-of-stock primary listing waits in the queue; an invalid or expired request
+closes without spending its reserved broadcast. Cancelling a waiting request
+returns the reservation to the pass. Only a successful broadcast consumes one
+of the three uses.
+
+An advertisement sends online players a title, subtitle, chat message,
+configured sound, clickable storefront profile, and `/warp shops` link. Its
+text uses the storefront advertisement line first, then the description, then
+a neutral fallback.
+
+Only items that exactly match the administrator-captured AFK Shrine Token count
+toward a purchase. Plain or renamed dyes and copied name/lore lookalikes are not
+accepted. If pass delivery fails after tokens are removed, ShopChest restores
+the exact removed items before allowing another purchase attempt.
+
 ## Commands
 
 - `/shops` or `/shops help` - Show the player commands available to you. Permitted staff actions appear in a separate section.
@@ -80,6 +206,14 @@ The default setup charges 5 economy units to create a normal shop and allows 5 n
 - `/shops limits` - Show used and available normal-shop slots.
 - `/shops list [page]` - List every shop you created and summarize how many are ready, need attention, are out of stock, full, blocked, unavailable, or unchecked. Hover a compact row for its prices, stock, type, world, and coordinates. Known problem shops are marked `[Out of stock]`, `[Full]`, `[Blocked]`, or `[Unavailable]`; distant unloaded shops remain unchecked rather than being treated as broken. The locations are informational and do not teleport you.
 - `/shops recent [page]` - Review recent purchases and sales, including trades at your normal shops and the money you earned or spent. Hover a compact trade row for its date, per-item price, and shop location. History is available only for trades recorded by the server.
+- `/shops search <item> [page]` - Find in-stock normal player shops selling an exact base material, four per page.
+- `/shops profile [player|uuid] [shops [page]]` - View a seller's Storefront Profile and scoped public shops.
+- `/shops profile set <name|advertisement|description|location> <text>` - Set one public profile field.
+- `/shops profile clear <field>` - Clear one public profile field.
+- `/shops profile featured <add|remove> <shop-id>` - Manage up to three ordered Featured Listings; use `featured clear` to remove all.
+- `/shops advertise` - Open the Advertising Pass, preview, and queue dashboard.
+- `/shops advertise status` - Show the active pass, remaining broadcasts, cooldown, and open request.
+- `/shops advertise cancel` - Cancel a waiting request and return its reserved broadcast.
 
 When recorded trades changed your shop balance while you were offline, joining
 shows a compact revenue summary. Hover **View recent trades** for its action and

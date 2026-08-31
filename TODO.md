@@ -179,6 +179,10 @@ shelved.
   - Platform contract tests assert the descriptor target and the required
     display, spawning, and per-player visibility methods.
 
+## Security assurance
+
+- [ ] Plugin: security scan. Run a Codex Security scan on this repository.
+
 ## Feature exploration
 
 - [x] Review the existing data model and integrations for additional useful,
@@ -189,6 +193,246 @@ shelved.
 
 ## Approved feature proposals
 
+### Storefront discovery release
+
+- [ ] Ship `/shops profile`, `/shops search`, and `/shops advertise` together
+  as one production-ready storefront discovery release.
+  - Implement and verify the three features incrementally, but do not deploy a
+    partial live JAR that exposes only part of the intended player experience.
+  - Use one shared public-catalogue policy for profile listings, search results,
+    advertisements, stock semantics, owner identity, and location disclosure so
+    the three features cannot drift apart.
+  - Complete an integrated live-JAR test on the maintained Paper 26.2 and Java
+    25 server with CMI and WorldGuard before release, including clean migration,
+    reload, restart persistence, pagination, permissions, scoped location
+    disclosure, concurrent advertising, and stale or unloaded shop paths.
+- [x] Persist one storefront profile per owner UUID separately from individual
+  shop records.
+  - Use a dedicated profile table and migration for both SQLite and MySQL;
+    profile updates must never rewrite or customize authoritative shop rows.
+  - Isolate profile load, validation, and write failures so corrupt or invalid
+    public text cannot prevent shops from loading or trading.
+  - Retain a profile when its last normal shop is removed, but keep it dormant
+    and publicly unavailable until the owner has another eligible normal shop.
+- [x] Add `/shops profile [player|uuid]` for the public overview and
+  `/shops profile <player|uuid> shops [page]` for individual shop listings.
+  - Let an eligible owner set or clear a custom storefront `name` (32
+    characters), `tagline` (80), `description` (180), and `directions` (120).
+    Always show the authoritative current or cached player name alongside a
+    custom storefront name.
+  - Treat `tagline` as the saved promotional line reused by
+    `/shops advertise`; reserve `advertisement` for the public promotion itself.
+  - Render owner text as plain, sanitized text with no formatting syntax,
+    newlines, control characters, URLs, placeholders, or player-authored click
+    actions. Provide permission-gated staff clear, hide, and moderation actions.
+  - Keep hiding owner-authored profile text separate from Storefront Suspension.
+    Hidden text falls back to server-controlled identity while otherwise-valid
+    Shop Listings remain searchable; a staff suspension removes the Storefront
+    and its listings from profile, search, advertisement, and snapshot discovery
+    without deleting or rewriting the underlying shops.
+  - Show authoritative computed totals for normal shops, including customer-buy
+    and customer-sell directions, confirmed out-of-stock shops, unavailable
+    shops, and unloaded or otherwise unchecked shops.
+  - Show four shop listings per page with product, bundle amount, prices, stock
+    or capacity state, and permitted location details. Never force-load chunks
+    merely to calculate or display a profile.
+  - Keep normal-player rows non-clickable for teleportation. Let authorized
+    staff reuse the permission-rechecked admin-list teleport action, and give
+    ordinary players a server-controlled clickable `/warp shops` action.
+  - Use owner UUIDs in generated browse and pagination commands so name changes
+    do not break an open profile.
+  - Let owners maintain up to three ordered Featured Listings with
+    `/shops profile featured add <shop-id>`, `remove <shop-id>`, and `clear`.
+    Store only owned shop IDs; resolve products, prices, stock, and eligibility
+    from authoritative shop data whenever the profile or an advertisement is
+    rendered.
+  - Use the first eligible Featured Listing as the default primary advertised
+    shop, with up to two additional eligible listings as supporting offers.
+    Never silently replace all owner-selected listings with unrelated shops.
+- [ ] Add an optional persistent Storefront Display through
+  `/shops profile display create`, separate from advertisement broadcasts.
+  - Prompt an eligible owner to hit an Ender Chest, then use it only as the
+    display anchor for a special storefront hologram assembled from the profile
+    and live shop data, never as a tradable inventory.
+  - Keep the display visually consistent with existing shop holograms and the
+    current color theme. Use bounded smaller text, automatic wrapping, and a
+    clean ellipsis for overlong profile text so the result remains readable.
+  - Give Storefront Displays their own ownership, placement, removal, limit,
+    persistence, and moderation rules; do not put them in the advertisement
+    queue or apply broadcast cooldowns to them.
+- [x] Add a configurable marketplace location scope for public profile and
+  search results.
+  - Default exact world/XYZ disclosure to shops inside world `general` and the
+    WorldGuard region `shops`, corresponding to the `/warp shops` marketplace.
+  - Add a `global` mode that allows exact locations for all otherwise-public
+    shop listings when staff intentionally choose broader discovery.
+  - Outside the configured scope, normal players may still see public product,
+    price, stock-state, owner, and storefront information, but not exact
+    coordinates. Fail closed on coordinates if the world, region, or WorldGuard
+    integration cannot be resolved.
+- [x] Add `/shops search <item> [page]` so players can find shops currently
+  selling a requested product, for example `/shops search stone_bricks`.
+  - Make v1 an exact base-material search resolved against the runtime Minecraft
+    item registry. Accept case-insensitive canonical keys with spaces or
+    underscores and an optional `minecraft:` prefix; never derive matches from
+    profile text, custom item names, lore, enchantments, book contents, PDC, or
+    other item metadata.
+  - Resolve the complete joined query before interpreting a final positive
+    integer as a page, so numbered material names remain valid. Generate
+    pagination commands with the canonical one-token material key and offer only
+    a bounded set of clickable material suggestions for unresolved input rather
+    than silently broadening it into fuzzy results.
+  - Include only authoritative normal shops with an enabled Customer-Buy Offer
+    whose Storefront is not suspended. Exclude admin shops and shops that have
+    only a Customer-Sell Offer; a bidirectional shop remains eligible through
+    its Customer-Buy Offer.
+  - Match candidate shops by base material, but calculate each candidate's stock
+    only from items that match its exact configured product. Treat a shop as in
+    stock only when its loaded, valid container can complete at least one full
+    configured bundle, even when partial auto-calculated trades are enabled.
+  - Distinguish confirmed in-stock, confirmed out-of-stock, unchecked, and
+    unavailable states. Unloaded chunks and unloaded double-chest partners are
+    unchecked, never out of stock; malformed, conflicting, missing, or inactive
+    shops are unavailable and omitted from public totals.
+  - Present a precise summary such as `7 shops across 5 storefronts are in stock
+    now; 4 more are out of stock; 2 more could not be checked.` Put only the
+    confirmed in-stock Shop Listings on result pages.
+  - Show four physical Shop Listings per page. Interleave owners so duplicate
+    listings from one Storefront do not displace distinct matching Storefronts;
+    after each distinct owner has one row, fill remaining slots from the
+    remaining listings using deterministic tie-breakers. Never boost
+    advertisements, Featured Listings, or `/shops top` leaders in organic search.
+  - Show the actual sanitized product name, configured bundle, total and
+    per-item price, owner and Storefront, complete bundles currently available,
+    and location details permitted by the Marketplace Location Scope.
+  - Keep normal-player coordinates informational and non-clickable. Make only
+    the Storefront link run `/shops profile <owner-uuid>` and show a clickable
+    `/warp shops` action only when it truthfully helps reach matching marketplace
+    listings. Authorized staff may receive a separately permission-rechecked
+    shop-ID teleport action that revalidates the current shop and destination.
+  - Reuse one short-lived immutable candidate and ordering snapshot across
+    pagination so stock changes do not arbitrarily reshuffle an open result set.
+    Revalidate the current page's shops before rendering, omit rows that are no
+    longer ready with an explanation, and build a fresh snapshot for a new search.
+  - Build a bounded material index from authoritative product data instead of
+    decoding every stored ItemStack for every command. Keep database work
+    asynchronous, isolate malformed rows, inspect Bukkit inventories only on the
+    server thread in bounded batches, rate-limit repeated player searches, and
+    never force-load chunks merely to answer a search.
+  - Test material normalization and numbered names, metadata-heavy products,
+    exact-product stock, one full bundle and one item below, partial-trade mode,
+    duplicate owner listings, every availability state, changing stock during
+    pagination, location scopes, suspension, ordinary-player click safety, and
+    permission removal before a staff teleport click.
+- [x] Add AFK Shrine Token item-currency support for purchasing a weekly
+  Advertising Pass.
+  - Treat the physical AFK Shrine Token earned through AFKShrine trades as
+    distinct from AFKShrine's pending and claimed virtual token balances.
+  - Add an admin-only setup and status path under
+    `/shops admin advertise currency` that captures one genuine held token,
+    clones the complete `ItemStack`, normalizes its amount to `1`, and persists
+    it as ShopChest's authoritative advertising-currency template.
+  - Do not identify tokens from `LIGHT_BLUE_DYE`, display name, lore, custom
+    model data, or a guessed PDC key. Normalize a candidate's amount to `1` and
+    accept it only when `candidate.isSimilar(template)` succeeds. Fail closed
+    when the template is missing, invalid, or cannot be deserialized.
+  - Revalidate the captured template and all five matching items immediately
+    before purchase. Consume only exact matching stacks from the agreed player
+    inventory scope on the server thread, using an inventory snapshot and
+    compare-before-apply step so concurrent changes cannot alter the payment.
+  - Assign every pass purchase a durable idempotency key and transaction state
+    so repeated clicks, command replay, reconnects, reloads, or restarts cannot
+    create two passes or charge twice.
+  - Persist the exact removed stacks in durable recovery escrow before changing
+    the inventory. Finalize their consumption only after the Advertising Pass
+    is durably delivered; otherwise restore those exact items, or retain an
+    explicit pending refund when immediate restoration is impossible.
+  - Test a genuine captured token split across stacks and reject a plain or
+    renamed light-blue dye, copied name or lore, and candidates with missing,
+    additional, or changed PDC/data components or other item metadata. Also test
+    double confirmation, inventory changes, logout, full-inventory recovery,
+    template replacement, and crashes at every transaction boundary.
+- [x] Sell one non-stackable seven-day Advertising Pass for five exact physical
+  AFK Shrine Token items.
+  - Grant three successful advertisement broadcasts during the rolling
+    seven-day pass window, with at least 24 hours between an owner's completed
+    broadcasts. Do not let passes overlap or accumulate unused allowances.
+  - Let one queued Advertisement Request reserve one remaining broadcast
+    allowance. Cancellation or failed broadcast delivery returns that allowance
+    to the same still-valid pass; it does not refund the already-delivered pass
+    purchase.
+  - Keep a request submitted before pass expiry valid until its own bounded
+    queue expiry, but reject new requests after the pass expires.
+- [x] Add `/shops advertise` so an eligible shop owner can publish a polished
+  public advertisement assembled from their storefront profile and live shops.
+  - Make `/shops advertise` a non-mutating dashboard and preview. Add explicit
+    confirmation, status, and pre-dispatch cancellation actions; show the pass
+    expiry, remaining allowances, exact token cost when a pass is needed,
+    personal eligibility, queue state, and earliest possible broadcast time.
+  - Highlight one primary Featured Listing in the title and subtitle and show
+    up to two supporting eligible listings in chat. Resolve the storefront name,
+    tagline, products, bundle sizes, prices, and stock fresh at dispatch time.
+  - Direct players to the storefront profile and to `/warp shops` only when the
+    advertised location policy makes that destination truthful.
+  - Present the advertisement to online players with a sound, title and
+    subtitle, plus an in-game chat message.
+  - Require an active storefront profile and at least one confirmed available
+    normal-shop offer. Omit stale, unavailable, unchecked, or out-of-stock
+    offers from live advertisement details.
+  - Maintain a bounded durable FIFO queue with at most one open request per
+    owner. Allow queuing during personal or global cooldowns, but reject a full
+    queue, an exhausted pass, or a second open request before reserving an
+    allowance.
+  - Apply a configurable global interval between broadcasts. Park and skip
+    transiently unchecked or out-of-stock requests so they cannot block ready
+    owners; expire unresolved requests after a bounded period and return their
+    reserved pass allowance.
+  - Revalidate ownership, permissions, moderation state, Featured Listings,
+    customer-buy direction, stock, container availability, location policy, and
+    audience immediately before dispatch. Permanent invalidity cancels the
+    request and releases its pass allowance.
+  - Claim queue work, enforce global and per-owner timing, and record successful
+    broadcasts atomically so concurrent commands and shared MySQL servers cannot
+    duplicate a public advertisement. Preserve at-most-once broadcast behavior
+    across reloads and restarts.
+- [x] Add a searchable ShopChest Marketplace Snapshot to the player-facing
+  guide on `docs.1moreblock.com`, similar to the existing `/buy` price
+  catalogue, and link it from the ShopChest guide.
+  - Place it under the ShopChest guide as a clearly dated player-shop directory
+    and distinguish it from both the static `/buy` catalogue and live in-game
+    `/shops search` results.
+  - Include only non-suspended, customer-buy-enabled normal Shop Listings found
+    inside world `general` and WorldGuard region `shops` when captured. Keep all
+    eligible in-stock, out-of-stock, and unchecked listings in the snapshot and
+    provide an availability filter rather than making temporarily empty
+    Storefronts disappear. Exclude unavailable, malformed, conflicting, missing,
+    and inactive listings from the public snapshot.
+  - Provide separate item and owner search modes. Item search uses canonical
+    base-material names with spaces and underscores treated equivalently; owner
+    search uses the authoritative player name or public Storefront name, but not
+    taglines, descriptions, item lore, or other owner-authored keywords.
+  - Show one row or card per physical Shop Listing with its owner and Storefront,
+    sanitized item name, base material, bundle amount, captured bundle and unit
+    price, and `in stock when captured`, `out of stock when captured`, or
+    `unchecked when captured` rather than presenting historical stock as live.
+  - State the exact capture date and time prominently, explain that owners,
+    listings, prices, directions, and stock may have changed, and direct visitors
+    to `/shops search` for current availability and `/warp shops` to visit.
+  - Publish only player-safe fields. Use sanitized Storefront directions or a
+    server-controlled stall label instead of raw world/XYZ coordinates, and
+    exclude UUIDs, internal shop IDs and database fields, serialized ItemStacks,
+    PDC/data components, book contents, private metadata, and staff actions.
+  - Add a staff-only repeatable catalogue export that applies the same public
+    catalogue and suspension policies, inspects only already-loaded inventories,
+    and writes versioned sanitized JSON and CSV with capture time, source version,
+    and aggregate counts. Write rejected-row details only to a separate staff-only
+    report. Require review and an explicit docs update; never publish
+    automatically from the live server.
+  - Add a ShopChest-specific or generalized safe catalogue component instead of
+    reusing `/buy`-specific Worth and menu fields. Render imported strings only
+    as text, neutralize spreadsheet formulas in CSV, support client-side filters
+    and pagination, and verify the generated page, assets, stale-data warning,
+    and guide link in the docs validation and production build.
 - [x] Add `/shops edit` so a shop owner can safely update the configured trade
   amount, customer buy price, or customer sell price without removing and
   recreating the shop.
@@ -253,6 +497,25 @@ shelved.
 - [ ] Add owner statistics for purchases, sales, earnings, and spending over a
   bounded configurable period, building on the existing economy log and its
   indexes.
+- [ ] Add recent seller leaderboards through `/shops top` and external
+  placeholders suitable for a CMI hologram at `/warp shops`, building on the
+  owner-statistics aggregation.
+  - Define transparent recent ranking measures, such as completed customer
+    purchases, items or bundles sold, and owner earnings, rather than relying
+    on an ambiguous all-time `top seller` score.
+  - Support bounded configurable periods such as today, 7 days, and 30 days so
+    the leaderboard highlights currently active sellers.
+  - Let `/shops top [period] [page]` show ranked owners with useful shop or
+    product context and a clickable `/warp shops` action.
+  - Expose documented PlaceholderAPI/CMI-compatible values for a configurable
+    number of ranks, including each seller's name, rank, selected metric, and
+    period, with stable fallback text when a rank has no result.
+  - Count only finalized successful trades at normal player shops. Exclude
+    failed, cancelled, refunded, admin-shop, and owner self-trade activity so
+    rankings cannot be trivially inflated.
+  - Aggregate asynchronously and serve placeholders from a bounded refreshed
+    cache so frequent CMI hologram updates never perform database work or force
+    chunks to load.
 - [ ] Improve staff maintenance with filters for owner, world, product, shop
   state, and age, followed by explicit confirmed actions for selected invalid
   shops.
