@@ -150,6 +150,7 @@ public class ShopCommand {
             @Override
             public String getHelpMessage(CommandSender sender) {
                 if (sender.hasPermission(Permissions.ADMIN_LIST)
+                        || sender.hasPermission(Permissions.ADMIN_AUDIT)
                         || sender.hasPermission(Permissions.ADMIN_DEBUG)) {
                     final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
                     return messageRegistry.getMessage(Message.HELP_COMMAND_ADMIN, cmdReplacement);

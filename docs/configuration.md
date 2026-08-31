@@ -11,6 +11,7 @@ ShopChest creates `config.yml`, `hologram-format.yml`, and a `lang/` directory u
 | `shop-info-item` | `STICK` | Clicking a shop with this item shows details; an empty value disables it. |
 | `confirm-shopping` | `false` | Requires a second click before a buy or sell. |
 | `trade-interaction-cooldown-milliseconds` | `250` | Silently limits each player to one shop trade attempt per interval before permission, inventory, economy, or database work. Values are clamped from `0` (disabled) through `5000`. |
+| `offline-revenue-notification-delay-seconds` | `3` | Waits after loading a joining player's offline shop revenue before showing the summary, leaving room for welcome/MOTD messages. Values are clamped from `0` (immediate) through `30`. |
 | `creative-select-item` | `true` | Lets a creator select a product from the creative inventory when no item is held. |
 | `refund-shop-creation` | `false` | Refunds the current creation price when the creator removes their own shop. |
 | `auto-calculate-item-amount` | `false` | Reduces a trade and price when money, stock, items, or space are insufficient. Active only when decimal prices are allowed. |

@@ -73,12 +73,12 @@ The default setup charges 5 economy units to create a normal shop and allows 5 n
 ## Commands
 
 - `/shops` or `/shops help` - Show the player commands available to you. Permitted staff actions appear in a separate section.
-- `/shops info` - Show a short introduction, numbered creation instructions, the installed version, and a clickable link to this guide.
+- `/shops info` - Show a short introduction, numbered creation instructions, the installed version, and clickable links to your shop health and this guide.
 - `/shops create <amount> <buy-price> <sell-price>` - Prepare a shop using the held item, then click a supported container within 15 seconds.
 - `/shops edit <amount|buy|sell> <value>` - Change one setting, then click one of your shops within 15 seconds.
 - `/shops edit holograms <reset|faceme|north|south|east|west>` - Reorient both shop displays without rotating or recreating the container.
 - `/shops limits` - Show used and available normal-shop slots.
-- `/shops list [page]` - List every shop you created. Hover a compact row for its prices, stock, type, world, and coordinates. Loaded shops that cannot fill one complete purchase are marked `[Out of stock]`; the locations are informational and do not teleport you.
+- `/shops list [page]` - List every shop you created and summarize how many are ready, need attention, are out of stock, full, blocked, unavailable, or unchecked. Hover a compact row for its prices, stock, type, world, and coordinates. Known problem shops are marked `[Out of stock]`, `[Full]`, `[Blocked]`, or `[Unavailable]`; distant unloaded shops remain unchecked rather than being treated as broken. The locations are informational and do not teleport you.
 - `/shops recent [page]` - Review recent purchases and sales, including trades at your normal shops and the money you earned or spent. Hover a compact trade row for its date, per-item price, and shop location. History is available only for trades recorded by the server.
 
 When recorded trades changed your shop balance while you were offline, joining

@@ -8,6 +8,12 @@ import java.util.Map;
 
 public class MessageRegistryLoader {
 
+    private static final String OFFLINE_REVENUE_PATH = "message.revenue-while-offline.summary";
+    private static final String OLD_OFFLINE_REVENUE_EN =
+            "&6While you were offline &8- &7Shop revenue: &f%REVENUE%";
+    private static final String OLD_OFFLINE_REVENUE_DE =
+            "&6W\u00e4hrend du offline warst &8- &7Shop-Umsatz: &f%REVENUE%";
+
     private final Map<String, String> storedMessages;
 
     public MessageRegistryLoader(@NotNull Map<String, String> storedMessages) {
@@ -55,7 +61,7 @@ public class MessageRegistryLoader {
         register(messages, Message.SELL_SUCCESS_ADMIN, "message.sell-success-admin", "&aYou sold &6%AMOUNT% x %ITEMNAME%&a for &6%SELL-PRICE%&a.");
         register(messages, Message.SOMEONE_BOUGHT, "message.someone-bought", "&6%PLAYER% &abought &6%AMOUNT% x %ITEMNAME%&a for &6%BUY-PRICE%&a from your shop.");
         register(messages, Message.SOMEONE_SOLD, "message.someone-sold", "&6%PLAYER% &asold &6%AMOUNT% x %ITEMNAME%&a for &6%SELL-PRICE%&a to your shop.");
-        register(messages, Message.REVENUE_WHILE_OFFLINE, "message.revenue-while-offline.summary", "&6While you were offline &8- &7Shop revenue: &f%REVENUE%");
+        register(messages, Message.REVENUE_WHILE_OFFLINE, OFFLINE_REVENUE_PATH, "&6While you were offline &8- &7Shop revenue: &a%REVENUE%");
         register(messages, Message.REVENUE_WHILE_OFFLINE_ACTION, "message.revenue-while-offline.action", "&b&n[View recent trades]");
         register(messages, Message.REVENUE_WHILE_OFFLINE_HOVER, "message.revenue-while-offline.hover", "&7Click to run &f/%COMMAND% recent &7and review the transactions behind this total.");
         register(messages, Message.NOT_ENOUGH_INVENTORY_SPACE, "message.not-enough-inventory-space", "&cNot enough space in inventory.");
@@ -160,7 +166,7 @@ public class MessageRegistryLoader {
         register(messages, Message.INFO_GUIDE, "message.info.guide", "&b&nOpen the ShopChest player guide");
         register(messages, Message.HELP_COMMAND_LIST, "message.help.command.list", "&a/%COMMAND% list [page] &7- List every shop you own and its location.");
         register(messages, Message.HELP_COMMAND_RECENT, "message.help.command.recent", "&a/%COMMAND% recent [page] &7- Show your latest purchases, sales, earnings, and spending.");
-        register(messages, Message.HELP_COMMAND_ADMIN, "message.help.command.admin", "&a/%COMMAND% admin <list|debug> ... &7- Shop administration and support diagnostics.");
+        register(messages, Message.HELP_COMMAND_ADMIN, "message.help.command.admin", "&a/%COMMAND% admin <list|audit|debug> ... &7- Shop administration and support diagnostics.");
         register(messages, Message.HELP_COMMAND_DEBUG, "message.help.command.debug", "&a/%COMMAND% debug [status|commands|permissions|placeholders] [page] &7- Show support status and ShopChest metadata. &8[shopchest.admin.debug]");
         register(messages, Message.NO_PERMISSION_RECENT, "message.noPermission.recent", "&cYou do not have permission to view recent shop activity.");
         register(messages, Message.NO_PERMISSION_ADMIN, "message.noPermission.admin", "&cYou do not have permission to use ShopChest administration commands.");
@@ -218,10 +224,54 @@ public class MessageRegistryLoader {
         register(messages, Message.RECENT_HOVER_SHOP, "message.recent.hover.shop", "&7Shop: &f#%SHOP-ID% &8- &f%WORLD% %X%, %Y%, %Z%");
         register(messages, Message.RECENT_SUMMARY, "message.recent.summary", "&7This page: &aEarned %EARNED% &8| &cSpent %SPENT% &8| &fNet %NET%");
         register(messages, Message.RECENT_ERROR, "message.recent.error", "&cRecent shop activity could not be loaded.");
+        register(messages, Message.INFO_SHOP_HEALTH, "message.info.shop-health", "&b&nView your shop health with /%COMMAND% list");
+        register(messages, Message.SHOP_LIST_HEALTH, "message.shopList.health", "&7Shop health: &a%HEALTHY% ready &8| &e%ATTENTION% needing attention &8(&c%OUT-OF-STOCK% out of stock&8, &6%FULL% full&8, &c%BLOCKED% blocked&8, &c%UNAVAILABLE% unavailable&8) &8| &7%UNCHECKED% unchecked");
+        register(messages, Message.SHOP_LIST_FULL, "message.shopList.full", " &6[Full]");
+        register(messages, Message.SHOP_LIST_UNAVAILABLE, "message.shopList.unavailable", " &c[Unavailable]");
+        register(messages, Message.SHOP_LIST_STOCK_UNAVAILABLE, "message.shopList.stock.unavailable", "&cUnavailable because the world or supported container cannot be resolved");
+        register(messages, Message.SHOP_LIST_BLOCKED, "message.shopList.blocked", " &c[Blocked]");
+        register(messages, Message.NO_PERMISSION_ADMIN_AUDIT, "message.noPermission.admin-audit", "&cYou do not have permission to audit registered shops.");
+        register(messages, Message.ADMIN_HELP_AUDIT, "message.admin.audit", "&a/%COMMAND% admin audit [player|all] [page] &7- Dry-run registered shops without loading chunks. &8[shopchest.admin.audit]");
+        register(messages, Message.ADMIN_AUDIT_LOADING, "message.admin.audit-loading", "&7Building a read-only shop audit snapshot without loading chunks...");
+        register(messages, Message.ADMIN_AUDIT_HEADER, "message.admin.audit-header", "&6Shop maintenance audit &7- Page &f%PAGE%&7/%PAGES% &8| &7Review rows: &f%AMOUNT%");
+        register(messages, Message.ADMIN_AUDIT_SCOPE_ALL, "message.admin.audit-scope-all", "&7Scope: &fall registered shops");
+        register(messages, Message.ADMIN_AUDIT_SCOPE_PLAYER, "message.admin.audit-scope-player", "&7Scope: &fshops owned by %PLAYER%");
+        register(messages, Message.ADMIN_AUDIT_SUMMARY, "message.admin.audit-summary", "&7Scanned: &f%AMOUNT% &8| &aReady: %HEALTHY% &8| &eKnown issues: %ATTENTION% &8| &7Unchecked: %UNCHECKED%");
+        register(messages, Message.ADMIN_AUDIT_PHYSICAL, "message.admin.audit-physical", "&7Physical: &cWorld unavailable: %MISSING-WORLDS% &8| &cContainer missing: %MISSING-CONTAINERS% &8| &cUnsupported/incomplete: %UNSUPPORTED-CONTAINERS% &8| &cBlocked: %BLOCKED%");
+        register(messages, Message.ADMIN_AUDIT_DATA, "message.admin.audit-data", "&7Data: &cInvalid products: %INVALID-PRODUCTS% &8| &cInvalid records: %INVALID-RECORDS% &8| &eConflict/stale candidates: %STALE%");
+        register(messages, Message.ADMIN_AUDIT_ENTRY, "message.admin.audit-entry", "&e#%SHOP-ID% &c[%VALUE%] &8- &f%PLAYER% &8@ &b%WORLD% &7(%X%, %Y%, %Z%)");
+        register(messages, Message.ADMIN_AUDIT_EMPTY, "message.admin.audit-empty", "&7No registered shops matched this audit.");
+        register(messages, Message.ADMIN_AUDIT_CLEAN, "message.admin.audit-clean", "&aNo known problems were found in the inspected records.");
+        register(messages, Message.ADMIN_AUDIT_INCOMPLETE, "message.admin.audit-incomplete", "&eUnchecked records remain. Run the audit while their chunks are naturally loaded for a complete physical check.");
+        register(messages, Message.ADMIN_AUDIT_DRY_RUN, "message.admin.audit-dry-run", "&7Dry run only: no records, chunks, blocks, inventories, PDC, or configuration were changed.");
+        register(messages, Message.ADMIN_AUDIT_ERROR, "message.admin.audit-error", "&cThe shop audit could not be completed. Check the server log for details.");
+        register(messages, Message.ADMIN_AUDIT_BUSY, "message.admin.audit-busy", "&eA shop audit is already running. Wait for it to finish before starting another.");
+        register(messages, Message.ADMIN_AUDIT_SENSITIVE, "message.admin.audit-sensitive", "&eStaff-sensitive output: review owner UUIDs, world names, and coordinates before sharing.");
+        register(messages, Message.ADMIN_AUDIT_NAVIGATION_COMMAND, "message.admin.audit-navigation-command", "&7Run: &f%VALUE%");
+        register(messages, Message.ADMIN_AUDIT_REASON_MISSING_WORLD, "message.admin.audit.reason.missing-world", "World unavailable (missing or unloaded)");
+        register(messages, Message.ADMIN_AUDIT_REASON_MISSING_CONTAINER, "message.admin.audit.reason.missing-container", "Missing container");
+        register(messages, Message.ADMIN_AUDIT_REASON_UNSUPPORTED_CONTAINER, "message.admin.audit.reason.unsupported-container", "Unsupported container");
+        register(messages, Message.ADMIN_AUDIT_REASON_INCOMPLETE_CONTAINER, "message.admin.audit.reason.incomplete-container", "Incomplete container");
+        register(messages, Message.ADMIN_AUDIT_REASON_BLOCKED_DISPLAY, "message.admin.audit.reason.blocked-display", "Blocked display space");
+        register(messages, Message.ADMIN_AUDIT_REASON_INVALID_PRODUCT, "message.admin.audit.reason.invalid-product", "Invalid product");
+        register(messages, Message.ADMIN_AUDIT_REASON_INVALID_OWNER, "message.admin.audit.reason.invalid-owner", "Invalid owner");
+        register(messages, Message.ADMIN_AUDIT_REASON_INVALID_SHOP_TYPE, "message.admin.audit.reason.invalid-shop-type", "Invalid shop type");
+        register(messages, Message.ADMIN_AUDIT_REASON_INVALID_TERMS, "message.admin.audit.reason.invalid-terms", "Invalid trade terms");
+        register(messages, Message.ADMIN_AUDIT_REASON_INVALID_LOCATION, "message.admin.audit.reason.invalid-location", "Invalid location");
+        register(messages, Message.ADMIN_AUDIT_REASON_INVALID_RECORD, "message.admin.audit.reason.invalid-record", "Invalid record");
+        register(messages, Message.ADMIN_AUDIT_REASON_CONFLICTING_RECORD, "message.admin.audit.reason.conflicting-record", "Conflicting records");
+        register(messages, Message.ADMIN_AUDIT_REASON_SHADOWED_RECORD, "message.admin.audit.reason.shadowed-record", "Shadowed by a different loaded shop");
+        register(messages, Message.ADMIN_AUDIT_REASON_INACTIVE_RECORD, "message.admin.audit.reason.inactive-record", "Not active in loaded runtime");
+        register(messages, Message.ADMIN_AUDIT_REASON_UNCHECKED, "message.admin.audit.reason.unchecked", "Unchecked chunk");
+        register(messages, Message.ADMIN_AUDIT_REMOVE_ON_ERROR_WARNING, "message.admin.audit-remove-on-error-warning", "&cCaution: remove-shop-on-error is enabled. This audit is read-only, but normal future shop loading can remove broken records.");
     }
 
     private void register(@NotNull String[] messages, @NotNull Message message, @NotNull String path, @Nullable String defaultValue) {
-        final String rawValue = storedMessages.getOrDefault(path, defaultValue);
+        String rawValue = storedMessages.getOrDefault(path, defaultValue);
+        if (OFFLINE_REVENUE_PATH.equals(path)
+                && (OLD_OFFLINE_REVENUE_EN.equals(rawValue) || OLD_OFFLINE_REVENUE_DE.equals(rawValue))) {
+            rawValue = rawValue.replace("&f%REVENUE%", "&a%REVENUE%");
+        }
         messages[message.ordinal()] = LegacyColorUtils.translateAlternateColorCodes('&', rawValue);
     }
 

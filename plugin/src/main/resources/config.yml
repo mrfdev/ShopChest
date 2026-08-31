@@ -27,6 +27,11 @@ confirm-shopping: false
 # economy, and database work. Set to 0 to disable; values are capped at 5000.
 trade-interaction-cooldown-milliseconds: 250
 
+# Wait before showing the offline shop-revenue summary after a player joins,
+# leaving the initial welcome/MOTD messages clear. Set to 0 to send it as soon
+# as the database result is ready; values are capped at 30 seconds.
+offline-revenue-notification-delay-seconds: 3
+
 # Configure player-local feedback for completed and failed trade attempts.
 # Set either outcome's enabled value to false to disable it. Set a sound or
 # particle to "none" to disable only that part. Particle counts are capped at

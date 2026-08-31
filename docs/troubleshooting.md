@@ -68,6 +68,25 @@ Blue entity outlines or direction lines are normally the client's entity-hitbox 
 
 Keep `remove-shop-on-error: false` while recovering temporarily unavailable worlds or blocked containers; otherwise failed records may be deleted. Stop the server before moving databases. ShopChest migrates known legacy schemas but does not transfer data between SQLite and MySQL automatically.
 
+Run `/shops admin audit` for a read-only view of malformed records, unavailable
+worlds (missing or unloaded), missing or unsupported containers, blocked
+display space, and conflict/stale candidates. A persisted record that is not
+active in the loaded runtime is an advisory candidate for investigation, never
+proof that it is safe to delete.
+
+Invoking the audit without a page number builds a fresh, immutable report.
+Pagination reuses the completed snapshot for up to 60 seconds. Only one audit
+build runs globally at a time; database and non-Bukkit processing stay off the
+server thread, while Bukkit inspection and report finalization are spread
+across bounded batches. The audit does not load chunks, modify records, or
+invoke the normal shop-loading cleanup path. Unloaded locations remain
+unchecked. Rerun it after ordinary chunk loading or concurrent shop changes
+have finished when a fresh view is needed.
+
+Audit rows include staff-sensitive owner UUIDs, world names, and exact
+coordinates. Review and redact them before sharing. Use `/shops debug` when a
+privacy-filtered support report is needed.
+
 For a report, run `/shops debug`, click **Copy full support report**, and
 include the result with exact reproduction steps and the complete first
 exception with its `Caused by` chain. Console can run the same command and gets

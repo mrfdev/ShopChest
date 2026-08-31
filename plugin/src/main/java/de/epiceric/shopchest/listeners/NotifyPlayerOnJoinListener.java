@@ -16,10 +16,15 @@ import org.bukkit.event.player.PlayerQuitEvent;
 
 public class NotifyPlayerOnJoinListener implements Listener {
 
-    private ShopChest plugin;
+    private final ShopChest plugin;
+    private final RevenueNoticeDelay revenueNoticeDelay;
 
     public NotifyPlayerOnJoinListener(ShopChest plugin) {
         this.plugin = plugin;
+        this.revenueNoticeDelay = new RevenueNoticeDelay(
+                (task, delayTicks) -> plugin.getServer().getScheduler()
+                        .runTaskLater(plugin, task, delayTicks),
+                () -> Config.offlineRevenueNotificationDelaySeconds);
     }
 
     @EventHandler
@@ -37,19 +42,24 @@ public class NotifyPlayerOnJoinListener implements Listener {
                 plugin.getShopDatabase().getRevenue(p, result, new Callback<Double>(plugin) {
                     @Override
                     public void onResult(Double result) {
-                        if (p.isOnline() && result != null && Double.isFinite(result)
+                        if (result != null && Double.isFinite(result)
                                 && Math.abs(result) > 0.0000001) {
-                            final MessageRegistry messageRegistry =
-                                    plugin.getLanguageManager().getMessageRegistry();
-                            p.sendMessage(TextComponentHelper.getClickableActionMessage(
-                                    messageRegistry.getMessage(
-                                            Message.REVENUE_WHILE_OFFLINE,
-                                            new Replacement(Placeholder.REVENUE, result)),
-                                    messageRegistry.getMessage(Message.REVENUE_WHILE_OFFLINE_ACTION),
-                                    messageRegistry.getMessage(
-                                            Message.REVENUE_WHILE_OFFLINE_HOVER,
-                                            new Replacement(Placeholder.COMMAND, Config.mainCommandName)),
-                                    "/" + Config.mainCommandName + " recent"));
+                            revenueNoticeDelay.schedule(p::isConnected, () -> {
+                                final MessageRegistry messageRegistry =
+                                        plugin.getLanguageManager().getMessageRegistry();
+                                p.sendMessage(TextComponentHelper.getClickableActionMessage(
+                                        messageRegistry.getMessage(
+                                                Message.REVENUE_WHILE_OFFLINE,
+                                                new Replacement(Placeholder.REVENUE, result)),
+                                        messageRegistry.getMessage(
+                                                Message.REVENUE_WHILE_OFFLINE_ACTION),
+                                        messageRegistry.getMessage(
+                                                Message.REVENUE_WHILE_OFFLINE_HOVER,
+                                                new Replacement(
+                                                        Placeholder.COMMAND,
+                                                        Config.mainCommandName)),
+                                        "/" + Config.mainCommandName + " recent"));
+                            });
                         }
                     }
                 });

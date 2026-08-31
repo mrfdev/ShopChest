@@ -422,33 +422,27 @@ public abstract class Database {
 
                     plugin.debug("Getting a player's shops from database");
 
-                    Set<Shop> result = new HashSet<>();
+                    List<PersistedShopRow> rows = new ArrayList<>();
                     while (rs.next()) {
                         int id = rs.getInt("id");
 
                         plugin.debug("Getting Shop... (#" + id + ")");
-
-                        int x = rs.getInt("x");
-                        int y = rs.getInt("y");
-                        int z = rs.getInt("z");
-
-                        World world = plugin.getServer().getWorld(rs.getString("world"));
-                        Location location = new Location(world, x, y, z);
-                        OfflinePlayer vendor = Bukkit.getOfflinePlayer(UUID.fromString(rs.getString("vendor")));
-                        ItemStack itemStack = Utils.decode(rs.getString("product"));
-                        int amount = rs.getInt("amount");
-                        ShopProduct product = new ShopProduct(itemStack, amount);
-                        double buyPrice = rs.getDouble("buyprice");
-                        double sellPrice = rs.getDouble("sellprice");
-                        ShopType shopType = ShopType.valueOf(rs.getString("shoptype"));
-
-                        plugin.debug("Initializing new shop... (#" + id + ")");
-
-                        result.add(new Shop(id, plugin, vendor, product, location, buyPrice, sellPrice, shopType));
+                        rows.add(new PersistedShopRow(
+                                id,
+                                rs.getString("vendor"),
+                                rs.getString("product"),
+                                rs.getInt("amount"),
+                                rs.getString("world"),
+                                rs.getInt("x"),
+                                rs.getInt("y"),
+                                rs.getInt("z"),
+                                rs.getDouble("buyprice"),
+                                rs.getDouble("sellprice"),
+                                rs.getString("shoptype")));
                     }
 
                     if (callback != null) {
-                        callback.callSyncResult(result);
+                        hydrateShopsOnServerThread(rows, callback);
                     }
                 } catch (SQLException ex) {
                     if (callback != null) {
@@ -461,6 +455,131 @@ public abstract class Database {
                 }        
             }
         }.runTaskAsynchronously(plugin);
+    }
+
+    /**
+     * Reads every persisted shop without parsing Bukkit-backed values.
+     *
+     * <p>This projection is used by the dry-run administrator audit. It is
+     * intentionally a SELECT-only operation so malformed rows remain visible
+     * and no audit can mutate live data.</p>
+     *
+     * @param callback callback receiving an immutable, ID-ordered snapshot
+     */
+    public void getShopAuditRecords(final Callback<List<ShopAuditRecord>> callback) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                final HikariDataSource auditDataSource = dataSource;
+                if (auditDataSource == null || auditDataSource.isClosed()) {
+                    final IllegalStateException exception = new IllegalStateException(
+                            "Shop database is not currently available");
+                    if (callback != null) {
+                        callback.callSyncError(exception);
+                    }
+                    return;
+                }
+                try (Connection connection = auditDataSource.getConnection()) {
+                    final List<ShopAuditRecord> records = queryShopAuditRecords(
+                            connection,
+                            tableShops);
+                    if (callback != null) {
+                        callback.callSyncResult(records);
+                    }
+                } catch (SQLException | RuntimeException exception) {
+                    if (callback != null) {
+                        callback.callSyncError(exception);
+                    }
+                    plugin.getLogger().severe("Failed to read shops for the administrator audit");
+                    plugin.debug(exception);
+                }
+            }
+        }.runTaskAsynchronously(plugin);
+    }
+
+    static List<ShopAuditRecord> queryShopAuditRecords(
+            Connection connection,
+            String shopsTable
+    ) throws SQLException {
+        final String query = "SELECT id,vendor,product,amount,world,x,y,z,"
+                + "buyprice,sellprice,shoptype FROM " + shopsTable + " ORDER BY id";
+        final List<ShopAuditRecord> records = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(query);
+                ResultSet resultSet = statement.executeQuery()) {
+            long rowNumber = 0;
+            while (resultSet.next()) {
+                records.add(new ShopAuditRecord(
+                        ++rowNumber,
+                        resultSet.getString("id"),
+                        resultSet.getString("vendor"),
+                        resultSet.getString("product"),
+                        resultSet.getString("amount"),
+                        resultSet.getString("world"),
+                        resultSet.getString("x"),
+                        resultSet.getString("y"),
+                        resultSet.getString("z"),
+                        resultSet.getString("buyprice"),
+                        resultSet.getString("sellprice"),
+                        resultSet.getString("shoptype")));
+            }
+        }
+        return List.copyOf(records);
+    }
+
+    private void hydrateShopsOnServerThread(
+            List<PersistedShopRow> rows,
+            Callback<Collection<Shop>> callback
+    ) {
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            try {
+                final Set<Shop> result = new HashSet<>();
+                for (PersistedShopRow row : rows) {
+                    plugin.debug("Initializing new shop... (#" + row.id() + ")");
+
+                    final World world = plugin.getServer().getWorld(row.world());
+                    final Location location = new Location(
+                            world,
+                            row.x(),
+                            row.y(),
+                            row.z());
+                    final OfflinePlayer vendor = Bukkit.getOfflinePlayer(
+                            UUID.fromString(row.vendor()));
+                    final ItemStack itemStack = Utils.decode(row.product());
+                    final ShopProduct product = new ShopProduct(itemStack, row.amount());
+                    final ShopType shopType = ShopType.valueOf(row.shopType());
+
+                    result.add(new Shop(
+                            row.id(),
+                            plugin,
+                            vendor,
+                            product,
+                            location,
+                            row.buyPrice(),
+                            row.sellPrice(),
+                            shopType));
+                }
+                callback.onResult(result);
+            } catch (RuntimeException exception) {
+                plugin.getLogger().severe("Failed to initialize a player's shops on the server thread");
+                plugin.debug(exception);
+                callback.onError(exception);
+            }
+        });
+    }
+
+    private record PersistedShopRow(
+            int id,
+            String vendor,
+            String product,
+            int amount,
+            String world,
+            int x,
+            int y,
+            int z,
+            double buyPrice,
+            double sellPrice,
+            String shopType
+    ) {
     }
 
     /**

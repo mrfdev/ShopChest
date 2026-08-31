@@ -73,9 +73,13 @@ tests, test-server startup, and focused shop testing pass.
 ### Management and reliability
 
 - Player shop lists, stock state, locations, and compact hover details
+- Read-only shop-health summaries for ready, out-of-stock, full, blocked,
+  unavailable, and unloaded shops
 - Recent purchase and sale history with earned, spent, and net totals when
   economy logging is enabled
 - Staff shop lookup with authorized click-to-teleport rows
+- Batched, read-only staff audits for persisted records, container state, and
+  conflict/stale candidates without force-loading chunks
 - Privacy-conscious support status plus command, permission, and internal
   hologram-placeholder catalogs through `/shops debug`
 - SQLite by default or MySQL for shared/networked storage
@@ -194,12 +198,12 @@ requires a clean server restart.
 | --- | --- | --- |
 | `/shops` | Shows the permission-aware command index. | None |
 | `/shops help` | Shows the same player and permitted staff command index. | None |
-| `/shops info` | Shows an introduction, creation steps, version, and player-guide link. | None |
+| `/shops info` | Shows an introduction, creation steps, version, player-guide link, and a shortcut to shop health. | None |
 | `/shops create <amount> <buy-price> <sell-price> [normal]` | Selects the held item and starts a 15-second container selection. | `shopchest.create`, or matching directional/material nodes |
 | `/shops edit <amount\|buy\|sell> <value>` | Changes one trade setting after a 15-second selection of an owned shop. | The same directional/material nodes required to create the resulting shop |
 | `/shops edit holograms <reset\|faceme\|north\|south\|east\|west>` | Changes the text panel and floating-icon orientation after selecting an owned shop. | The same ownership and admin-shop rules as other edits |
 | `/shops limits` | Shows used slots and the effective normal-shop limit. | None |
-| `/shops list [page]` | Lists owned shops. Hover rows for prices, stock, type, world, and coordinates. | None |
+| `/shops list [page]` | Lists owned shops with whole-list health counts. Hover rows for prices, stock, type, world, and coordinates. | None |
 | `/shops recent [page]` | Shows recorded purchases, sales, shop income, spending, and net change. | `shopchest.recent` |
 | `/shops inspect` | Starts a 15-second shop inspection selection. | None |
 | `/shops info shop` | Compatibility alias for `/shops inspect`. | None |
@@ -211,8 +215,9 @@ requires a clean server restart.
 | Command | Description | Permission |
 | --- | --- | --- |
 | `/shops create <amount> <buy-price> <sell-price> admin` | Creates an unlimited-stock admin shop. | `shopchest.create.admin` |
-| `/shops admin` | Shows the permitted administration commands. | `shopchest.admin.list` or `shopchest.admin.debug` |
+| `/shops admin` | Shows the permitted administration commands. | Any `shopchest.admin.*` action permission |
 | `/shops admin list <player> [page]` | Lists a player's shops. In-game rows can teleport authorized staff. | `shopchest.admin.list` |
+| `/shops admin audit [player\|all] [page]` | Runs a paginated dry-run maintenance audit over all shops or one player UUID or cached name. | `shopchest.admin.audit` |
 | `/shops debug [status]` | Generates a copyable platform, dependency, database, config, translation, and shop-state report. | `shopchest.admin.debug` |
 | `/shops debug <commands\|permissions\|placeholders> [page]` | Lists documented runtime commands, declared and dynamic permissions, or internal hologram placeholders. | `shopchest.admin.debug` |
 | `/shops admin debug` | Compatibility alias for `/shops debug status`. | `shopchest.admin.debug` |
@@ -252,6 +257,10 @@ requires a clean server restart.
 # Show another player's registered shops
 /shops admin list mrfloris
 
+# Audit every persisted shop, or only one player UUID or cached name
+/shops admin audit
+/shops admin audit mrfloris
+
 # Use a four-block hologram visibility distance
 /shops config set maximal-distance 4
 
@@ -290,6 +299,7 @@ means granted to server operators by default.
 | `shopchest.recent` | `true` | Views the player's recorded transaction history. |
 | `shopchest.admin` | `op` | Parent permission for ShopChest administration. |
 | `shopchest.admin.list` | `op` | Lists another player's shops and teleports to an authorized listed shop. |
+| `shopchest.admin.audit` | `op` | Runs a read-only maintenance audit without loading shop chunks. Output includes owner UUIDs, world names, and exact coordinates. |
 | `shopchest.admin.debug` | `op` | Uses `/shops debug` for support status and metadata catalogs. |
 | `shopchest.limit.*` | `op` | Removes the normal-shop limit. |
 
@@ -459,9 +469,47 @@ are measured in seconds; increasing a period slows that animation.
 `/shops recent` reads database-backed history. New rows are recorded only while
 `enable-economy-log` is enabled; disabling it preserves existing history.
 
-`/shops list` and the admin listing do not force-load chunks. Loaded normal
-shops report current stock, unloaded shops report unknown stock, and admin
-shops report unlimited stock.
+`/shops list` and the admin listing do not force-load chunks. Their health line
+covers the complete owner result, not only the current page. A loaded normal
+shop is out of stock or full when it cannot supply or accept one complete
+configured bundle. A loaded shop whose display space is obstructed is blocked.
+A world that is unavailable because it is missing or not currently loaded, or
+a loaded location without its supported container, makes the shop unavailable.
+Unloaded shop chunks, including cross-chunk double containers whose other half
+is not loaded, remain unchecked instead of being reported as broken. Reason
+counts may overlap, while the attention count includes each affected shop once.
+Admin shops have unlimited stock and capacity but can still be blocked or
+unavailable.
+
+`/shops admin audit [player|all] [page]` builds a complete, immutable report
+snapshot from the shop table and reports malformed owner/type/terms/product
+data, unavailable worlds (missing or unloaded), missing containers,
+unsupported or incomplete containers, blocked display space, and persisted
+record conflicts. Invoking the command without a page number refreshes the
+snapshot. Pagination reuses the completed snapshot for up to 60 seconds so
+pages cannot drift while staff review them.
+
+Only one audit build can be in flight globally, preventing competing scans on
+the live server. The database `SELECT` and non-Bukkit preprocessing run off the
+server thread; Bukkit-backed product decoding, already-loaded world/container
+inspection, and report finalization are bounded across server ticks, with at
+most 25 records processed per phase per tick. The audit checks only chunks that
+are already loaded, leaving other records explicitly unchecked. Reason counts
+can overlap, while the known issue and review-row totals deduplicate each
+record.
+
+Conflict candidates mean multiple records point at one stored or resolved
+container, a different loaded shop occupies the location, or a persisted
+record is not active in the loaded runtime. These conflict/stale candidates
+require manual review and are never proof that a record is safe to delete. The
+audit performs no repair, database write, schema migration, chunk load, block
+or inventory mutation, PDC update, or configuration change. Use `all`
+explicitly when navigating an unfiltered report; the optional player accepts
+an online player, UUID, or locally cached name, like `/shops admin list`.
+
+Audit rows contain staff-sensitive owner UUIDs, world names, and exact
+coordinates. Review and redact the output before sharing it; unlike
+`/shops debug`, the audit is not a privacy-filtered support report.
 
 ## Data Safety and Diagnostics
 
@@ -472,6 +520,10 @@ shops report unlimited stock.
 - Use `/shops debug` for support reports. It excludes database
   credentials, filesystem paths, player names, world names, and individual
   shop coordinates.
+- Use `/shops admin audit` before manual database maintenance. Treat its
+  conflict results as investigation leads, not automatic deletion advice.
+- Audit output contains owner UUIDs, world names, and exact coordinates. Review
+  and redact it before sharing.
 - A clean restart is required after changing the main command, database engine,
   debug-file creation, or startup-only integrations.
 - Test high-risk updates with existing shops, unloaded chunks, full inventories,

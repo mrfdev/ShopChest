@@ -20,6 +20,7 @@ public class Permissions {
     public static final String BYPASS_EXTERNAL_PLUGIN = "shopchest.external.bypass";
     public static final String ADMIN = "shopchest.admin";
     public static final String ADMIN_LIST = "shopchest.admin.list";
+    public static final String ADMIN_AUDIT = "shopchest.admin.audit";
     public static final String ADMIN_DEBUG = "shopchest.admin.debug";
     public static final String RECENT = "shopchest.recent";
 

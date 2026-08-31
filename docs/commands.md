@@ -8,12 +8,12 @@ The main command is created from `main-command-name` in `config.yml`; its defaul
 | --- | --- | --- |
 | `/shops` | Shows the commands available to the sender, grouped into player and permitted staff actions. | None |
 | `/shops help` | Explicit alias for the same permission-aware command index. | None |
-| `/shops info` | Shows a short introduction, numbered shop-creation instructions, installed version, and clickable player-guide link. | None |
+| `/shops info` | Shows a short introduction, numbered shop-creation instructions, installed version, clickable shop-health shortcut, and player-guide link. | None |
 | `/shops create <amount> <buy-price> <sell-price> [normal]` | Selects the held product and starts a 15-second supported-container selection. A `0` price disables that trade direction. | `shopchest.create`, or the applicable directional/material permissions |
 | `/shops edit <amount\|buy\|sell> <value>` | Starts a 15-second selection and changes one setting on a shop owned by the player. A price of `0` disables that direction. | The creation permissions required by the resulting trade directions and material |
 | `/shops edit holograms <reset\|faceme\|north\|south\|east\|west>` | Starts a 15-second selection and changes the fixed text panel and rotating icon orientation together. | The same ownership and admin-shop rules as other edits |
 | `/shops limits` | Shows used slots and the effective normal-shop limit. | None |
-| `/shops list [page]` | Lists every shop owned by the player using compact rows. Hover a row for prices, stock, type, world, and coordinates. Shop rows do not teleport the player. | None |
+| `/shops list [page]` | Lists every shop owned by the player using compact rows and a whole-list health summary. Hover a row for prices, stock, type, world, and coordinates. Shop rows do not teleport the player. | None |
 | `/shops recent [page]` | Shows recent purchases and sales made by the player, plus trades completed at the player's normal shops. Each page includes money earned, spent, and net change. | `shopchest.recent` (granted by default) |
 | `/shops inspect` | Starts a 15-second shop inspection selection. | None |
 | `/shops info shop` | Compatibility alias for `/shops inspect`. | None |
@@ -44,8 +44,9 @@ Help output and top-level tab completion use the same visibility rules. Player-o
 | Command | Description | Permission |
 | --- | --- | --- |
 | `/shops create <amount> <buy-price> <sell-price> admin` | Creates an unlimited-stock admin shop after supported-container selection. | `shopchest.create.admin` |
-| `/shops admin` | Shows the ShopChest administration commands permitted for the sender. | `shopchest.admin.list` or `shopchest.admin.debug` |
-| `/shops admin list <player> [page]` | Lists every normal and admin shop registered to a cached player profile. In-game staff get the same detailed hover and can click a row to teleport onto the block above its container; console rows retain plain-text coordinates. | `shopchest.admin.list` |
+| `/shops admin` | Shows the ShopChest administration commands permitted for the sender. | Any permitted `shopchest.admin.*` action |
+| `/shops admin list <player> [page]` | Lists every normal and admin shop registered to a player UUID or cached name. In-game staff get the same detailed hover and can click a row to teleport onto the block above its container; console rows retain plain-text coordinates. | `shopchest.admin.list` |
+| `/shops admin audit [player\|all] [page]` | Runs a paginated, read-only maintenance audit across all persisted shops or one player UUID or cached name. | `shopchest.admin.audit` |
 | `/shops debug [status]` | Collects a support snapshot covering the artifact target, Paper/Java runtime, platform, dependencies and hooks, database health and counts, runtime item translation-key coverage, loaded shop displays, stock state, and relevant configuration. Players can click to copy the full report; console receives plain text. | `shopchest.admin.debug` |
 | `/shops debug commands [page]` | Lists ShopChest commands with descriptions and applicable permissions. | `shopchest.admin.debug` |
 | `/shops debug permissions [page]` | Lists declared permissions, defaults, descriptions, and dynamic permission patterns. | `shopchest.admin.debug` |
@@ -72,10 +73,60 @@ Shop listing is database-backed, so it includes registered shops in unloaded
 chunks. Results are sorted by world and coordinates and shown eight per page.
 Player chat uses compact item rows with location, prices, type, and stock in a
 hover tooltip. A loaded normal shop that cannot supply one complete configured
-purchase is visibly marked `[Out of stock]`. Unloaded chunks are not forced to
-load for this command, so their tooltip honestly reports stock as unknown until
-the chunk is loaded. Admin shops report unlimited stock, and sell-only shops
-report that sale stock is not applicable.
+purchase is visibly marked `[Out of stock]`; one that cannot accept a complete
+configured sell bundle is marked `[Full]`. Obstructed display space is marked
+`[Blocked]`. A world that is unavailable because it is missing or not loaded,
+or a loaded location without its supported container, is marked
+`[Unavailable]`.
+
+The health line is calculated across every returned shop, not only the current
+page. Ready means the shop was inspected in an already-loaded chunk and has no
+known stock, capacity, display-space, or availability problem. Reason counts
+can overlap, but the attention count includes an affected shop only once.
+Unloaded chunks are never forced to load, so their shops are unchecked rather
+than ready or broken. A cross-chunk double container is also left unchecked
+unless both halves are loaded, preventing a misleading count from a partial
+inventory. Admin shops report unlimited stock and capacity, and sell-only shops
+report that sale stock is not applicable. The command performs no persistence
+or repair action.
+
+The administrator audit builds a complete, immutable report snapshot from an
+asynchronous, explicit-column `SELECT` over the shop table. Invoking the command
+without a page number refreshes that snapshot. Page requests reuse the completed
+snapshot for up to 60 seconds, keeping counts and rows stable while staff move
+between pages.
+
+Only one audit build can be in flight globally, preventing overlapping scans on
+the live server. The database query and non-Bukkit preprocessing run off the
+server thread. Bukkit-backed product decoding, world/container inspection, and
+report finalization are bounded across server ticks, with at most 25 records
+processed per phase per tick while validating raw IDs, owner UUIDs, shop types,
+intrinsic trade terms, and encoded products independently. One malformed row
+therefore becomes one finding and does not abort the remaining report. Physical
+inspection checks world and height bounds first, then uses only already-loaded
+chunks. Unloaded anchor chunks and cross-chunk double containers with an
+unloaded half are marked unchecked, never broken or safe to remove.
+
+Known physical findings distinguish a world that is unavailable because it is
+missing or unloaded, missing blocks, unsupported or incomplete containers, and
+obstructed display space. Conflict/stale candidates include duplicate stored
+locations, multiple rows resolving to one physical container, a different
+loaded shop occupying that location, or a persisted record that is not active
+in the loaded runtime. These are advisory maintenance leads, never proof that
+any particular row is safe to delete. Reason totals can overlap; known-issue,
+unchecked, and review-row counts remain deduplicated by record.
+
+`/shops admin audit` and `/shops admin audit all` inspect every owner. A cached
+name or player UUID scopes the displayed result to one owner, and a following
+page number selects a page. Navigation uses the explicit `all` selector for
+global reports. The command never repairs or removes a shop, writes the
+database, changes schema, loads a chunk, mutates a block or inventory, writes
+PDC, or changes configuration.
+
+Audit rows expose staff-sensitive owner UUIDs, world names, and exact
+coordinates. Review and redact them before sharing. Use `/shops debug` for a
+privacy-filtered support report.
+
 The hidden teleport action accepts only shop IDs from the most recent
 authorized admin listing and checks `shopchest.admin.list` again when clicked.
 

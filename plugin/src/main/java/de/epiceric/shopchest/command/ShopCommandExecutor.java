@@ -5,6 +5,11 @@ import de.epiceric.shopchest.config.Config;
 import de.epiceric.shopchest.config.Placeholder;
 import de.epiceric.shopchest.diagnostics.ShopChestSupportReport;
 import de.epiceric.shopchest.diagnostics.PluginBuildInfo;
+import de.epiceric.shopchest.diagnostics.ShopAuditFinding;
+import de.epiceric.shopchest.diagnostics.ShopAuditIssue;
+import de.epiceric.shopchest.diagnostics.ShopAuditReport;
+import de.epiceric.shopchest.diagnostics.ShopAuditService;
+import de.epiceric.shopchest.diagnostics.ShopAuditSummary;
 import de.epiceric.shopchest.event.*;
 import de.epiceric.shopchest.language.Message;
 import de.epiceric.shopchest.language.MessageRegistry;
@@ -20,6 +25,7 @@ import de.epiceric.shopchest.shop.ShopTermsValidator;
 import de.epiceric.shopchest.sql.DatabaseDiagnostics;
 import de.epiceric.shopchest.sql.RecentTransaction;
 import de.epiceric.shopchest.sql.RecentTransactionPage;
+import de.epiceric.shopchest.sql.ShopAuditRecord;
 import de.epiceric.shopchest.utils.*;
 import de.epiceric.shopchest.utils.ClickType.CreateClickType;
 import de.epiceric.shopchest.utils.ClickType.EditClickType;
@@ -32,10 +38,12 @@ import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.type.Chest;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
@@ -46,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
@@ -58,17 +67,24 @@ class ShopCommandExecutor implements CommandExecutor {
     private static final int RECENT_PAGE_SIZE = 8;
     private static final int RECENT_ITEM_NAME_LENGTH = 32;
     private static final int DEBUG_PAGE_SIZE = 8;
+    private static final int ADMIN_AUDIT_PAGE_SIZE = 8;
+    private static final long ADMIN_AUDIT_CACHE_TTL_NANOS =
+            TimeUnit.SECONDS.toNanos(60);
     private static final LegacyComponentSerializer LEGACY_SERIALIZER = LegacyComponentSerializer.legacySection();
 
     private final ShopChest plugin;
     private final ShopUtils shopUtils;
+    private final ShopAuditService shopAuditService;
     private final Map<UUID, Map<Integer, Location>> adminTeleportTargets = new ConcurrentHashMap<>();
+    private final Map<AuditCacheKey, AuditCacheEntry> adminAuditCache = new HashMap<>();
     private final java.util.Set<Integer> pendingShopEdits = ConcurrentHashMap.newKeySet();
+    private boolean adminAuditInProgress;
     private static final Enchantment UNBREAKING_ENCHANT = Enchantment.UNBREAKING;
 
     ShopCommandExecutor(ShopChest plugin) {
         this.plugin = plugin;
         this.shopUtils = plugin.getShopUtils();
+        this.shopAuditService = new ShopAuditService(plugin);
     }
 
     @Override
@@ -395,6 +411,12 @@ class ShopCommandExecutor implements CommandExecutor {
         sender.sendMessage(messageRegistry.getMessage(Message.INFO_PRICE_HINT, command));
 
         if (sender instanceof Player player) {
+            final Component healthLink = LEGACY_SERIALIZER.deserialize(
+                            messageRegistry.getMessage(Message.INFO_SHOP_HEALTH, command))
+                    .clickEvent(ClickEvent.runCommand(
+                            "/" + Config.mainCommandName + " list"));
+            player.sendMessage(healthLink);
+
             final Component guideLink = LegacyComponentSerializer.legacySection().deserialize(
                             messageRegistry.getMessage(Message.INFO_GUIDE))
                     .clickEvent(ClickEvent.openUrl(DOCS_URL))
@@ -457,6 +479,40 @@ class ShopCommandExecutor implements CommandExecutor {
             return true;
         }
 
+        if (args[1].equalsIgnoreCase("audit")) {
+            if (!sender.hasPermission(Permissions.ADMIN_AUDIT)) {
+                sender.sendMessage(messageRegistry.getMessage(
+                        Message.NO_PERMISSION_ADMIN_AUDIT));
+                return true;
+            }
+            if (args.length > 4) {
+                sendAdminHelp(sender);
+                return true;
+            }
+
+            final AuditScope scope;
+            if (args.length == 2
+                    || args[2].equalsIgnoreCase("all")
+                    || args[2].equals("*")) {
+                scope = AuditScope.all();
+            } else {
+                final OfflinePlayer owner = findOfflinePlayer(args[2]);
+                if (owner == null) {
+                    sender.sendMessage(messageRegistry.getMessage(
+                            Message.SHOP_LIST_PLAYER_NOT_FOUND,
+                            new Replacement(Placeholder.PLAYER, args[2])));
+                    return true;
+                }
+                scope = AuditScope.player(owner);
+            }
+
+            final Integer page = parsePage(sender, args.length == 4 ? args[3] : null);
+            if (page != null) {
+                sendAdminAudit(sender, scope, page, args.length == 4);
+            }
+            return true;
+        }
+
         if (args[1].equalsIgnoreCase("teleport") && args.length == 3) {
             if (!sender.hasPermission(Permissions.ADMIN_LIST)) {
                 sender.sendMessage(messageRegistry.getMessage(Message.NO_PERMISSION_ADMIN_LIST));
@@ -480,6 +536,7 @@ class ShopCommandExecutor implements CommandExecutor {
 
     private boolean hasAdminCommandPermission(CommandSender sender) {
         return sender.hasPermission(Permissions.ADMIN_LIST)
+                || sender.hasPermission(Permissions.ADMIN_AUDIT)
                 || sender.hasPermission(Permissions.ADMIN_DEBUG);
     }
 
@@ -656,10 +713,299 @@ class ShopCommandExecutor implements CommandExecutor {
         if (sender.hasPermission(Permissions.ADMIN_LIST)) {
             sender.sendMessage(messageRegistry.getMessage(Message.ADMIN_HELP_LIST, command));
         }
+        if (sender.hasPermission(Permissions.ADMIN_AUDIT)) {
+            sender.sendMessage(messageRegistry.getMessage(Message.ADMIN_HELP_AUDIT, command));
+        }
         if (sender.hasPermission(Permissions.ADMIN_DEBUG)) {
             sender.sendMessage(messageRegistry.getMessage(Message.ADMIN_HELP_DEBUG, command));
         }
         sender.sendMessage(" ");
+    }
+
+    private void sendAdminAudit(
+            CommandSender sender,
+            AuditScope scope,
+            int requestedPage,
+            boolean reuseCompletedSnapshot
+    ) {
+        final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+        final long now = System.nanoTime();
+        adminAuditCache.entrySet().removeIf(entry -> entry.getValue().expired(now));
+        final AuditCacheKey cacheKey = AuditCacheKey.of(sender, scope);
+        if (reuseCompletedSnapshot) {
+            final AuditCacheEntry cached = adminAuditCache.get(cacheKey);
+            if (cached != null) {
+                displayAdminAudit(sender, scope, cached.report(), requestedPage);
+                return;
+            }
+        }
+        if (adminAuditInProgress) {
+            sender.sendMessage(messageRegistry.getMessage(Message.ADMIN_AUDIT_BUSY));
+            return;
+        }
+
+        adminAuditCache.remove(cacheKey);
+        adminAuditInProgress = true;
+        sender.sendMessage(messageRegistry.getMessage(Message.ADMIN_AUDIT_LOADING));
+
+        try {
+            plugin.getShopDatabase().getShopAuditRecords(
+                    new Callback<List<ShopAuditRecord>>(plugin) {
+                        @Override
+                        public void onResult(List<ShopAuditRecord> records) {
+                            if (!canReceiveAudit(sender)) {
+                                adminAuditInProgress = false;
+                                return;
+                            }
+                            try {
+                                shopAuditService.inspect(
+                                        records,
+                                        scope.ownerUuid(),
+                                        report -> {
+                                            adminAuditInProgress = false;
+                                            if (canReceiveAudit(sender)) {
+                                                adminAuditCache.put(
+                                                        cacheKey,
+                                                        new AuditCacheEntry(
+                                                                report,
+                                                                System.nanoTime()));
+                                                displayAdminAudit(
+                                                        sender,
+                                                        scope,
+                                                        report,
+                                                        requestedPage);
+                                            }
+                                        },
+                                        throwable -> {
+                                            adminAuditInProgress = false;
+                                            sendAdminAuditError(sender, throwable);
+                                        });
+                            } catch (RuntimeException exception) {
+                                adminAuditInProgress = false;
+                                sendAdminAuditError(sender, exception);
+                            }
+                        }
+
+                        @Override
+                        public void onError(Throwable throwable) {
+                            adminAuditInProgress = false;
+                            sendAdminAuditError(sender, throwable);
+                        }
+                    });
+        } catch (RuntimeException exception) {
+            adminAuditInProgress = false;
+            sendAdminAuditError(sender, exception);
+        }
+    }
+
+    private void displayAdminAudit(
+            CommandSender sender,
+            AuditScope scope,
+            ShopAuditReport report,
+            int requestedPage
+    ) {
+        final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+        final ShopAuditSummary summary = report.summary();
+        final PageSlice<ShopAuditFinding> page = PageSlice.of(
+                report.reviewFindings(),
+                requestedPage,
+                ADMIN_AUDIT_PAGE_SIZE);
+
+        sender.sendMessage(" ");
+        sender.sendMessage(messageRegistry.getMessage(
+                Message.ADMIN_AUDIT_HEADER,
+                new Replacement(Placeholder.PAGE, page.page()),
+                new Replacement(Placeholder.PAGES, page.pageCount()),
+                new Replacement(Placeholder.AMOUNT, page.totalEntries())));
+        sender.sendMessage(scope.ownerUuid() == null
+                ? messageRegistry.getMessage(Message.ADMIN_AUDIT_SCOPE_ALL)
+                : messageRegistry.getMessage(
+                        Message.ADMIN_AUDIT_SCOPE_PLAYER,
+                        new Replacement(
+                                Placeholder.PLAYER,
+                                sanitizeAuditValue(scope.displayName(), 36))));
+        if (Config.removeShopOnError) {
+            sender.sendMessage(messageRegistry.getMessage(
+                    Message.ADMIN_AUDIT_REMOVE_ON_ERROR_WARNING));
+        }
+        sender.sendMessage(messageRegistry.getMessage(
+                Message.ADMIN_AUDIT_SENSITIVE));
+
+        if (summary.scanned() == 0) {
+            sender.sendMessage(messageRegistry.getMessage(Message.ADMIN_AUDIT_EMPTY));
+            sender.sendMessage(messageRegistry.getMessage(Message.ADMIN_AUDIT_DRY_RUN));
+            sender.sendMessage(" ");
+            return;
+        }
+
+        sender.sendMessage(messageRegistry.getMessage(
+                Message.ADMIN_AUDIT_SUMMARY,
+                new Replacement(Placeholder.AMOUNT, summary.scanned()),
+                new Replacement(Placeholder.HEALTHY, summary.healthy()),
+                new Replacement(Placeholder.ATTENTION, summary.attention()),
+                new Replacement(Placeholder.UNCHECKED, summary.unchecked())));
+        sender.sendMessage(messageRegistry.getMessage(
+                Message.ADMIN_AUDIT_PHYSICAL,
+                new Replacement(Placeholder.MISSING_WORLDS, summary.missingWorlds()),
+                new Replacement(
+                        Placeholder.MISSING_CONTAINERS,
+                        summary.missingContainers()),
+                new Replacement(
+                        Placeholder.UNSUPPORTED_CONTAINERS,
+                        summary.unsupportedContainers()),
+                new Replacement(Placeholder.BLOCKED, summary.blocked())));
+        sender.sendMessage(messageRegistry.getMessage(
+                Message.ADMIN_AUDIT_DATA,
+                new Replacement(Placeholder.INVALID_PRODUCTS, summary.invalidProducts()),
+                new Replacement(Placeholder.INVALID_RECORDS, summary.invalidRecords()),
+                new Replacement(Placeholder.STALE, summary.staleCandidates())));
+
+        for (ShopAuditFinding finding : page.entries()) {
+            final ShopAuditRecord record = finding.record();
+            sender.sendMessage(messageRegistry.getMessage(
+                    Message.ADMIN_AUDIT_ENTRY,
+                    new Replacement(
+                            Placeholder.SHOP_ID,
+                            sanitizeAuditValue(record.rawId(), 24)),
+                    new Replacement(Placeholder.VALUE, auditReasonList(finding)),
+                    new Replacement(
+                            Placeholder.PLAYER,
+                            sanitizeAuditValue(record.vendor(), 36)),
+                    new Replacement(
+                            Placeholder.WORLD,
+                            sanitizeAuditValue(record.world(), 32)),
+                    new Replacement(
+                            Placeholder.X,
+                            sanitizeAuditValue(record.rawX(), 24)),
+                    new Replacement(
+                            Placeholder.Y,
+                            sanitizeAuditValue(record.rawY(), 24)),
+                    new Replacement(
+                            Placeholder.Z,
+                            sanitizeAuditValue(record.rawZ(), 24))));
+        }
+
+        if (summary.attention() == 0) {
+            sender.sendMessage(messageRegistry.getMessage(Message.ADMIN_AUDIT_CLEAN));
+        }
+        if (summary.unchecked() > 0) {
+            sender.sendMessage(messageRegistry.getMessage(Message.ADMIN_AUDIT_INCOMPLETE));
+        }
+        sendAdminAuditNavigation(sender, scope, page);
+        sender.sendMessage(messageRegistry.getMessage(Message.ADMIN_AUDIT_DRY_RUN));
+        sender.sendMessage(" ");
+    }
+
+    private String auditReasonList(ShopAuditFinding finding) {
+        final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+        final List<String> reasons = new ArrayList<>();
+        for (ShopAuditIssue issue : ShopAuditIssue.values()) {
+            if (finding.issues().contains(issue)) {
+                reasons.add(messageRegistry.getMessage(auditReasonMessage(issue)));
+            }
+        }
+        if (finding.unchecked()) {
+            reasons.add(messageRegistry.getMessage(
+                    Message.ADMIN_AUDIT_REASON_UNCHECKED));
+        }
+        return String.join(", ", reasons);
+    }
+
+    private Message auditReasonMessage(ShopAuditIssue issue) {
+        return switch (issue) {
+            case WORLD_UNAVAILABLE -> Message.ADMIN_AUDIT_REASON_MISSING_WORLD;
+            case MISSING_CONTAINER -> Message.ADMIN_AUDIT_REASON_MISSING_CONTAINER;
+            case UNSUPPORTED_CONTAINER -> Message.ADMIN_AUDIT_REASON_UNSUPPORTED_CONTAINER;
+            case INCOMPLETE_CONTAINER -> Message.ADMIN_AUDIT_REASON_INCOMPLETE_CONTAINER;
+            case BLOCKED_DISPLAY -> Message.ADMIN_AUDIT_REASON_BLOCKED_DISPLAY;
+            case INVALID_PRODUCT -> Message.ADMIN_AUDIT_REASON_INVALID_PRODUCT;
+            case INVALID_OWNER -> Message.ADMIN_AUDIT_REASON_INVALID_OWNER;
+            case INVALID_SHOP_TYPE -> Message.ADMIN_AUDIT_REASON_INVALID_SHOP_TYPE;
+            case INVALID_TERMS -> Message.ADMIN_AUDIT_REASON_INVALID_TERMS;
+            case INVALID_LOCATION -> Message.ADMIN_AUDIT_REASON_INVALID_LOCATION;
+            case INVALID_RECORD -> Message.ADMIN_AUDIT_REASON_INVALID_RECORD;
+            case CONFLICTING_RECORD -> Message.ADMIN_AUDIT_REASON_CONFLICTING_RECORD;
+            case SHADOWED_RECORD -> Message.ADMIN_AUDIT_REASON_SHADOWED_RECORD;
+            case INACTIVE_RECORD -> Message.ADMIN_AUDIT_REASON_INACTIVE_RECORD;
+        };
+    }
+
+    private void sendAdminAuditNavigation(
+            CommandSender sender,
+            AuditScope scope,
+            PageSlice<?> page
+    ) {
+        if (page.pageCount() <= 1) {
+            return;
+        }
+
+        final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+        if (!(sender instanceof Player)) {
+            if (page.page() > 1) {
+                sender.sendMessage(messageRegistry.getMessage(
+                        Message.ADMIN_AUDIT_NAVIGATION_COMMAND,
+                        new Replacement(
+                                Placeholder.VALUE,
+                                adminAuditPageCommand(scope, page.page() - 1))));
+            }
+            if (page.page() < page.pageCount()) {
+                sender.sendMessage(messageRegistry.getMessage(
+                        Message.ADMIN_AUDIT_NAVIGATION_COMMAND,
+                        new Replacement(
+                                Placeholder.VALUE,
+                                adminAuditPageCommand(scope, page.page() + 1))));
+            }
+            return;
+        }
+
+        Component navigation = Component.empty();
+        if (page.page() > 1) {
+            navigation = navigation.append(LEGACY_SERIALIZER
+                    .deserialize(messageRegistry.getMessage(Message.SHOP_LIST_PREVIOUS))
+                    .clickEvent(ClickEvent.runCommand(
+                            adminAuditPageCommand(scope, page.page() - 1))));
+        }
+        if (page.page() > 1 && page.page() < page.pageCount()) {
+            navigation = navigation.append(Component.text("  ", NamedTextColor.GRAY));
+        }
+        if (page.page() < page.pageCount()) {
+            navigation = navigation.append(LEGACY_SERIALIZER
+                    .deserialize(messageRegistry.getMessage(Message.SHOP_LIST_NEXT))
+                    .clickEvent(ClickEvent.runCommand(
+                            adminAuditPageCommand(scope, page.page() + 1))));
+        }
+        sender.sendMessage(navigation);
+    }
+
+    private String adminAuditPageCommand(AuditScope scope, int page) {
+        return "/" + Config.mainCommandName + " admin audit "
+                + scope.pageSelector() + " " + page;
+    }
+
+    private String sanitizeAuditValue(String value, int maximumLength) {
+        String raw = value == null ? "<null>" : value;
+        final int maximumScanLength = Math.max(maximumLength, maximumLength * 4);
+        if (raw.length() > maximumScanLength) {
+            raw = raw.substring(0, maximumScanLength) + "...";
+        }
+        raw = raw.replace('\u00a7', '?');
+        return HologramTextFormatter.sanitizeItemName(raw, maximumLength);
+    }
+
+    private boolean canReceiveAudit(CommandSender sender) {
+        return sender.hasPermission(Permissions.ADMIN_AUDIT)
+                && (!(sender instanceof Player player) || player.isOnline());
+    }
+
+    private void sendAdminAuditError(CommandSender sender, Throwable throwable) {
+        plugin.getLogger().severe("Failed to complete the shop maintenance audit");
+        if (throwable != null) {
+            plugin.debug(throwable);
+        }
+        if (canReceiveAudit(sender)) {
+            sender.sendMessage(plugin.getLanguageManager().getMessageRegistry()
+                    .getMessage(Message.ADMIN_AUDIT_ERROR));
+        }
     }
 
     private void sendAdminDebug(CommandSender sender) {
@@ -824,6 +1170,11 @@ class ShopCommandExecutor implements CommandExecutor {
 
         final PageSlice<Shop> page = PageSlice.of(shops, requestedPage, SHOP_LIST_PAGE_SIZE);
         final Message headerMessage = adminView ? Message.SHOP_LIST_ADMIN_HEADER : Message.SHOP_LIST_HEADER;
+        final Map<Shop, ShopListHealth> healthByShop = new HashMap<>();
+        for (Shop shop : shops) {
+            healthByShop.put(shop, resolveShopListHealth(shop));
+        }
+        final ShopHealthSummary healthSummary = ShopHealthSummary.summarize(healthByShop.values());
 
         sender.sendMessage(" ");
         sender.sendMessage(messageRegistry.getMessage(
@@ -832,16 +1183,23 @@ class ShopCommandExecutor implements CommandExecutor {
                 new Replacement(Placeholder.PAGE, page.page()),
                 new Replacement(Placeholder.PAGES, page.pageCount()),
                 new Replacement(Placeholder.AMOUNT, page.totalEntries())));
+        sender.sendMessage(messageRegistry.getMessage(
+                Message.SHOP_LIST_HEALTH,
+                new Replacement(Placeholder.HEALTHY, healthSummary.healthy()),
+                new Replacement(Placeholder.ATTENTION, healthSummary.attention()),
+                new Replacement(Placeholder.OUT_OF_STOCK, healthSummary.outOfStock()),
+                new Replacement(Placeholder.FULL, healthSummary.full()),
+                new Replacement(Placeholder.BLOCKED, healthSummary.blocked()),
+                new Replacement(Placeholder.UNAVAILABLE, healthSummary.unavailable()),
+                new Replacement(Placeholder.UNCHECKED, healthSummary.unchecked())));
 
         for (Shop shop : page.entries()) {
             final Location location = shop.getLocation();
             final String itemName = HologramTextFormatter.sanitizeItemName(
                     shop.getProduct().getLocalizedName(),
                     SHOP_LIST_ITEM_NAME_LENGTH);
-            final ShopListStock stock = resolveShopListStock(shop);
-            final String stockBadge = stock.outOfStock()
-                    ? messageRegistry.getMessage(Message.SHOP_LIST_OUT_OF_STOCK)
-                    : "";
+            final ShopListHealth health = healthByShop.get(shop);
+            final String healthBadges = shopListHealthBadges(health);
             final Message entryMessage = sender instanceof Player
                     ? Message.SHOP_LIST_ENTRY
                     : Message.SHOP_LIST_CONSOLE_ENTRY;
@@ -850,7 +1208,7 @@ class ShopCommandExecutor implements CommandExecutor {
                     new Replacement(Placeholder.SHOP_ID, shop.getID()),
                     new Replacement(Placeholder.AMOUNT, shop.getProduct().getAmount()),
                     new Replacement(Placeholder.ITEM_NAME, itemName),
-                    new Replacement(Placeholder.STOCK, stockBadge),
+                    new Replacement(Placeholder.STOCK, healthBadges),
                     new Replacement(Placeholder.WORLD, worldName(location)),
                     new Replacement(Placeholder.X, location.getBlockX()),
                     new Replacement(Placeholder.Y, location.getBlockY()),
@@ -859,7 +1217,7 @@ class ShopCommandExecutor implements CommandExecutor {
             Component line = LEGACY_SERIALIZER.deserialize(entry);
             if (sender instanceof Player) {
                 final boolean canTeleport = adminView && shop.getID() >= 0;
-                line = line.hoverEvent(buildShopListHover(shop, itemName, stock, canTeleport));
+                line = line.hoverEvent(buildShopListHover(shop, itemName, health, canTeleport));
                 if (canTeleport) {
                     line = line.clickEvent(ClickEvent.runCommand(
                             "/" + Config.mainCommandName + " admin teleport " + shop.getID()));
@@ -872,55 +1230,145 @@ class ShopCommandExecutor implements CommandExecutor {
         sender.sendMessage(" ");
     }
 
-    private ShopListStock resolveShopListStock(Shop shop) {
+    private ShopListHealth resolveShopListHealth(Shop shop) {
         final boolean adminShop = shop.getShopType() == ShopType.ADMIN;
-        if (adminShop || shop.getBuyPrice() <= 0) {
-            return ShopListStock.resolve(
+        final int transactionAmount = shop.getProduct().getAmount();
+        final Location location = shop.getLocation();
+        if (location == null || !location.isWorldLoaded()) {
+            return ShopListHealth.unavailable(
                     shop.getBuyPrice(),
                     adminShop,
-                    false,
-                    0,
-                    shop.getProduct().getAmount());
+                    transactionAmount);
         }
 
-        final Location location = shop.getLocation();
-        final World world = location == null ? null : location.getWorld();
-        if (world == null || !world.isChunkLoaded(
-                location.getBlockX() >> 4,
-                location.getBlockZ() >> 4)) {
-            return ShopListStock.resolve(
+        final World world = location.getWorld();
+        if (!world.isChunkLoaded(
+                ChunkCoordinates.fromBlock(location.getBlockX()),
+                ChunkCoordinates.fromBlock(location.getBlockZ()))) {
+            return ShopListHealth.unchecked(
                     shop.getBuyPrice(),
-                    false,
-                    false,
-                    0,
-                    shop.getProduct().getAmount());
+                    adminShop,
+                    transactionAmount);
         }
 
-        final InventoryHolder inventoryHolder = shop.getInventoryHolder();
-        if (inventoryHolder == null) {
-            return ShopListStock.resolve(
+        final Block containerBlock = world.getBlockAt(
+                location.getBlockX(),
+                location.getBlockY(),
+                location.getBlockZ());
+        if (!hasLoadedContainerPartner(world, containerBlock)) {
+            return ShopListHealth.unchecked(
                     shop.getBuyPrice(),
-                    false,
-                    false,
-                    0,
-                    shop.getProduct().getAmount());
+                    adminShop,
+                    transactionAmount);
         }
 
-        final int stock = Utils.getAmount(
-                inventoryHolder.getInventory(),
+        final ShopContainer container = ShopContainer.resolve(plugin, containerBlock);
+        if (container == null || !hasCompleteContainer(containerBlock, container)) {
+            return ShopListHealth.unavailable(
+                    shop.getBuyPrice(),
+                    adminShop,
+                    transactionAmount);
+        }
+
+        final boolean blocked = !container.hasDisplaySpace();
+        if (adminShop) {
+            return ShopListHealth.checked(
+                    shop.getBuyPrice(),
+                    shop.getSellPrice(),
+                    true,
+                    0,
+                    0,
+                    transactionAmount,
+                    blocked);
+        }
+
+        final InventoryHealth inventoryHealth = inspectInventory(
+                container.getInventory(),
                 shop.getProduct().getItemStack());
-        return ShopListStock.resolve(
+        return ShopListHealth.checked(
                 shop.getBuyPrice(),
+                shop.getSellPrice(),
                 false,
-                true,
-                stock,
-                shop.getProduct().getAmount());
+                inventoryHealth.stock(),
+                inventoryHealth.freeSpace(),
+                transactionAmount,
+                blocked);
+    }
+
+    private boolean hasLoadedContainerPartner(World world, Block block) {
+        if (!(block.getBlockData() instanceof Chest chest)
+                || chest.getType() == Chest.Type.SINGLE) {
+            return true;
+        }
+
+        final BlockFace partnerFace = switch (chest.getFacing()) {
+            case NORTH -> chest.getType() == Chest.Type.LEFT ? BlockFace.EAST : BlockFace.WEST;
+            case EAST -> chest.getType() == Chest.Type.LEFT ? BlockFace.SOUTH : BlockFace.NORTH;
+            case SOUTH -> chest.getType() == Chest.Type.LEFT ? BlockFace.WEST : BlockFace.EAST;
+            case WEST -> chest.getType() == Chest.Type.LEFT ? BlockFace.NORTH : BlockFace.SOUTH;
+            default -> null;
+        };
+        if (partnerFace == null) {
+            return false;
+        }
+
+        final int partnerX = block.getX() + partnerFace.getModX();
+        final int partnerZ = block.getZ() + partnerFace.getModZ();
+        return world.isChunkLoaded(
+                ChunkCoordinates.fromBlock(partnerX),
+                ChunkCoordinates.fromBlock(partnerZ));
+    }
+
+    private boolean hasCompleteContainer(Block block, ShopContainer container) {
+        return !(block.getBlockData() instanceof Chest chest)
+                || chest.getType() == Chest.Type.SINGLE
+                || container.getLocations().size() == 2;
+    }
+
+    private InventoryHealth inspectInventory(Inventory inventory, ItemStack product) {
+        int stock = 0;
+        int freeSpace = 0;
+        final int maxStackSize = Math.max(1, product.getMaxStackSize());
+
+        for (ItemStack current : inventory.getStorageContents()) {
+            if (current == null || current.getType().isAir()) {
+                freeSpace += maxStackSize;
+                continue;
+            }
+
+            // Utils.isItemSimilar normalizes written-book metadata. Compare
+            // clones so this read-only report cannot mutate a live inventory.
+            if (Utils.isItemSimilar(current.clone(), product.clone())) {
+                stock += Math.max(0, current.getAmount());
+                freeSpace += Math.max(0, maxStackSize - current.getAmount());
+            }
+        }
+
+        return new InventoryHealth(stock, freeSpace);
+    }
+
+    private String shopListHealthBadges(ShopListHealth health) {
+        final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+        final StringBuilder badges = new StringBuilder();
+        if (health.unavailable()) {
+            badges.append(messageRegistry.getMessage(Message.SHOP_LIST_UNAVAILABLE));
+        }
+        if (health.blocked()) {
+            badges.append(messageRegistry.getMessage(Message.SHOP_LIST_BLOCKED));
+        }
+        if (health.outOfStock()) {
+            badges.append(messageRegistry.getMessage(Message.SHOP_LIST_OUT_OF_STOCK));
+        }
+        if (health.full()) {
+            badges.append(messageRegistry.getMessage(Message.SHOP_LIST_FULL));
+        }
+        return badges.toString();
     }
 
     private Component buildShopListHover(
             Shop shop,
             String itemName,
-            ShopListStock stock,
+            ShopListHealth health,
             boolean canTeleport
     ) {
         final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
@@ -948,7 +1396,7 @@ class ShopCommandExecutor implements CommandExecutor {
                         Message.SHOP_LIST_HOVER_STOCK,
                         new Replacement(
                                 Placeholder.STOCK,
-                                shopListStockText(stock, shop.getProduct().getAmount()))),
+                                shopListStockText(health, shop.getProduct().getAmount()))),
                 messageRegistry.getMessage(
                         Message.SHOP_LIST_HOVER_LOCATION,
                         new Replacement(Placeholder.WORLD, worldName(location)),
@@ -973,8 +1421,12 @@ class ShopCommandExecutor implements CommandExecutor {
         return hover;
     }
 
-    private String shopListStockText(ShopListStock stock, int transactionAmount) {
+    private String shopListStockText(ShopListHealth health, int transactionAmount) {
         final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+        if (health.unavailable()) {
+            return messageRegistry.getMessage(Message.SHOP_LIST_STOCK_UNAVAILABLE);
+        }
+        final ShopListStock stock = health.stock();
         return switch (stock.state()) {
             case AVAILABLE -> messageRegistry.getMessage(
                     Message.SHOP_LIST_STOCK_AVAILABLE,
@@ -990,9 +1442,13 @@ class ShopCommandExecutor implements CommandExecutor {
     }
 
     private String worldName(Location location) {
-        return location != null && location.getWorld() != null
-                ? location.getWorld().getName()
-                : "<unavailable>";
+        if (location == null || !location.isWorldLoaded()) {
+            return "<unavailable>";
+        }
+        return location.getWorld().getName();
+    }
+
+    private record InventoryHealth(int stock, int freeSpace) {
     }
 
     private void sendShopListNavigation(
@@ -1047,7 +1503,7 @@ class ShopCommandExecutor implements CommandExecutor {
             player.sendMessage(messageRegistry.getMessage(Message.ADMIN_TELEPORT_TARGET_EXPIRED));
             return;
         }
-        if (shopLocation.getWorld() == null) {
+        if (!shopLocation.isWorldLoaded()) {
             player.sendMessage(messageRegistry.getMessage(Message.ADMIN_TELEPORT_WORLD_UNAVAILABLE));
             return;
         }
@@ -1774,5 +2230,41 @@ class ShopCommandExecutor implements CommandExecutor {
         });
 
         
+    }
+
+    private record AuditScope(
+            UUID ownerUuid,
+            String pageSelector,
+            String displayName
+    ) {
+
+        private static AuditScope all() {
+            return new AuditScope(null, "all", "all registered shops");
+        }
+
+        private static AuditScope player(OfflinePlayer owner) {
+            final UUID ownerUuid = owner.getUniqueId();
+            final String displayName = owner.getName() == null
+                    ? ownerUuid.toString()
+                    : owner.getName();
+            return new AuditScope(ownerUuid, ownerUuid.toString(), displayName);
+        }
+    }
+
+    private record AuditCacheKey(String audience, UUID ownerUuid) {
+
+        private static AuditCacheKey of(CommandSender sender, AuditScope scope) {
+            final String audience = sender instanceof Player player
+                    ? "player:" + player.getUniqueId()
+                    : sender.getClass().getName() + ":" + sender.getName();
+            return new AuditCacheKey(audience, scope.ownerUuid());
+        }
+    }
+
+    private record AuditCacheEntry(ShopAuditReport report, long completedAtNanos) {
+
+        private boolean expired(long now) {
+            return now - completedAtNanos > ADMIN_AUDIT_CACHE_TTL_NANOS;
+        }
     }
 }

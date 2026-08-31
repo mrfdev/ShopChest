@@ -23,8 +23,12 @@ Defaults below come from `plugin.yml`. `true` means all players, and `op` means 
 | `shopchest.recent` | `true` | Uses `/shops recent` to view the player's own recorded transaction history. |
 | `shopchest.admin` | `op` | Parent permission for ShopChest administration commands. |
 | `shopchest.admin.list` | `op` | Lists another player's registered shops and allows in-game staff to teleport to a listed shop. |
+| `shopchest.admin.audit` | `op` | Runs the read-only persisted-shop maintenance audit without loading chunks. Output includes owner UUIDs, world names, and exact coordinates. |
 | `shopchest.admin.debug` | `op` | Uses `/shops debug` for the copyable support report and command, permission, and internal-placeholder catalogs. |
 | `shopchest.limit.*` | `op` | Removes the normal-shop limit. |
+
+Keep `shopchest.admin.audit` restricted to trusted staff. Audit output is not a
+privacy-filtered support report; review and redact it before sharing.
 
 ## Dynamic Permissions
 

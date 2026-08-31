@@ -206,15 +206,50 @@ shelved.
     per-shop text-panel and floating-icon orientation. Double-chest overrides
     are stored on both physical container blocks and cleared when the shop is
     removed.
-- [ ] Add a compact shop-health summary showing how many owned shops are out of
+- [x] Add a compact shop-health summary showing how many owned shops are out of
   stock, full, unavailable, or otherwise need attention.
   - Prefer enhancing `/shops list` and `/shops info` over adding noisy recurring
     messages.
-- [ ] Add `/shops admin audit [player]` as a dry-run maintenance report for
-  missing worlds, missing or unsupported containers, blocked display space,
-  invalid products, and stale database records.
-  - Do not force-load large numbers of chunks or mutate records during the
-    audit.
+  - `/shops list` now summarizes the owner's complete result set rather than
+    only the visible page, with a deduplicated attention total and separate
+    ready, out-of-stock, full, blocked, unavailable, and unchecked counts. A
+    shop can have multiple attention reasons; distant unloaded shops remain
+    unchecked rather than being reported as broken.
+  - Full means a loaded normal shop cannot accept one complete configured sell
+    bundle. Unavailable is reserved for a world that is unavailable because it
+    is missing or not loaded, or a loaded location without its supported
+    container. Cross-chunk double containers are checked only while both halves
+    are already loaded. A loaded shop is blocked when the display space above
+    its supported container is obstructed.
+  - The database `SELECT` remains asynchronous; plain database rows are
+    hydrated and already-loaded inventories are inspected on the server thread.
+    The report never force-loads a chunk and adds no database column, migration,
+    stored record, PDC value, or configuration setting. List rows identify
+    out-of-stock, full, blocked, and unavailable shops, and `/shops info` links
+    players directly to the list.
+- [x] Add `/shops admin audit [player]` as a dry-run maintenance report for
+  unavailable worlds (missing or unloaded), missing or unsupported containers,
+  blocked display space, invalid products, and stale database records.
+  - Implemented as `/shops admin audit [player|all] [page]` with a dedicated
+    `shopchest.admin.audit` permission, whole-scope counts, and paginated review
+    rows. Malformed rows are isolated instead of aborting the report.
+  - Each run completes an immutable report snapshot. Invoking the command
+    without a page refreshes it; pagination reuses the completed snapshot for
+    up to 60 seconds so results cannot drift between pages.
+  - Only one audit build can be in flight globally. The explicit-column
+    database `SELECT` and non-Bukkit preprocessing run off the server thread.
+    Product decoding, already-loaded world/container inspection, and report
+    finalization run in bounded server-thread batches of at most 25 records per
+    phase per tick. Unloaded chunks and partially loaded cross-chunk double
+    containers remain unchecked.
+  - Stored-coordinate conflicts, physical-container conflicts, records
+    shadowed by a different loaded shop, and persisted records not active in
+    the loaded runtime are advisory conflict/stale candidates. The audit never
+    chooses a winner or claims that a record is safe to delete.
+  - Adds no database write, schema migration, stored field, PDC value, or
+    configuration setting and performs no chunk load, repair, or removal.
+  - Rows contain staff-sensitive owner UUIDs, world names, and exact
+    coordinates and must be reviewed or redacted before they are shared.
 - [ ] Add owner statistics for purchases, sales, earnings, and spending over a
   bounded configurable period, building on the existing economy log and its
   indexes.

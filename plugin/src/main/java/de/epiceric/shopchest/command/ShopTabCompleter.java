@@ -49,6 +49,9 @@ class ShopTabCompleter implements TabCompleter {
                     if (sender.hasPermission(Permissions.ADMIN_LIST)) {
                         adminCommands.add("list");
                     }
+                    if (sender.hasPermission(Permissions.ADMIN_AUDIT)) {
+                        adminCommands.add("audit");
+                    }
                     if (sender.hasPermission(Permissions.ADMIN_DEBUG)) {
                         adminCommands.add("debug");
                     }
@@ -103,6 +106,13 @@ class ShopTabCompleter implements TabCompleter {
                         && args[1].equalsIgnoreCase("list")
                         && sender.hasPermission(Permissions.ADMIN_LIST)) {
                     return filterCompletions(playerNames, args[2]);
+                } else if (args[0].equalsIgnoreCase("admin")
+                        && args[1].equalsIgnoreCase("audit")
+                        && sender.hasPermission(Permissions.ADMIN_AUDIT)) {
+                    final List<String> auditScopes = new ArrayList<>();
+                    auditScopes.add("all");
+                    auditScopes.addAll(playerNames);
+                    return filterCompletions(auditScopes, args[2]);
                 } else if (args[0].equals("config")) {
                     if (!args[2].equals("")) {
                         for (String s : configValues) {

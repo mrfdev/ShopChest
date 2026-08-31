@@ -30,6 +30,7 @@ public class Config {
     static final int DEFAULT_HOLOGRAM_MAX_ITEM_DETAIL_ENTRIES = 7;
     static final int DEFAULT_HOLOGRAM_ITEM_DETAILS_PER_LINE = 2;
     static final int DEFAULT_TRADE_INTERACTION_COOLDOWN_MILLIS = 250;
+    static final int DEFAULT_OFFLINE_REVENUE_NOTIFICATION_DELAY_SECONDS = 3;
     static final double DEFAULT_CMI_WORTH_LOW_MULTIPLIER = 0.5D;
     static final double DEFAULT_CMI_WORTH_HIGH_MULTIPLIER = 20.0D;
     private static final String SUCCESS_SOUND = "minecraft:entity.experience_orb.pickup";
@@ -172,6 +173,11 @@ public class Config {
      * Minimum time between shop trade attempts from the same player
      **/
     public static int tradeInteractionCooldownMillis;
+
+    /**
+     * Delay after loading offline revenue before showing the join notification
+     **/
+    public static int offlineRevenueNotificationDelaySeconds;
 
     /**
      * Player-local sound and particle shown after a completed trade
@@ -609,6 +615,10 @@ public class Config {
                 plugin.getConfig().getInt(
                         "trade-interaction-cooldown-milliseconds",
                         DEFAULT_TRADE_INTERACTION_COOLDOWN_MILLIS));
+        offlineRevenueNotificationDelaySeconds =
+                normalizeOfflineRevenueNotificationDelaySeconds(plugin.getConfig().getInt(
+                        "offline-revenue-notification-delay-seconds",
+                        DEFAULT_OFFLINE_REVENUE_NOTIFICATION_DELAY_SECONDS));
         tradeSuccessFeedback = getTradeFeedbackEffect(
                 "success", SUCCESS_SOUND, 0.45, 1.2, SUCCESS_PARTICLE, 4);
         tradeFailureFeedback = getTradeFeedbackEffect(
@@ -812,6 +822,9 @@ public class Config {
         changed |= addDefaultIfMissing(
                 "trade-interaction-cooldown-milliseconds",
                 DEFAULT_TRADE_INTERACTION_COOLDOWN_MILLIS);
+        changed |= addDefaultIfMissing(
+                "offline-revenue-notification-delay-seconds",
+                DEFAULT_OFFLINE_REVENUE_NOTIFICATION_DELAY_SECONDS);
         changed |= addDefaultIfMissing("cmi-worth-price-warning.enabled", true);
         changed |= addDefaultIfMissing("cmi-worth-price-warning.warn-resale-risk", true);
         changed |= addDefaultIfMissing(
@@ -901,6 +914,10 @@ public class Config {
 
     static int normalizeTradeInteractionCooldownMillis(int value) {
         return clamp(value, 0, 5_000);
+    }
+
+    static int normalizeOfflineRevenueNotificationDelaySeconds(int value) {
+        return clamp(value, 0, 30);
     }
 
     static double normalizeCmiWorthLowMultiplier(double value) {

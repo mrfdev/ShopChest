@@ -54,6 +54,13 @@ class ConfigTest {
     }
 
     @Test
+    void boundsOfflineRevenueNotificationDelay() {
+        assertEquals(0, Config.normalizeOfflineRevenueNotificationDelaySeconds(-1));
+        assertEquals(3, Config.normalizeOfflineRevenueNotificationDelaySeconds(3));
+        assertEquals(30, Config.normalizeOfflineRevenueNotificationDelaySeconds(60));
+    }
+
+    @Test
     void boundsCmiWorthWarningMultipliers() {
         assertEquals(0.5D, Config.normalizeCmiWorthLowMultiplier(Double.NaN));
         assertEquals(0.01D, Config.normalizeCmiWorthLowMultiplier(0.0D));

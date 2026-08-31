@@ -18,6 +18,9 @@ class ShopDebugCatalogTest {
         assertTrue(commands.stream().anyMatch(entry ->
                 entry.usage().equals("/market admin debug")
                         && entry.description().contains("Compatibility alias")));
+        assertTrue(commands.stream().anyMatch(entry ->
+                entry.usage().equals("/market admin audit [player|all] [page]")
+                        && entry.permission().equals("shopchest.admin.audit")));
     }
 
     @Test

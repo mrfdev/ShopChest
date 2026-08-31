@@ -47,6 +47,9 @@ public class ShopUtils {
      * @return Shop at the given location or <b>null</b> if no shop is found there
      */
     public Shop getShop(Location location) {
+        if (location == null || !location.isWorldLoaded()) {
+            return null;
+        }
         Location newLocation = new Location(location.getWorld(), location.getBlockX(),
                 location.getBlockY(), location.getBlockZ());
 

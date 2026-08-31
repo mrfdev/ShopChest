@@ -91,9 +91,13 @@ permissions:
     default: op
     children:
       shopchest.admin.list: true
+      shopchest.admin.audit: true
       shopchest.admin.debug: true
   shopchest.admin.list:
     description: Allows listing another player's shops and teleporting to them.
+    default: op
+  shopchest.admin.audit:
+    description: Allows dry-run maintenance audits of persisted shops without loading chunks.
     default: op
   shopchest.admin.debug:
     description: Allows ShopChest support status, command, permission, and placeholder diagnostics.
