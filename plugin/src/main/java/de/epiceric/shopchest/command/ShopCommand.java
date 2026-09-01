@@ -375,27 +375,15 @@ public class ShopCommand {
         public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
             List<String> subCommandNames = new ArrayList<>();
 
-            List<String> tabCompletions = new ArrayList<>();
-
             for (ShopSubCommand subCommand : subCommands) {
                 if (subCommand.isVisibleTo(sender)) {
                     subCommandNames.add(subCommand.getName());
                 }
             }
 
-            if (args.length == 1) {
-                if (!args[0].isEmpty()) {
-                    for (String s : subCommandNames) {
-                        if (s.toLowerCase(Locale.ROOT).startsWith(
-                                args[0].toLowerCase(Locale.ROOT))) {
-                            tabCompletions.add(s);
-                        }
-                    }
-                    return tabCompletions;
-                } else {
-                    return subCommandNames;
-                }
-            } else if (args.length > 1) {
+            if (args.length <= 1) {
+                return rootTabCompletions(subCommandNames, args);
+            } else {
                 for (ShopSubCommand subCmd : subCommands) {
                     if (subCmd.getName().equalsIgnoreCase(args[0])) {
                         return subCmd.isVisibleTo(sender)
@@ -408,6 +396,24 @@ public class ShopCommand {
             return new ArrayList<>();
         }
 
+    }
+
+    static List<String> rootTabCompletions(List<String> subCommandNames, String[] args) {
+        if (args.length > 1) {
+            return List.of();
+        }
+        if (args.length == 0 || args[0].isEmpty()) {
+            return new ArrayList<>(subCommandNames);
+        }
+
+        final List<String> matches = new ArrayList<>();
+        final String prefix = args[0].toLowerCase(Locale.ROOT);
+        for (String subCommandName : subCommandNames) {
+            if (subCommandName.toLowerCase(Locale.ROOT).startsWith(prefix)) {
+                matches.add(subCommandName);
+            }
+        }
+        return matches;
     }
 
     private final class PaperShopCommand implements BasicCommand {

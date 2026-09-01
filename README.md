@@ -72,7 +72,8 @@ tests, test-server startup, and focused shop testing pass.
 
 ### Management and reliability
 
-- Player shop lists, stock state, locations, and compact hover details
+- Player shop lists, stock state, locations, and native item hover details for
+  enchanted books and potions in profile and search results
 - Separate public Storefront Profiles with safe plain-text name, advertisement,
   description, location hint, and up to three ordered Featured Listings
 - Exact base-material `/shops search` with in-stock-only results, four-row

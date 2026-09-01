@@ -15,6 +15,7 @@ import de.epiceric.shopchest.catalog.ShopSearchSnapshot;
 import de.epiceric.shopchest.catalog.ShopSearchSummary;
 import de.epiceric.shopchest.config.Config;
 import de.epiceric.shopchest.display.HologramTextFormatter;
+import de.epiceric.shopchest.display.TextComponentHelper;
 import de.epiceric.shopchest.storefront.StorefrontProfile;
 import de.epiceric.shopchest.utils.Permissions;
 import net.kyori.adventure.text.Component;
@@ -27,6 +28,7 @@ import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -275,10 +277,14 @@ final class ShopSearchCommandHandler {
             PublicShopListing listing,
             Map<Integer, Location> staffTargets
     ) {
+        final ItemStack productTemplate = entry.productTemplate();
         final String itemName = HologramTextFormatter.sanitizeItemName(
                 plugin.getLanguageManager().getItemNameManager()
-                        .getItemName(entry.productTemplate()),
+                        .getItemName(productTemplate),
                 MAX_ITEM_NAME_LENGTH);
+        final Component itemNameComponent = TextComponentHelper.withDetailedItemTooltip(
+                Component.text(itemName, NamedTextColor.WHITE),
+                productTemplate);
         final String ownerName = ownerName(entry.ownerId());
         final String storefrontName = plugin.getPublicCatalogue().profile(entry.ownerId())
                 .filter(profile -> !profile.textHidden())
@@ -288,9 +294,8 @@ final class ShopSearchCommandHandler {
         final double unitPrice = entry.customerBuyPrice() / entry.bundleAmount();
 
         sender.sendMessage(Component.text("• ", NamedTextColor.DARK_GRAY)
-                .append(Component.text(
-                        entry.bundleAmount() + "x " + itemName,
-                        NamedTextColor.WHITE))
+                .append(Component.text(entry.bundleAmount() + "x ", NamedTextColor.WHITE))
+                .append(itemNameComponent)
                 .append(Component.text(" for ", NamedTextColor.GRAY))
                 .append(Component.text(
                         plugin.getEconomy().format(entry.customerBuyPrice()),

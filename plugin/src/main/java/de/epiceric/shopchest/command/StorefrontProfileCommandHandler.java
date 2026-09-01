@@ -7,6 +7,7 @@ import de.epiceric.shopchest.catalog.RuntimeCatalogueEntry;
 import de.epiceric.shopchest.catalog.RuntimeCatalogueListing;
 import de.epiceric.shopchest.config.Config;
 import de.epiceric.shopchest.display.HologramTextFormatter;
+import de.epiceric.shopchest.display.TextComponentHelper;
 import de.epiceric.shopchest.sql.JdbcStorefrontRepository;
 import de.epiceric.shopchest.storefront.StorefrontProfile;
 import de.epiceric.shopchest.storefront.StorefrontProfileEligibility;
@@ -24,6 +25,7 @@ import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -445,15 +447,18 @@ final class StorefrontProfileCommandHandler {
             Map<Integer, Location> staffTargets
     ) {
         final RuntimeCatalogueEntry entry = listing.entry();
+        final ItemStack productTemplate = entry.productTemplate();
         final String itemName = HologramTextFormatter.sanitizeItemName(
                 plugin.getLanguageManager().getItemNameManager()
-                        .getItemName(entry.productTemplate()),
+                        .getItemName(productTemplate),
                 MAX_ITEM_NAME_LENGTH);
+        final Component itemNameComponent = TextComponentHelper.withDetailedItemTooltip(
+                Component.text(itemName, NamedTextColor.WHITE),
+                productTemplate);
         final String marker = featured.containsKey(entry.shopId()) ? "★ " : "• ";
         sender.sendMessage(Component.text(marker, NamedTextColor.GOLD)
-                .append(Component.text(
-                        entry.bundleAmount() + "x " + itemName,
-                        NamedTextColor.WHITE)));
+                .append(Component.text(entry.bundleAmount() + "x ", NamedTextColor.WHITE))
+                .append(itemNameComponent));
         if (entry.customerBuyPrice() > 0.0D) {
             sender.sendMessage(Component.text(
                     "  Players buy for " + plugin.getEconomy().format(entry.customerBuyPrice())
