@@ -373,10 +373,8 @@ final class AdvertisingCommandHandler {
                 player.sendMessage(Component.text(
                         "Choose at least one eligible Featured Listing first:",
                         NamedTextColor.YELLOW));
-                player.sendMessage(Component.text(
-                        "/" + Config.mainCommandName
-                                + " profile featured add <shop-id>",
-                        NamedTextColor.GRAY));
+                player.sendMessage(StorefrontCommandComponents.featuredPickerPrompt(
+                        Config.mainCommandName));
                 return;
             }
             final AdvertisingFeature.AdvertisementPresentation preview =

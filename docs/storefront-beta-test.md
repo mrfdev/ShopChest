@@ -89,6 +89,13 @@ Feature the recorded IDs in order:
 /shops profile featured add <fourth-shop-id>
 ```
 
+Before entering an ID manually, type `/shops profile featured add ` and press
+Tab. Suggestions must contain only this player's scoped, normal Customer-Buy
+shop IDs. Trigger the grey add-command prompt from `/shops advertise`, click
+it, and confirm it opens the owner's four-row shop page. Eligible rows must
+show `#ID` plus a clickable Feature action; already featured rows must offer a
+clickable Remove action; customer-sell-only rows must say they are ineligible.
+
 The first three should succeed and retain order; the fourth should be rejected.
 Confirm that another owner's ID, an admin-shop ID, and a customer-sell-only ID
 are rejected. Exercise `featured remove` and `featured clear`, then restore at

@@ -13,6 +13,7 @@ import de.epiceric.shopchest.storefront.StorefrontProfile;
 import de.epiceric.shopchest.storefront.StorefrontProfileEligibility;
 import de.epiceric.shopchest.storefront.StorefrontProfileField;
 import de.epiceric.shopchest.storefront.StorefrontTextPolicy;
+import de.epiceric.shopchest.storefront.FeaturedListingChoices;
 import de.epiceric.shopchest.utils.Callback;
 import de.epiceric.shopchest.utils.Permissions;
 import net.kyori.adventure.text.Component;
@@ -215,11 +216,14 @@ final class StorefrontProfileCommandHandler {
                     final boolean eligible = plugin.getPublicCatalogue()
                             .ownerEntries(player.getUniqueId()).stream()
                             .anyMatch(entry -> entry.shopId() == shopId
-                                    && entry.customerBuyPrice() > 0.0D);
+                                    && FeaturedListingChoices.isEligible(
+                                            player.getUniqueId(), entry.candidate()));
                     if (!eligible) {
                         player.sendMessage(Component.text(
                                 "That is not one of your eligible customer-buy shops.",
                                 NamedTextColor.RED));
+                        player.sendMessage(StorefrontCommandComponents.featuredPickerPrompt(
+                                Config.mainCommandName));
                         return;
                     }
                     if (updated.contains(shopId)) {
@@ -430,8 +434,15 @@ final class StorefrontProfileCommandHandler {
                 TextDecoration.BOLD));
 
         final Map<Integer, Location> staffTargets = new HashMap<>();
+        final boolean managingOwnListings = sender instanceof Player player
+                && player.getUniqueId().equals(target.owner().getUniqueId());
         for (RuntimeCatalogueListing listing : page.entries()) {
-            renderProfileListing(sender, listing, featuredPosition, staffTargets);
+            renderProfileListing(
+                    sender,
+                    listing,
+                    featuredPosition,
+                    staffTargets,
+                    managingOwnListings);
         }
         if (sender instanceof Player player && !staffTargets.isEmpty()) {
             plugin.getShopCommand().cacheAdminTeleportTargets(player, staffTargets);
@@ -444,7 +455,8 @@ final class StorefrontProfileCommandHandler {
             CommandSender sender,
             RuntimeCatalogueListing listing,
             Map<Integer, Integer> featured,
-            Map<Integer, Location> staffTargets
+            Map<Integer, Location> staffTargets,
+            boolean managingOwnListings
     ) {
         final RuntimeCatalogueEntry entry = listing.entry();
         final ItemStack productTemplate = entry.productTemplate();
@@ -456,7 +468,12 @@ final class StorefrontProfileCommandHandler {
                 Component.text(itemName, NamedTextColor.WHITE),
                 productTemplate);
         final String marker = featured.containsKey(entry.shopId()) ? "★ " : "• ";
-        sender.sendMessage(Component.text(marker, NamedTextColor.GOLD)
+        Component listingLine = Component.text(marker, NamedTextColor.GOLD);
+        if (managingOwnListings) {
+            listingLine = listingLine.append(Component.text(
+                    "#" + entry.shopId() + " • ", NamedTextColor.GRAY));
+        }
+        sender.sendMessage(listingLine
                 .append(Component.text(entry.bundleAmount() + "x ", NamedTextColor.WHITE))
                 .append(itemNameComponent));
         if (entry.customerBuyPrice() > 0.0D) {
@@ -470,6 +487,27 @@ final class StorefrontProfileCommandHandler {
                     "  Shop buys for " + plugin.getEconomy().format(entry.customerSellPrice())
                             + " • " + capacityLabel(listing),
                     capacityColor(listing)));
+        }
+
+        if (managingOwnListings) {
+            final boolean eligible = FeaturedListingChoices.isEligible(
+                    entry.ownerId(), entry.candidate());
+            if (eligible && featured.containsKey(entry.shopId())) {
+                sender.sendMessage(Component.text(
+                                "  ★ Featured shop #" + entry.shopId(),
+                                NamedTextColor.GOLD)
+                        .append(Component.space())
+                        .append(StorefrontCommandComponents.removeFeaturedAction(
+                                Config.mainCommandName, entry.shopId())));
+            } else if (eligible) {
+                sender.sendMessage(Component.text("  ")
+                        .append(StorefrontCommandComponents.addFeaturedAction(
+                                Config.mainCommandName, entry.shopId())));
+            } else {
+                sender.sendMessage(Component.text(
+                        "  Not eligible for Featured Listings: no customer-buy offer",
+                        NamedTextColor.DARK_GRAY));
+            }
         }
 
         final Location location = entry.location();
@@ -708,6 +746,8 @@ final class StorefrontProfileCommandHandler {
                 "Use /" + Config.mainCommandName
                         + " profile featured <add|remove> <shop-id>, or featured clear.",
                 NamedTextColor.YELLOW));
+        sender.sendMessage(StorefrontCommandComponents.featuredPickerPrompt(
+                Config.mainCommandName));
     }
 
     private void persistenceError(CommandSender sender, Throwable throwable) {

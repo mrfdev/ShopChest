@@ -106,6 +106,12 @@ directions but do not teleport ordinary players. Use the clickable
 `/warp shops` link to visit the marketplace. Trusted staff with the shop-list
 permission receive a separately checked teleport action.
 
+When you browse your own storefront's shop pages, each row shows its shop ID.
+Eligible Customer-Buy Offers include a clickable Feature action, while current
+Featured Listings include a Remove action. The grey
+`/shops profile featured add <shop-id>` prompt opens this picker, and pressing
+Tab after `/shops profile featured add ` suggests your eligible shop IDs.
+
 The [searchable marketplace snapshot](https://docs.1moreblock.com/player-guides/custom-server-plugins/shopchest/marketplace-snapshot/)
 can also be searched by owner or item. It clearly shows when its data was
 captured and may be older than the live server. Use the in-game search for a

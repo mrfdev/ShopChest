@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.bukkit.Bukkit;
@@ -14,7 +15,10 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
 import de.epiceric.shopchest.ShopChest;
+import de.epiceric.shopchest.catalog.PublicShopCandidate;
+import de.epiceric.shopchest.catalog.RuntimeCatalogueEntry;
 import de.epiceric.shopchest.config.Config;
+import de.epiceric.shopchest.storefront.FeaturedListingChoices;
 import de.epiceric.shopchest.utils.Permissions;
 
 class ShopTabCompleter implements TabCompleter {
@@ -169,7 +173,19 @@ class ShopTabCompleter implements TabCompleter {
                     }
                 }
             } else if (args.length == 4) {
-                if (args[0].equalsIgnoreCase("admin")
+                if (args[0].equalsIgnoreCase("profile")
+                        && args[1].equalsIgnoreCase("featured")
+                        && args[2].equalsIgnoreCase("add")
+                        && sender instanceof Player player
+                        && sender.hasPermission(Permissions.PROFILE)) {
+                    return featuredShopIdCompletions(
+                            player.getUniqueId(),
+                            plugin.getPublicCatalogue()
+                                    .ownerEntries(player.getUniqueId()).stream()
+                                    .map(RuntimeCatalogueEntry::candidate)
+                                    .toList(),
+                            args[3]);
+                } else if (args[0].equalsIgnoreCase("admin")
                         && args[1].equalsIgnoreCase("advertise")
                         && args[2].equalsIgnoreCase("currency")
                         && sender.hasPermission(Permissions.ADMIN_ADVERTISE)) {
@@ -234,7 +250,20 @@ class ShopTabCompleter implements TabCompleter {
         return new ArrayList<>();
     }
 
-    private List<String> filterCompletions(List<String> candidates, String input) {
+    static List<String> featuredShopIdCompletions(
+            UUID ownerId,
+            List<PublicShopCandidate> candidates,
+            String input
+    ) {
+        final List<String> eligibleShopIds = FeaturedListingChoices
+                .eligibleShopIds(ownerId, candidates)
+                .stream()
+                .map(String::valueOf)
+                .toList();
+        return filterCompletions(eligibleShopIds, input);
+    }
+
+    private static List<String> filterCompletions(List<String> candidates, String input) {
         final String prefix = input.toLowerCase(Locale.ROOT);
         return candidates.stream()
                 .filter(candidate -> candidate.toLowerCase(Locale.ROOT).startsWith(prefix))
