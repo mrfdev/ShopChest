@@ -24,7 +24,12 @@ Player-facing documentation is published at
 | Build toolchain | Gradle wrapper with a Java 25 toolchain |
 | Required plugins | Vault and a Vault-compatible economy provider |
 | Optional price advisory | CMI |
-| Plugin version | 1.15.2 |
+| Plugin version | 1.15.3-SNAPSHOT |
+| Release status | Beta snapshot, untested |
+
+`1.15.3-SNAPSHOT` is a rollback checkpoint, not a production release. Automated
+verification does not replace the live-server beta checklist and smoke tests,
+which have not yet been completed for this snapshot.
 
 The exact compile target is declared in
 [`plugin/build.gradle.kts`](plugin/build.gradle.kts). The deployable jar uses
@@ -115,7 +120,7 @@ inventory blocks not listed above.
 1. Paper 26.2 running on Java 25.
 2. Vault.
 3. A Vault-compatible economy plugin registered before ShopChest enables.
-4. The shaded `1MB-ShopChest-v1.15.2-<build>-j25-26.2.jar`.
+4. The shaded `1MB-ShopChest-v1.15.3-SNAPSHOT-<build>-j25-26.2.jar`.
 
 Vault alone does not provide an economy. ShopChest disables itself when Vault,
 an economy provider, or its configured database is unavailable.
@@ -458,7 +463,7 @@ java -version
 The build runs the test suite and writes the deployable shaded jar to:
 
 ```text
-plugin/build/libs/1MB-ShopChest-v1.15.2-<build>-j25-26.2.jar
+plugin/build/libs/1MB-ShopChest-v1.15.3-SNAPSHOT-<build>-j25-26.2.jar
 ```
 
 `<build>` is the shared zero-padded release build from `gradle.properties`,

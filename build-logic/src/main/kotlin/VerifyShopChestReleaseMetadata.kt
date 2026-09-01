@@ -133,10 +133,15 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
             embeddedMetadataFile.get().asFile,
             "paper-api-version=\${paperApiVersion}")
 
+        if (version.endsWith("-SNAPSHOT")) {
+            requireText(readme, "| Release status | Beta snapshot, untested |")
+            requireText(installation, "`$version` is an untested beta rollback")
+        }
+
         val releaseSurface = listOf(readme, todo, installation, docsManifest)
             .joinToString("\n") { it.readText() }
         listOf(
-            "1MB-ShopChest-v1.15.1",
+            "1MB-ShopChest-v1.15.2",
             "Paper 26.2 build 71 beta",
             "26.2.build.71-beta",
             "jdk-25.0.2",
@@ -154,7 +159,11 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
             requireText(config, "\"default_channel\": \"$channel\"")
             requireText(config, "\"check_latest_channel_only\": \"$channel\"")
             requireText(config, "\"allow_same_version_build_upgrade\": true")
-            requireText(config, "\"download_filename_pattern\": \"Paper-{version}.jar\"")
+            requireText(config, "\"keep_server_jars\": 2")
+            requireText(config, "\"reconcile_server_jars_after_stage\": true")
+            requireThat(!config.readText().contains("\"download_filename_pattern\"")) {
+                "Maintained PaperScript config still contains deprecated download_filename_pattern."
+            }
             requireText(state, "\"current_build\": $stableBuild")
             requireText(state, "\"current_channel\": \"$channel\"")
             requireText(launcher, "_javaBin")

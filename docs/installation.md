@@ -15,11 +15,16 @@
 
 ShopChest's own classes target Java 25 bytecode for the supported Paper server.
 
+> **Snapshot warning:** `1.15.3-SNAPSHOT` is an untested beta rollback
+> checkpoint, not a production release. Complete the
+> [storefront beta checklist](storefront-beta-test.md) and test-server smoke
+> checks before deploying it.
+
 ## Fresh Installation
 
 1. Stop the server cleanly.
 2. Install Vault and the chosen economy plugin in the top-level `plugins/` directory.
-3. Place the generated `1MB-ShopChest-v1.15.2-<build>-j25-26.2.jar` in `plugins/`. Remove older ShopChest jars so only one top-level jar remains.
+3. Place the generated `1MB-ShopChest-v1.15.3-SNAPSHOT-<build>-j25-26.2.jar` in `plugins/`. Remove older ShopChest jars so only one top-level jar remains.
 4. Start the server and verify that ShopChest reports its version without disabling itself.
 5. Review `plugins/ShopChest/config.yml` and `hologram-format.yml`.
 6. For the recommended `MARKETPLACE` discovery mode, verify that WorldGuard has
@@ -58,7 +63,7 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-25.0.4.jdk/Contents/Home \
   ./gradlew clean build
 ```
 
-The output is `plugin/build/libs/1MB-ShopChest-v1.15.2-<build>-j25-26.2.jar`,
+The output is `plugin/build/libs/1MB-ShopChest-v1.15.3-SNAPSHOT-<build>-j25-26.2.jar`,
 where `<build>` is the shared release build in `gradle.properties`. Verification
 requires it to match the Git commit count or the single pending release
 increment. The unshaded intermediate jar is disabled, leaving one deployable
