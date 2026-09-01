@@ -1,6 +1,7 @@
 package de.epiceric.shopchest.utils;
 
 import de.epiceric.shopchest.ShopChest;
+import de.epiceric.shopchest.shop.Shop;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -13,9 +14,14 @@ public class ShopUpdater {
 
     private final static int MAX_QUEUE_SIZE = 10_000;
     private static final int MAX_TASKS_PER_TICK = 1_000;
+    private static final int DYNAMIC_TEXT_REFRESH_INTERVAL_TICKS = 40;
+    private static final int MAX_DYNAMIC_TEXT_REFRESHES_PER_TICK = 32;
 
     private final ShopChest plugin;
     private final Queue<Runnable> queue = new ConcurrentLinkedQueue<>();
+    private final PeriodicRefreshSweep<Shop> dynamicTextRefreshSweep =
+            new PeriodicRefreshSweep<>(DYNAMIC_TEXT_REFRESH_INTERVAL_TICKS,
+                    MAX_DYNAMIC_TEXT_REFRESHES_PER_TICK);
 
     private BukkitTask task;
 
@@ -28,7 +34,7 @@ public class ShopUpdater {
      */
     public void start() {
         if (!isRunning()) {
-            task = Bukkit.getScheduler().runTaskTimer(plugin, this::runQueuedTasks, 1L, 1L);
+            task = Bukkit.getScheduler().runTaskTimer(plugin, this::runTick, 1L, 1L);
         }
     }
 
@@ -49,6 +55,7 @@ public class ShopUpdater {
             task = null;
         }
         queue.clear();
+        dynamicTextRefreshSweep.reset();
     }
 
     /**
@@ -118,6 +125,24 @@ public class ShopUpdater {
                 plugin.debug(exception);
             }
             processed++;
+        }
+    }
+
+    private void runTick() {
+        runQueuedTasks();
+        dynamicTextRefreshSweep.tick(
+                plugin.getHologramFormat().isDynamic(),
+                () -> plugin.getShopUtils().getShops(),
+                this::refreshDynamicShopText);
+    }
+
+    private void refreshDynamicShopText(Shop shop) {
+        try {
+            shop.updateHologramText();
+        } catch (RuntimeException exception) {
+            plugin.getLogger().severe("A periodic ShopChest stock display refresh failed for shop #"
+                    + shop.getID() + ": " + exception.getMessage());
+            plugin.debug(exception);
         }
     }
 }

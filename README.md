@@ -48,6 +48,9 @@ tests, test-server startup, and focused shop testing pass.
   other item metadata
 - Complete-bundle stock checks, including an `[Out of stock]` display when a
   shop cannot supply its configured trade amount
+- Immediate stock-display updates for normal inventory actions plus a bounded
+  main-thread reconciliation sweep for plugin or command-driven changes that
+  do not emit a reliable inventory event
 - Configurable creation cost, refunds, price bounds, confirmation clicks,
   automatic amount calculation, and a default 250 ms interaction cooldown
 - Per-player shop limits and optional material-specific creation permissions

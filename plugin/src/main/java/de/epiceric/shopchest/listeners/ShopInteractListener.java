@@ -37,6 +37,8 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
@@ -70,23 +72,30 @@ public class ShopInteractListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onInventoryClick(InventoryClickEvent e) {
+        scheduleShopInventoryRefresh(e.getView().getTopInventory());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onInventoryDrag(InventoryDragEvent e) {
+        scheduleShopInventoryRefresh(e.getView().getTopInventory());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onInventoryClose(InventoryCloseEvent e) {
+        scheduleShopInventoryRefresh(e.getView().getTopInventory());
+    }
+
+    private void scheduleShopInventoryRefresh(Inventory inventory) {
         if (!plugin.getHologramFormat().isDynamic()) return;
 
-        Inventory chestInv = e.getInventory();
-
-        final Shop shop = ShopContainer.locationsOf(chestInv.getHolder()).stream()
+        final Shop shop = ShopContainer.locationsOf(inventory.getHolder()).stream()
                 .map(plugin.getShopUtils()::getShop)
                 .filter(Objects::nonNull)
                 .findFirst()
                 .orElse(null);
         if (shop == null) return;
 
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                shop.updateHologramText();
-            }
-        }.runTaskLater(plugin, 1L);
+        Bukkit.getScheduler().runTask(plugin, shop::updateHologramText);
     }
 
     @EventHandler(priority = EventPriority.HIGH)

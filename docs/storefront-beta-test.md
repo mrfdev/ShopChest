@@ -28,6 +28,14 @@ Create these normal test shops inside the marketplace region:
 
 Use `/shops list` to record each shop's displayed `#ID`.
 
+For one normal customer-buy shop, exercise each stock-update path. Empty and
+restock it with ordinary clicks, shift-clicks, an inventory drag, and a hopper,
+then confirm the hologram updates immediately after the inventory settles. Also
+change its contents with a command or test helper that bypasses inventory
+events. Without opening or touching the container afterward, verify the stale
+`[Out of stock]` state repairs itself within a few seconds. Repeat with a full
+configured bundle of an enchanted book to confirm exact metadata matching.
+
 ## 2. Profile and Moderation
 
 As an ordinary shop owner, run:

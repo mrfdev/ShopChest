@@ -10,6 +10,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
+import org.bukkit.event.inventory.InventoryPickupItemEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
@@ -38,14 +39,17 @@ public class ShopUpdateListener implements Listener {
         final Set<Shop> shops = new HashSet<>();
         ShopContainer.locationsOf(e.getSource().getHolder()).forEach(location -> addShop(shops, location));
         ShopContainer.locationsOf(e.getDestination().getHolder()).forEach(location -> addShop(shops, location));
-        if (!shops.isEmpty()) {
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    shops.forEach(Shop::updateHologramText);
-                }
-            }.runTaskLater(plugin, 1L);
-        }
+        scheduleRefresh(shops);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onInventoryPickup(InventoryPickupItemEvent e) {
+        if (!plugin.getHologramFormat().isDynamic()) return;
+
+        final Set<Shop> shops = new HashSet<>();
+        ShopContainer.locationsOf(e.getInventory().getHolder())
+                .forEach(location -> addShop(shops, location));
+        scheduleRefresh(shops);
     }
 
     private void addShop(Set<Shop> shops, Location location) {
@@ -55,6 +59,17 @@ public class ShopUpdateListener implements Listener {
         final Shop shop = plugin.getShopUtils().getShop(location);
         if (shop != null) {
             shops.add(shop);
+        }
+    }
+
+    private void scheduleRefresh(Set<Shop> shops) {
+        if (!shops.isEmpty()) {
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    shops.forEach(Shop::updateHologramText);
+                }
+            }.runTaskLater(plugin, 1L);
         }
     }
 
