@@ -51,16 +51,17 @@ As an ordinary shop owner, run:
 ```
 
 Verify the fields, shop counts, Customer-Buy stock, Customer-Sell capacity,
-four-row page size, coordinates,
-and clickable `/warp shops` link. Confirm that the coordinates themselves do
-not teleport the ordinary player. View the same profile by player name and
-UUID from the second account.
+four-row page size, coordinates, and clickable `/warp shops` link. Hover the
+item row, price line, and coordinates and confirm each names the same unique
+shop ID. Confirm that the coordinates themselves do not teleport the ordinary
+player. View the same profile by player name and UUID from the second account.
 
 Create or locate an enchanted-book shop plus regular, splash, and lingering
 potion shops. In both profile shop pages and search results, hover each generic
 item name and verify Minecraft's item tooltip shows the exact stored
-enchantments or potion effects. Confirm an ordinary item name has no item
-tooltip.
+enchantments or potion effects. In profile pages, verify the bullet, quantity,
+price, and coordinates still show the shop-ID tooltip. Confirm an ordinary item
+name in search results has no item tooltip.
 
 Run each invalid text case and confirm it is rejected without changing the
 previous value:

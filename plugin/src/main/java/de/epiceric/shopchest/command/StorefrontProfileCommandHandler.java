@@ -473,20 +473,28 @@ final class StorefrontProfileCommandHandler {
             listingLine = listingLine.append(Component.text(
                     "#" + entry.shopId() + " • ", NamedTextColor.GRAY));
         }
-        sender.sendMessage(listingLine
+        sender.sendMessage(StorefrontCommandComponents.withShopIdHover(
+                        listingLine,
+                        entry.shopId())
                 .append(Component.text(entry.bundleAmount() + "x ", NamedTextColor.WHITE))
                 .append(itemNameComponent));
         if (entry.customerBuyPrice() > 0.0D) {
-            sender.sendMessage(Component.text(
-                    "  Players buy for " + plugin.getEconomy().format(entry.customerBuyPrice())
-                            + " • " + availabilityLabel(listing),
-                    availabilityColor(listing)));
+            sender.sendMessage(StorefrontCommandComponents.withShopIdHover(
+                    Component.text(
+                            "  Players buy for "
+                                    + plugin.getEconomy().format(entry.customerBuyPrice())
+                                    + " • " + availabilityLabel(listing),
+                            availabilityColor(listing)),
+                    entry.shopId()));
         }
         if (entry.customerSellPrice() > 0.0D) {
-            sender.sendMessage(Component.text(
-                    "  Shop buys for " + plugin.getEconomy().format(entry.customerSellPrice())
-                            + " • " + capacityLabel(listing),
-                    capacityColor(listing)));
+            sender.sendMessage(StorefrontCommandComponents.withShopIdHover(
+                    Component.text(
+                            "  Shop buys for "
+                                    + plugin.getEconomy().format(entry.customerSellPrice())
+                                    + " • " + capacityLabel(listing),
+                            capacityColor(listing)),
+                    entry.shopId()));
         }
 
         if (managingOwnListings) {
@@ -511,11 +519,13 @@ final class StorefrontProfileCommandHandler {
         }
 
         final Location location = entry.location();
-        Component locationLine = Component.text(
-                "  " + location.getWorld().getName() + " "
-                        + location.getBlockX() + ", " + location.getBlockY() + ", "
-                        + location.getBlockZ(),
-                NamedTextColor.DARK_GRAY);
+        Component locationLine = StorefrontCommandComponents.withShopIdHover(
+                Component.text(
+                        "  " + location.getWorld().getName() + " "
+                                + location.getBlockX() + ", " + location.getBlockY() + ", "
+                                + location.getBlockZ(),
+                        NamedTextColor.DARK_GRAY),
+                entry.shopId());
         if (sender instanceof Player player && player.hasPermission(Permissions.ADMIN_LIST)) {
             staffTargets.put(entry.shopId(), location);
             locationLine = locationLine.color(NamedTextColor.YELLOW)

@@ -106,6 +106,11 @@ directions but do not teleport ordinary players. Use the clickable
 `/warp shops` link to visit the marketplace. Trusted staff with the shop-list
 permission receive a separately checked teleport action.
 
+Hover a shop's item row, price line, or location in a Storefront Profile to see
+its unique shop ID. An enchanted book or potion keeps its exact Minecraft item
+tooltip on the item name itself, so hover its bullet, quantity, price, or
+location when you need the shop ID.
+
 When you browse your own storefront's shop pages, each row shows its shop ID.
 Eligible Customer-Buy Offers include a clickable Feature action, while current
 Featured Listings include a Remove action. The grey

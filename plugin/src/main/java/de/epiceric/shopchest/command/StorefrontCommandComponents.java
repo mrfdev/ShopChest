@@ -10,6 +10,12 @@ final class StorefrontCommandComponents {
     private StorefrontCommandComponents() {
     }
 
+    static Component withShopIdHover(Component component, int shopId) {
+        return component.hoverEvent(HoverEvent.showText(Component.text(
+                "Unique shop ID: #" + shopId,
+                NamedTextColor.YELLOW)));
+    }
+
     static Component featuredPickerPrompt(String commandName) {
         return Component.text(
                         "/" + commandName + " profile featured add <shop-id>",
