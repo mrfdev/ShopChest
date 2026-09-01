@@ -51,6 +51,7 @@ public final class AdvertisingFeature {
     private final ItemStackEscrowCodec escrowCodec = new ItemStackEscrowCodec();
 
     private AdvertisingLifecyclePolicy policy;
+    private AdvertisementAudiencePolicy audiencePolicy;
     private BukkitTask scheduler;
     private volatile boolean started;
 
@@ -535,6 +536,10 @@ public final class AdvertisingFeature {
                     closeInvalid(pass, request, now, generation);
                     return;
                 }
+                if (!hasMinimumAudience()) {
+                    releaseDispatch(generation);
+                    return;
+                }
                 buildPresentation(request.ownerId(), presentation -> {
                     if (!isActiveGeneration(generation)) {
                         return;
@@ -546,6 +551,10 @@ public final class AdvertisingFeature {
                     final AdvertisementPresentation rendered = presentation.orElseThrow();
                     if (!rendered.ready()) {
                         parkRequest(request, now, generation);
+                        return;
+                    }
+                    if (!hasMinimumAudience()) {
+                        releaseDispatch(generation);
                         return;
                     }
                     final AdvertisementTransition transition;
@@ -731,6 +740,12 @@ public final class AdvertisingFeature {
                 Duration.ofDays(Config.advertisingPassDays),
                 Config.advertisingBroadcastsPerPass,
                 Duration.ofHours(Config.advertisingOwnerCooldownHours)));
+        audiencePolicy = AdvertisementAudiencePolicy.requiring(
+                Config.advertisingMinimumOnlinePlayers);
+    }
+
+    private boolean hasMinimumAudience() {
+        return audiencePolicy.canBroadcastTo(Bukkit.getOnlinePlayers().size());
     }
 
     private boolean isActiveGeneration(long generation) {

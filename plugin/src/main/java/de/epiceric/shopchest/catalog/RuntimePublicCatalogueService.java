@@ -40,10 +40,9 @@ public final class RuntimePublicCatalogueService {
     private static final int MAX_RECORDS = 20_000;
     private static final int MAX_ENCODED_PRODUCT_LENGTH = 8 * 1024 * 1024;
     private static final long MAX_NANOS_PER_TICK = 4_000_000L;
-    private static final long PERIODIC_REFRESH_TICKS = 20L * 60L * 5L;
-
     private final ShopChest plugin;
     private final MarketplaceScopeResolver scopeResolver;
+    private final CatalogueRefreshPolicy refreshPolicy = CatalogueRefreshPolicy.standard();
     private final AtomicReference<List<RuntimeCatalogueEntry>> entries =
             new AtomicReference<>(List.of());
     private final AtomicReference<Map<Integer, RuntimeCatalogueEntry>> entriesById =
@@ -61,6 +60,7 @@ public final class RuntimePublicCatalogueService {
     private volatile boolean started;
     private volatile boolean ready;
     private volatile long refreshedAt;
+    private volatile Integer announcedEligibleListings;
     private BukkitTask periodicTask;
     private BukkitTask requestedTask;
 
@@ -77,14 +77,15 @@ public final class RuntimePublicCatalogueService {
         periodicTask = plugin.getServer().getScheduler().runTaskTimer(
                 plugin,
                 () -> refresh(generation),
-                PERIODIC_REFRESH_TICKS,
-                PERIODIC_REFRESH_TICKS);
+                periodicRefreshTicks(),
+                periodicRefreshTicks());
     }
 
     public void stop() {
         started = false;
         lifecycleGeneration.incrementAndGet();
         ready = false;
+        announcedEligibleListings = null;
         entries.set(List.of());
         entriesById.set(Map.of());
         customerBuyIndex.set(Map.of());
@@ -341,8 +342,7 @@ public final class RuntimePublicCatalogueService {
                         ready = true;
                         refreshing.set(false);
                         scheduleRequestedRefresh();
-                        plugin.getLogger().info("Public shop catalogue is ready with "
-                                + built.size() + " eligible scoped listings");
+                        announceRefresh(built.size());
                     }
                 } catch (RuntimeException exception) {
                     cancel();
@@ -451,6 +451,25 @@ public final class RuntimePublicCatalogueService {
         if (refreshRequested.getAndSet(false) && started) {
             requestRefresh();
         }
+    }
+
+    private long periodicRefreshTicks() {
+        return refreshPolicy.periodicRefreshInterval().toSeconds() * 20L;
+    }
+
+    private void announceRefresh(int eligibleListings) {
+        final Integer previous = announcedEligibleListings;
+        announcedEligibleListings = eligibleListings;
+        if (!refreshPolicy.shouldAnnounce(previous, eligibleListings)) {
+            return;
+        }
+        if (previous == null) {
+            plugin.getLogger().info("Public shop catalogue is ready with "
+                    + eligibleListings + " eligible scoped listings");
+            return;
+        }
+        plugin.getLogger().info("Public shop catalogue refreshed with "
+                + eligibleListings + " eligible scoped listings (was " + previous + ")");
     }
 
     private static boolean hasLoadedContainerPartner(World world, Block block) {

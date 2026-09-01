@@ -258,6 +258,7 @@ advertising:
   broadcasts-per-pass: 3
   owner-cooldown-hours: 24
   global-cooldown-minutes: 30
+  minimum-online-players: 6
   request-ttl-hours: 48
   poll-seconds: 15
   sound: minecraft:block.amethyst_block.chime

@@ -128,7 +128,9 @@ An advertisement needs at least one Featured Listing. Find an owned shop ID in
 featured shop must be a normal customer-buy offer and have one complete exact
 bundle in stock both at preview and dispatch. A later stock problem parks the
 request; the owner cooldown, global cooldown, and older eligible requests can
-also delay it. Use `/shops advertise cancel` to close a waiting request and
+also delay it. The default six-player audience minimum can also hold an eligible
+request without spending it; `/shops advertise status` shows the current
+audience count. Use `/shops advertise cancel` to close a waiting request and
 return its reserved use.
 
 If pass persistence fails after tokens are removed, ShopChest attempts to

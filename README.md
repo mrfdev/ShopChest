@@ -91,7 +91,8 @@ tests, test-server startup, and focused shop testing pass.
   chunk loads
 - Durable AFK Shrine Token Advertising Passes with exact captured-ItemStack
   currency matching, one-use purchase confirmation, owner/global cooldowns,
-  FIFO queueing, and successful-broadcast accounting
+  a configurable six-player audience minimum, FIFO queueing, and
+  successful-broadcast accounting
 - Review-only JSON/CSV marketplace snapshot export for the dated, searchable
   player website; exports never publish themselves
 - Read-only shop-health summaries for ready, out-of-stock, full, blocked,

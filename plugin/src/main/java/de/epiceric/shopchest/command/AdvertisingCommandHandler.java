@@ -406,6 +406,10 @@ final class AdvertisingCommandHandler {
             player.sendMessage(Component.text(
                     "If the global channel is busy, this request joins the queue.",
                     NamedTextColor.GRAY));
+            player.sendMessage(Component.text(
+                    "Advertisements run only when at least "
+                            + Config.advertisingMinimumOnlinePlayers + " players are online.",
+                    NamedTextColor.GRAY));
             player.sendMessage(Component.text("[Queue this advertisement]", NamedTextColor.AQUA)
                     .decorate(TextDecoration.UNDERLINED)
                     .clickEvent(ClickEvent.runCommand(
@@ -471,6 +475,7 @@ final class AdvertisingCommandHandler {
                             "Use /" + Config.mainCommandName
                                     + " advertise status or cancel.",
                             NamedTextColor.GRAY));
+                    renderAudienceStatus(player);
                 }
 
                 @Override
@@ -514,6 +519,7 @@ final class AdvertisingCommandHandler {
                                                     "Queue: waiting; eligible "
                                                             + relativeTime(request.orElseThrow().eligibleAt()),
                                                     NamedTextColor.AQUA));
+                                            renderAudienceStatus(player);
                                         }
                                         player.sendMessage(Component.empty());
                                     }
@@ -605,6 +611,22 @@ final class AdvertisingCommandHandler {
                             + relativeTime(pass.lastBroadcastAt().plus(pass.ownerCooldown())) + ".",
                     NamedTextColor.GRAY));
         }
+    }
+
+    private void renderAudienceStatus(Player player) {
+        final int onlinePlayers = plugin.getServer().getOnlinePlayers().size();
+        final int minimum = Config.advertisingMinimumOnlinePlayers;
+        if (onlinePlayers < minimum) {
+            player.sendMessage(Component.text(
+                    "Audience: " + onlinePlayers + "/" + minimum
+                            + " online; this request will stay queued.",
+                    NamedTextColor.YELLOW));
+            return;
+        }
+        player.sendMessage(Component.text(
+                "Audience: " + onlinePlayers + " online; " + minimum
+                        + "-player minimum met.",
+                NamedTextColor.GREEN));
     }
 
     private int countExactTokens(PlayerInventory inventory, ItemStack template) {

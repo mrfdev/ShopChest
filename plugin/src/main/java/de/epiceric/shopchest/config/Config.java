@@ -448,6 +448,7 @@ public class Config {
     public static int advertisingBroadcastsPerPass;
     public static int advertisingOwnerCooldownHours;
     public static int advertisingGlobalCooldownMinutes;
+    public static int advertisingMinimumOnlinePlayers;
     public static int advertisingRequestTtlHours;
     public static int advertisingPollSeconds;
     public static String advertisingSound;
@@ -721,6 +722,8 @@ public class Config {
                 "advertising.owner-cooldown-hours", 24), 1, 168);
         advertisingGlobalCooldownMinutes = clamp(plugin.getConfig().getInt(
                 "advertising.global-cooldown-minutes", 30), 1, 1_440);
+        advertisingMinimumOnlinePlayers = clamp(plugin.getConfig().getInt(
+                "advertising.minimum-online-players", 6), 1, 1_000);
         advertisingRequestTtlHours = clamp(plugin.getConfig().getInt(
                 "advertising.request-ttl-hours", 48), 1, 168);
         advertisingPollSeconds = clamp(plugin.getConfig().getInt(
@@ -886,6 +889,7 @@ public class Config {
         changed |= addDefaultIfMissing("advertising.broadcasts-per-pass", 3);
         changed |= addDefaultIfMissing("advertising.owner-cooldown-hours", 24);
         changed |= addDefaultIfMissing("advertising.global-cooldown-minutes", 30);
+        changed |= addDefaultIfMissing("advertising.minimum-online-players", 6);
         changed |= addDefaultIfMissing("advertising.request-ttl-hours", 48);
         changed |= addDefaultIfMissing("advertising.poll-seconds", 15);
         changed |= addDefaultIfMissing(

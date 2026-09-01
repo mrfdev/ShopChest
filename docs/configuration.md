@@ -70,10 +70,12 @@ world. It still excludes admin shops, suspended storefronts, and customer-sell-o
 shops from item search. The manually reviewed website export remains limited to
 the configured marketplace even when in-game discovery is global.
 
-The catalogue refreshes in bounded batches at startup, periodically, and after
-shop create/remove or profile moderation changes. Search performs a bounded
-live stock inspection of already-loaded containers. A result can therefore be
-`UNCHECKED` when its chunk or the other half of a double chest is unloaded.
+The catalogue refreshes in bounded batches at startup, every 15 minutes as a
+safety sweep, and after shop create/remove or profile moderation changes.
+Unchanged refreshes stay silent in the console; startup and eligible-listing
+count changes are announced. Search performs a bounded live stock inspection
+of already-loaded containers. A result can therefore be `UNCHECKED` when its
+chunk or the other half of a double chest is unloaded.
 
 ### Storefront Advertising
 
@@ -90,6 +92,7 @@ complete genuine AFK Shrine Token ItemStack separately in
 | `broadcasts-per-pass` | `3` | Successful broadcasts included in one pass. Clamped from `1` through `30`. A queued request reserves one until it broadcasts or closes. |
 | `owner-cooldown-hours` | `24` | Minimum delay after one owner's successful broadcast. Clamped from `1` through `168`. |
 | `global-cooldown-minutes` | `30` | Minimum interval between any two successful ShopChest advertisements. Clamped from `1` through `1440`. |
+| `minimum-online-players` | `6` | Minimum number of logged-in players required at dispatch. A valid request stays queued without spending its reserved broadcast while fewer players are online. Clamped from `1` through `1000`. |
 | `request-ttl-hours` | `48` | Maximum age of a queued request before it is closed and its reservation returned. Clamped from `1` through `168`. |
 | `poll-seconds` | `15` | How often the durable queue checks for the next globally and owner-eligible request. Clamped from `5` through `300`. |
 | `sound` | `minecraft:block.amethyst_block.chime` | Namespaced sound played locally to each online recipient. An invalid or unavailable key disables only the sound for that broadcast. |
@@ -98,9 +101,11 @@ The queue is first-in, first-out among eligible requests, stores at most one
 open request per owner, has a fixed safety cap of 100 open requests, and
 persists pass/request/global cooldown state. The
 primary Featured Listing must be in stock when queued and is rechecked before
-broadcast. A temporary stock failure parks the request for a later poll instead
-of spending a use. Title, subtitle, chat, profile link, `/warp shops` link, and
-sound are sent only after the database transaction commits the broadcast.
+broadcast. At least the configured number of players must still be online
+immediately before dispatch. A small audience leaves the request queued; a
+temporary stock failure parks it for a later poll. Neither condition spends a
+use. Title, subtitle, chat, profile link, `/warp shops` link, and sound are sent
+only after the database transaction commits the broadcast.
 This at-most-once ordering prevents duplicate advertisements and double use
 consumption. A server crash in the narrow gap after that durable commit but
 before the public effects can consume one use without displaying its message.

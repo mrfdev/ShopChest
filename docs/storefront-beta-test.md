@@ -211,6 +211,11 @@ test. Verify FIFO eligible order and at least one minute between title/chat/soun
 broadcasts. A successful message should link both the seller profile and
 `/warp shops`, and decrement exactly one use.
 
+With only five players online, confirm an eligible request stays queued, status
+shows `5/6`, and no pass use or owner/global cooldown begins. Bring a sixth
+player online and confirm the next eligible queue poll can broadcast exactly
+once. Restore `advertising.minimum-online-players` to `6` if it was changed.
+
 After one owner broadcasts, confirm a new request respects the configured owner
 cooldown. Cancel a waiting request with `/shops advertise cancel`; its reserved
 use should return. Make a queued primary temporarily out of stock and confirm

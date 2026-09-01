@@ -177,7 +177,9 @@ Storefront advertising uses AFK Shrine Tokens earned through `/afkshrine`
 trades. With the default beta settings, one Advertising Pass costs 5 exact
 tokens, lasts 7 days, and includes 3 successful public broadcasts. Passes do
 not stack, a seller can broadcast at most once every 24 hours, and the whole
-server waits at least 30 minutes between advertisements.
+server waits at least 30 minutes between advertisements. An advertisement runs
+only while at least 6 players are online; with a smaller audience it stays
+queued and does not spend the reserved broadcast.
 
 Start with `/shops advertise`. The command shows the pass or queue state and
 clickable previews. A purchase preview never charges automatically: its
@@ -198,7 +200,8 @@ you queue the advertisement and is checked again before broadcast. A temporarily
 out-of-stock primary listing waits in the queue; an invalid or expired request
 closes without spending its reserved broadcast. Cancelling a waiting request
 returns the reservation to the pass. Only a successful broadcast consumes one
-of the three uses.
+of the three uses. `/shops advertise status` shows the current audience count
+and whether the six-player minimum is met.
 
 An advertisement sends online players a title, subtitle, chat message,
 configured sound, clickable storefront profile, and `/warp shops` link. Its

@@ -119,8 +119,9 @@ request that cannot run immediately waits instead of creating chat spam.
 Preview and dispatch both require an eligible first Featured Listing. It must
 have at least one complete exact bundle in stock. Dispatch revalidates the live
 profile, featured shops, scope, shop state, and primary stock. Temporary stock
-failure parks the request for a later retry. Invalid, cancelled, or expired
-requests release their reservation; only an atomically committed successful
+failure parks the request for a later retry. Fewer than the configured minimum
+online players leaves it queued without spending a use. Invalid, cancelled, or
+expired requests release their reservation; only an atomically committed successful
 broadcast increments the pass usage. The request is durably claimed before
 chat, title, and sound are emitted so a crash cannot duplicate an ad. In the
 narrow opposite failure window, a committed use can be lost before players see
