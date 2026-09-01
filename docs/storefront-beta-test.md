@@ -28,6 +28,12 @@ Create these normal test shops inside the marketplace region:
 
 Use `/shops list` to record each shop's displayed `#ID`.
 
+Look directly at one of your shops and run `/shops inspect`. Confirm its details
+appear immediately, no selection prompt appears, and the unique `#ID` matches
+`/shops list`. Look away and run it again; confirm ShopChest asks for a click and
+then inspects the selected shop. A second ordinary player should not see the ID
+for someone else's shop, while a staff account should see it.
+
 For one normal customer-buy shop, exercise each stock-update path. Empty and
 restock it with ordinary clicks, shift-clicks, an inventory drag, and a hopper,
 then confirm the hologram updates immediately after the inventory settles. Also

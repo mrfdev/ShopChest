@@ -229,7 +229,7 @@ requires a clean server restart.
 | `/shops profile set <name\|advertisement\|description\|location> <text>` | Sets one safe plain-text storefront field. | `shopchest.profile` |
 | `/shops profile featured <add\|remove> <shop-id>` | Manages up to three ordered Featured Listings; `featured clear` removes all. | `shopchest.profile` |
 | `/shops advertise [pass\|status\|cancel]` | Previews or manages an exact-token Advertising Pass and durable queued request. | `shopchest.advertise` |
-| `/shops inspect` | Starts a 15-second shop inspection selection. | None |
+| `/shops inspect` | Immediately inspects the shop in sight; otherwise starts a 15-second selection. Owners and staff see its unique ID. | None |
 | `/shops info shop` | Compatibility alias for `/shops inspect`. | None |
 | `/shops open` | Starts a 15-second selection to open a shop container. | `shopchest.openOther` for another player's shop |
 | `/shops remove` | Starts a 15-second shop removal selection. | Elevated nodes apply to other players' and admin shops |

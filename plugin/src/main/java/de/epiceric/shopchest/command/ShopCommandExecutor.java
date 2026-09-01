@@ -3,6 +3,8 @@ package de.epiceric.shopchest.command;
 import de.epiceric.shopchest.ShopChest;
 import de.epiceric.shopchest.config.Config;
 import de.epiceric.shopchest.config.Placeholder;
+import de.epiceric.shopchest.config.hologram.HologramColorPalette;
+import de.epiceric.shopchest.config.hologram.HologramItemDetails;
 import de.epiceric.shopchest.diagnostics.ShopChestSupportReport;
 import de.epiceric.shopchest.diagnostics.PluginBuildInfo;
 import de.epiceric.shopchest.diagnostics.ShopAuditFinding;
@@ -15,6 +17,7 @@ import de.epiceric.shopchest.language.Message;
 import de.epiceric.shopchest.language.MessageRegistry;
 import de.epiceric.shopchest.language.Replacement;
 import de.epiceric.shopchest.display.HologramTextFormatter;
+import de.epiceric.shopchest.display.TextComponentHelper;
 import de.epiceric.shopchest.shop.Shop;
 import de.epiceric.shopchest.shop.ShopContainer;
 import de.epiceric.shopchest.shop.ShopDisplayOrientation;
@@ -56,6 +59,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 class ShopCommandExecutor implements CommandExecutor {
@@ -2180,9 +2184,131 @@ class ShopCommandExecutor implements CommandExecutor {
             return;
         }
 
-        plugin.debug(p.getName() + " can now click a chest");
-        p.sendMessage(messageRegistry.getMessage(Message.CLICK_CHEST_INFO));
-        ClickType.setPlayerClickType(p, new ClickType(ClickType.EnumClickType.INFO));
+        ShopInspectionSupport.inspectOrSelect(
+                p,
+                shopUtils::getShop,
+                (player, shop) -> {
+                    ClickType.removePlayerClickType(player);
+                    inspect(player, shop);
+                },
+                player -> {
+                    plugin.debug(player.getName() + " can now click a shop");
+                    player.sendMessage(messageRegistry.getMessage(Message.CLICK_CHEST_INFO));
+                    ClickType.setPlayerClickType(
+                            player,
+                            new ClickType(ClickType.EnumClickType.INFO));
+                });
+    }
+
+    void inspect(Player executor, Shop shop) {
+        final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
+
+        plugin.debug(executor.getName() + " is retrieving shop info (#" + shop.getID() + ")");
+        final ShopInfoEvent event = new ShopInfoEvent(executor, shop);
+        Bukkit.getPluginManager().callEvent(event);
+        if (event.isCancelled()) {
+            plugin.debug("Info event cancelled (#" + shop.getID() + ")");
+            return;
+        }
+
+        final Inventory inventory = shop.getInventory();
+        if (inventory == null) {
+            plugin.debug("Shop container is unavailable (#" + shop.getID() + ")");
+            executor.sendMessage(messageRegistry.getMessage(
+                    Message.ERROR_OCCURRED,
+                    new Replacement(Placeholder.ERROR, "Shop container is unavailable")));
+            return;
+        }
+
+        final ItemStack itemStack = shop.getProduct().getItemStack();
+        final int amount = Utils.getAmount(inventory, itemStack);
+        final int space = Utils.getFreeSpaceForItem(inventory, itemStack);
+        final String vendorName = shop.getVendor().getName() == null
+                ? shop.getVendor().getUniqueId().toString()
+                : shop.getVendor().getName();
+        final String vendorString = messageRegistry.getMessage(
+                Message.SHOP_INFO_VENDOR,
+                new Replacement(Placeholder.VENDOR, vendorName));
+
+        final ShopProduct product = shop.getProduct();
+        final Consumer<Player> productMessage = TextComponentHelper.getSendableItemInfo(
+                messageRegistry.getMessage(
+                        Message.SHOP_INFO_PRODUCT,
+                        new Replacement(Placeholder.AMOUNT, product.getAmount())),
+                Placeholder.ITEM_NAME.toString(),
+                product.getItemStack(),
+                product.getLocalizedNameComponent());
+        final HologramItemDetails itemDetails = HologramItemDetails.from(
+                product.getItemStack(),
+                Config.hologramColors.textColor(HologramColorPalette.Role.DETAILS),
+                Config.hologramColors.textColor(HologramColorPalette.Role.SEPARATOR));
+        final Component itemDetailsMessage = itemDetails.isEmpty()
+                ? Component.empty()
+                : HologramTextFormatter.replaceComponents(
+                        messageRegistry.getMessage(Message.SHOP_INFO_ITEM_DETAILS),
+                        Map.of(
+                                Placeholder.ITEM_DETAILS.toString(),
+                                itemDetails.combined(
+                                        Config.hologramMaxItemDetailEntries,
+                                        Config.hologramItemDetailsPerLine,
+                                        hiddenCount -> HologramTextFormatter.fromLegacy(
+                                                        messageRegistry.getMessage(
+                                                                Message.HOLOGRAM_MORE_ITEM_DETAILS,
+                                                                new Replacement(
+                                                                        Placeholder.DETAIL_COUNT,
+                                                                        hiddenCount)))
+                                                .color(Config.hologramColors.textColor(
+                                                        HologramColorPalette.Role.SEPARATOR)))));
+
+        final String disabled = messageRegistry.getMessage(Message.SHOP_INFO_DISABLED);
+        final String priceString = messageRegistry.getMessage(
+                Message.SHOP_INFO_PRICE,
+                new Replacement(
+                        Placeholder.BUY_PRICE,
+                        shop.getBuyPrice() > 0 ? String.valueOf(shop.getBuyPrice()) : disabled),
+                new Replacement(
+                        Placeholder.SELL_PRICE,
+                        shop.getSellPrice() > 0
+                                ? String.valueOf(shop.getSellPrice())
+                                : disabled));
+        final String shopType = messageRegistry.getMessage(
+                shop.getShopType() == ShopType.NORMAL
+                        ? Message.SHOP_INFO_NORMAL
+                        : Message.SHOP_INFO_ADMIN);
+        final String stock = messageRegistry.getMessage(
+                Message.SHOP_INFO_STOCK,
+                new Replacement(Placeholder.STOCK, amount));
+        final String chestSpace = messageRegistry.getMessage(
+                Message.SHOP_INFO_CHEST_SPACE,
+                new Replacement(Placeholder.CHEST_SPACE, space));
+        final boolean canViewShopId = ShopInspectionSupport.canViewShopId(
+                executor.getUniqueId(),
+                shop.getVendor().getUniqueId(),
+                executor.hasPermission(Permissions.ADMIN)
+                        || executor.hasPermission(Permissions.ADMIN_LIST));
+
+        executor.sendMessage(" ");
+        if (canViewShopId) {
+            executor.sendMessage(messageRegistry.getMessage(
+                    Message.SHOP_INFO_ID,
+                    new Replacement(Placeholder.SHOP_ID, shop.getID())));
+        }
+        if (shop.getShopType() != ShopType.ADMIN) {
+            executor.sendMessage(vendorString);
+        }
+        productMessage.accept(executor);
+        if (!itemDetails.isEmpty()) {
+            executor.sendMessage(itemDetailsMessage);
+        }
+        if (shop.getShopType() != ShopType.ADMIN && shop.getBuyPrice() > 0) {
+            executor.sendMessage(stock);
+        }
+        if (shop.getShopType() != ShopType.ADMIN && shop.getSellPrice() > 0) {
+            executor.sendMessage(chestSpace);
+        }
+        executor.sendMessage(priceString);
+        executor.sendMessage(shopType);
+        executor.sendMessage(" ");
     }
 
     /**

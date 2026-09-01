@@ -26,7 +26,7 @@ The main command is created from `main-command-name` in `config.yml`; its defaul
 | `/shops advertise pass` | Previews the configured exact-token cost and creates a one-use 60-second purchase confirmation. | `shopchest.advertise` (granted by default) |
 | `/shops advertise status` | Shows pass expiry, unreserved broadcasts, owner cooldown, and open queue request. | `shopchest.advertise` (granted by default) |
 | `/shops advertise cancel` | Cancels the player's waiting request and returns its reserved broadcast to the pass. | `shopchest.advertise` (granted by default) |
-| `/shops inspect` | Starts a 15-second shop inspection selection. | None |
+| `/shops inspect` | Immediately inspects the shop in sight; otherwise starts a 15-second selection. Owners and staff see its unique ID. | None |
 | `/shops info shop` | Compatibility alias for `/shops inspect`. | None |
 | `/shops open` | Starts a 15-second selection to open a shop container. Owners need no extra permission. | `shopchest.openOther` for another player's shop |
 | `/shops remove` | Starts a 15-second selection to remove a shop. Owners need no extra permission. | Elevated permissions apply to other players' and admin shops |

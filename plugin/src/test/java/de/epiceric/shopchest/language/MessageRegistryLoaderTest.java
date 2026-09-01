@@ -80,6 +80,15 @@ class MessageRegistryLoaderTest {
     }
 
     @Test
+    void shopInspectionIdFallbackNamesTheUniqueId() {
+        assertTrue(createRegistry()
+                .getMessage(
+                        Message.SHOP_INFO_ID,
+                        new Replacement(Placeholder.SHOP_ID, 31))
+                .contains("#31"));
+    }
+
+    @Test
     void offlineRevenueDefaultsProvideCompactSummaryActionAndConfiguredCommandHover() {
         final MessageRegistry registry = createRegistry();
 

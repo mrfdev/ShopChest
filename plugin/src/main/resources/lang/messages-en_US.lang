@@ -43,6 +43,10 @@ message.chest-no-shop=&cContainer is not a shop.
 # Usable Placeholders: %CREATION-PRICE%
 message.shop-create-not-enough-money=&cNot enough money. You need &6%CREATION-PRICE% &cto create a shop.
 
+# Shown only to the shop owner and ShopChest administrators.
+# Usable Placeholders: %SHOP-ID%
+message.shopInfo.id=&6Unique shop ID: &e#%SHOP-ID%
+
 # Set the vendor message the player gets after entering '/shops info'.
 # Usable Placeholders: %VENDOR%
 message.shopInfo.vendor=&6Vendor: &e%VENDOR%
@@ -165,7 +169,7 @@ message.click-shop-to-edit=&aClick one of your shops within 15 seconds to apply 
 message.click-chest-to-remove-shop=&aClick a shop within 15 seconds to remove it.
 
 # Set the message when the player must click a shop to retrieve information.
-message.click-chest-for-info=&aClick a shop within 15 seconds to retrieve information.
+message.click-chest-for-info=&aNo shop in sight. Click a shop within 15 seconds to retrieve information.
 
 # Set the message when the player must click a shop to open it.
 message.click-chest-to-open-shop=&aClick a shop within 15 seconds to open it.
@@ -351,7 +355,7 @@ message.help.command.create-admin=&a/%COMMAND% create <amount> <buy-price> <sell
 message.help.command.edit=&a/%COMMAND% edit <amount|buy|sell|holograms> <value> &7- Change one setting, then click one of your shops.
 message.help.command.remove=&a/%COMMAND% remove &7- Click one of your shops to remove it.
 message.help.command.info=&a/%COMMAND% info &7- Learn how ShopChest works and open the player guide.
-message.help.command.inspect=&a/%COMMAND% inspect &7- Click a shop to view its details.
+message.help.command.inspect=&a/%COMMAND% inspect &7- Inspect the shop in sight, or click to select one.
 message.help.command.limits=&a/%COMMAND% limits &7- View your used and available shop slots.
 message.help.command.open=&a/%COMMAND% open &7- Click one of your shops to open its inventory.
 message.help.command.removeall=&a/%COMMAND% removeall <player> &7- Remove all shops owned by a player. &8[shopchest.remove.other]

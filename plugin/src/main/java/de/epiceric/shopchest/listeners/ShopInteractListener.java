@@ -3,10 +3,6 @@ package de.epiceric.shopchest.listeners;
 import de.epiceric.shopchest.ShopChest;
 import de.epiceric.shopchest.config.Config;
 import de.epiceric.shopchest.config.Placeholder;
-import de.epiceric.shopchest.config.hologram.HologramColorPalette;
-import de.epiceric.shopchest.config.hologram.HologramItemDetails;
-import de.epiceric.shopchest.display.HologramTextFormatter;
-import de.epiceric.shopchest.display.TextComponentHelper;
 import de.epiceric.shopchest.event.*;
 import de.epiceric.shopchest.external.PlotSquaredOldShopFlag;
 import de.epiceric.shopchest.external.PlotSquaredShopFlag;
@@ -22,7 +18,6 @@ import de.epiceric.shopchest.utils.*;
 import de.epiceric.shopchest.utils.ClickType.CreateClickType;
 import de.epiceric.shopchest.utils.ClickType.EditClickType;
 import fr.xephi.authme.api.v3.AuthMeApi;
-import net.kyori.adventure.text.Component;
 import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
@@ -53,7 +48,6 @@ import org.codemc.worldguardwrapper.flag.WrappedState;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.util.*;
-import java.util.function.Consumer;
 
 public class ShopInteractListener implements Listener {
 
@@ -182,7 +176,7 @@ public class ShopInteractListener implements Listener {
 
             switch (clickType.getClickType()) {
                 case INFO:
-                    info(p, shop);
+                    plugin.getShopCommand().inspectShop(p, shop);
                     break;
                 case EDIT:
                     plugin.getShopCommand().editShopAfterSelected(
@@ -221,12 +215,12 @@ public class ShopInteractListener implements Listener {
 
                         if (ItemUtils.isSameTypeAndDamage(infoItem, item)) {
                             e.setCancelled(true);
-                            info(p, shop);
+                            plugin.getShopCommand().inspectShop(p, shop);
                             return;
                         }
                     } else {
                         e.setCancelled(true);
-                        info(p, shop);
+                        plugin.getShopCommand().inspectShop(p, shop);
                         return;
                     }
                 }
@@ -639,94 +633,6 @@ public class ShopInteractListener implements Listener {
         plugin.debug("Opened shop (#" + shop.getID() + ")");
         if (message) executor.sendMessage(messageRegistry.getMessage(Message.OPENED_SHOP,
                 new Replacement(Placeholder.VENDOR, shop.getVendor().getName())));
-    }
-
-    /**
-     *
-     * @param executor Player, who executed the command and will retrieve the information
-     * @param shop Shop from which the information will be retrieved
-     */
-    private void info(Player executor, Shop shop) {
-        final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
-
-        plugin.debug(executor.getName() + " is retrieving shop info (#" + shop.getID() + ")");
-        ShopInfoEvent event = new ShopInfoEvent(executor, shop);
-        Bukkit.getPluginManager().callEvent(event);
-
-        if (event.isCancelled()) {
-            plugin.debug("Info event cancelled (#" + shop.getID() + ")");
-            return;
-        }
-
-        Inventory inventory = getShopInventory(executor, shop);
-        if (inventory == null) {
-            return;
-        }
-        ItemStack itemStack = shop.getProduct().getItemStack();
-        int amount = Utils.getAmount(inventory, itemStack);
-        int space = Utils.getFreeSpaceForItem(inventory, itemStack);
-
-        String vendorName = (shop.getVendor().getName() == null ?
-                shop.getVendor().getUniqueId().toString() : shop.getVendor().getName());
-
-        String vendorString = messageRegistry.getMessage(Message.SHOP_INFO_VENDOR,
-                new Replacement(Placeholder.VENDOR, vendorName));
-
-        // Make JSON message with item preview
-        final ShopProduct product = shop.getProduct();
-        Consumer<Player> productMessage = TextComponentHelper.getSendableItemInfo(
-                messageRegistry.getMessage(Message.SHOP_INFO_PRODUCT,
-                        new Replacement(Placeholder.AMOUNT, String.valueOf(product.getAmount()))),
-                Placeholder.ITEM_NAME.toString(),
-                product.getItemStack(),
-                product.getLocalizedNameComponent()
-        );
-        final HologramItemDetails itemDetails = HologramItemDetails.from(
-                product.getItemStack(),
-                Config.hologramColors.textColor(HologramColorPalette.Role.DETAILS),
-                Config.hologramColors.textColor(HologramColorPalette.Role.SEPARATOR));
-        final Component itemDetailsMessage = itemDetails.isEmpty()
-                ? Component.empty()
-                : HologramTextFormatter.replaceComponents(
-                        messageRegistry.getMessage(Message.SHOP_INFO_ITEM_DETAILS),
-                        Map.of(
-                                Placeholder.ITEM_DETAILS.toString(),
-                                itemDetails.combined(
-                                        Config.hologramMaxItemDetailEntries,
-                                        Config.hologramItemDetailsPerLine,
-                                        hiddenCount -> HologramTextFormatter.fromLegacy(
-                                                        messageRegistry.getMessage(
-                                                                Message.HOLOGRAM_MORE_ITEM_DETAILS,
-                                                                new Replacement(
-                                                                        Placeholder.DETAIL_COUNT,
-                                                                        hiddenCount)))
-                                                .color(Config.hologramColors.textColor(
-                                                        HologramColorPalette.Role.SEPARATOR)))));
-
-        String disabled = messageRegistry.getMessage(Message.SHOP_INFO_DISABLED);
-
-        String priceString = messageRegistry.getMessage(Message.SHOP_INFO_PRICE,
-                new Replacement(Placeholder.BUY_PRICE, (shop.getBuyPrice() > 0 ? String.valueOf(shop.getBuyPrice()) : disabled)),
-                new Replacement(Placeholder.SELL_PRICE, (shop.getSellPrice() > 0 ? String.valueOf(shop.getSellPrice()) : disabled)));
-
-        String shopType = messageRegistry.getMessage(shop.getShopType() == ShopType.NORMAL ?
-                Message.SHOP_INFO_NORMAL : Message.SHOP_INFO_ADMIN);
-
-        String stock = messageRegistry.getMessage(Message.SHOP_INFO_STOCK,
-                new Replacement(Placeholder.STOCK, amount));
-
-        String chestSpace = messageRegistry.getMessage(Message.SHOP_INFO_CHEST_SPACE,
-                new Replacement(Placeholder.CHEST_SPACE, space));
-
-        executor.sendMessage(" ");
-        if (shop.getShopType() != ShopType.ADMIN) executor.sendMessage(vendorString);
-        productMessage.accept(executor);
-        if (!itemDetails.isEmpty()) executor.sendMessage(itemDetailsMessage);
-        if (shop.getShopType() != ShopType.ADMIN && shop.getBuyPrice() > 0) executor.sendMessage(stock);
-        if (shop.getShopType() != ShopType.ADMIN && shop.getSellPrice() > 0) executor.sendMessage(chestSpace);
-        executor.sendMessage(priceString);
-        executor.sendMessage(shopType);
-        executor.sendMessage(" ");
     }
 
     /**

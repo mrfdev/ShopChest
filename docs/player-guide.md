@@ -232,7 +232,7 @@ the exact removed items before allowing another purchase attempt.
 When recorded trades changed your shop balance while you were offline, joining
 shows a compact revenue summary. Hover **View recent trades** for its action and
 click it to run `/shops recent`.
-- `/shops inspect` - Enter inspection mode, then click a shop within 15 seconds. `/shops info shop` is a compatibility alias.
+- `/shops inspect` - Inspect the shop you are looking at immediately. If none is in sight, click one within 15 seconds. Shop owners and staff can also see its unique shop ID. `/shops info shop` is a compatibility alias.
 - `/shops open` - Enter open mode, then click one of your shops within 15 seconds.
 - `/shops remove` - Enter removal mode, then click one of your shops within 15 seconds.
 
@@ -246,7 +246,7 @@ Shop creation, buying, and selling are available to everyone by default. Opening
 
 - Normal shop creation costs 5 by default. The actual charge is shown by the server's economy formatting.
 - The default limit is 5 normal shops. `/shops limits` shows the value that applies to you.
-- The click step after create, inspect, open, or remove expires after 15 seconds.
+- The fallback click step after create, inspect, open, or remove expires after 15 seconds.
 - There is no recurring shop fee or reward in ShopChest.
 - Creation refunds are disabled by default. When enabled, only the creator receives the configured current creation price after removing their own shop.
 - A second click may be required for a purchase or sale when confirmation is enabled.

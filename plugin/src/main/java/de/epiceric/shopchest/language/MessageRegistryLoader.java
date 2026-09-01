@@ -45,6 +45,7 @@ public class MessageRegistryLoader {
         register(messages, Message.ALL_SHOPS_REMOVED, "message.all-shops-removed", "&6Removed all (&c%AMOUNT%&6) shop/s of &c%VENDOR%&6.");
         register(messages, Message.CHEST_NO_SHOP, "message.chest-no-shop", "&cChest is not a shop.");
         register(messages, Message.SHOP_CREATE_NOT_ENOUGH_MONEY, "message.shop-create-not-enough-money", "&cNot enough money. You need &6%CREATION-PRICE% &cto create a shop.");
+        register(messages, Message.SHOP_INFO_ID, "message.shopInfo.id", "&6Unique shop ID: &e#%SHOP-ID%");
         register(messages, Message.SHOP_INFO_VENDOR, "message.shopInfo.vendor", "&6Vendor: &e%VENDOR%");
         register(messages, Message.SHOP_INFO_PRODUCT, "message.shopInfo.product", "&6Product: &e%AMOUNT% x %ITEMNAME%");
         register(messages, Message.SHOP_INFO_ITEM_DETAILS, "message.shopInfo.item-details", "&6Details: %ITEM-DETAILS%");
@@ -84,7 +85,7 @@ public class MessageRegistryLoader {
         register(messages, Message.CLICK_CHEST_CREATE, "message.click-chest-to-create-shop", "&aClick a chest within 15 seconds to create a shop.");
         register(messages, Message.CLICK_CHEST_EDIT, "message.click-shop-to-edit", "&aClick one of your shops within 15 seconds to apply the change.");
         register(messages, Message.CLICK_CHEST_REMOVE, "message.click-chest-to-remove-shop", "&aClick a shop within 15 seconds to remove it.");
-        register(messages, Message.CLICK_CHEST_INFO, "message.click-chest-for-info", "&aClick a shop within 15 seconds to retrieve information.");
+        register(messages, Message.CLICK_CHEST_INFO, "message.click-chest-for-info", "&aNo shop in sight. Click a shop within 15 seconds to retrieve information.");
         register(messages, Message.CLICK_CHEST_OPEN, "message.click-chest-to-open-shop", "&aClick a shop within 15 seconds to open it.");
         register(messages, Message.CLICK_TO_CONFIRM, "message.click-to-confirm", "&aClick again to confirm.");
         register(messages, Message.OPENED_SHOP, "message.opened-shop", "&aYou opened %VENDOR%'s shop.");
@@ -150,7 +151,7 @@ public class MessageRegistryLoader {
         register(messages, Message.HELP_COMMAND_EDIT, "message.help.command.edit", "&a/%COMMAND% edit <amount|buy|sell|holograms> <value> &7- Change one setting, then click one of your shops.");
         register(messages, Message.HELP_COMMAND_REMOVE, "message.help.command.remove", "&a/%COMMAND% remove &7- Click one of your shops to remove it.");
         register(messages, Message.HELP_COMMAND_INFO, "message.help.command.info", "&a/%COMMAND% info &7- Learn how ShopChest works and open the player guide.");
-        register(messages, Message.HELP_COMMAND_INSPECT, "message.help.command.inspect", "&a/%COMMAND% inspect &7- Click a shop to view its details.");
+        register(messages, Message.HELP_COMMAND_INSPECT, "message.help.command.inspect", "&a/%COMMAND% inspect &7- Inspect the shop in sight, or click to select one.");
         register(messages, Message.HELP_COMMAND_LIMITS, "message.help.command.limits", "&a/%COMMAND% limits &7- View your used and available shop slots.");
         register(messages, Message.HELP_COMMAND_OPEN, "message.help.command.open", "&a/%COMMAND% open &7- Click one of your shops to open its chest.");
         register(messages, Message.HELP_COMMAND_REMOVEALL, "message.help.command.removeall", "&a/%COMMAND% removeall <player> &7- Remove all shops owned by a player. &8[shopchest.remove.other]");

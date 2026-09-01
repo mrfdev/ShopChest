@@ -60,6 +60,10 @@ Editing is the exception described above. `shopchest.recent`,
 `shopchest.profile`, `shopchest.search`, and `shopchest.advertise` are granted
 to all players by default, but can be revoked independently.
 
+The unique ID in `/shops inspect` is shown to that shop's owner and to staff
+with `shopchest.admin` or `shopchest.admin.list`. Other inspection details stay
+available to ordinary players without revealing the ID on that command.
+
 `shopchest.admin.storefront` and `shopchest.admin.advertise` can change public
 or security-sensitive state. Grant them only to trusted staff. Currency capture
 records the complete item in the administrator's main hand; currency clear

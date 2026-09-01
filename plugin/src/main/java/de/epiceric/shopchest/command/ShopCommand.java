@@ -256,6 +256,13 @@ public class ShopCommand {
         executor.edit2(player, shop, clickType);
     }
 
+    /**
+     * Show the authoritative details for a selected or targeted shop.
+     */
+    public void inspectShop(Player player, Shop shop) {
+        executor.inspect(player, shop);
+    }
+
     public void cacheAdminTeleportTargets(Player player, java.util.Map<Integer, Location> targets) {
         executor.cacheAdminTeleportTargets(player, targets);
     }
