@@ -19,9 +19,9 @@ Player-facing documentation is published at
 | Component | Supported target |
 | --- | --- |
 | Minecraft / Paper | Paper 26.2 build 84 stable |
-| Server runtime | Java 25; Java 26.0.2 compatibility smoke-tested |
+| Server runtime | Java 25.0.4.1 and Java 26.0.2.1; live uses Java 26 |
 | Plugin bytecode | Java 25 |
-| Build toolchain | Gradle wrapper with a Java 25 toolchain |
+| Build toolchain | Gradle wrapper with JDK 25.0.4.1 |
 | Required plugins | Vault and a Vault-compatible economy provider |
 | Optional price advisory | CMI |
 | Plugin version | 1.15.3-SNAPSHOT |
@@ -118,7 +118,7 @@ inventory blocks not listed above.
 
 ### Requirements
 
-1. Paper 26.2 running on Java 25.
+1. Paper 26.2 running on Java 25.0.4.1 or Java 26.0.2.1.
 2. Vault.
 3. A Vault-compatible economy plugin registered before ShopChest enables.
 4. The shaded `1MB-ShopChest-v1.15.3-SNAPSHOT-<build>-j25-26.2.jar`.
@@ -445,7 +445,7 @@ calculations, and layout examples. Run `/shops reload` after editing
 ### Prerequisites
 
 - Git
-- A Java 25 JDK; release builds use JDK 25.0.4
+- JDK 25.0.4.1 for release builds; JDK 26.0.2.1 for compatibility tests
 - Network access for the Gradle wrapper and Maven dependencies
 
 The repository includes the Gradle wrapper; a separate Gradle installation is
@@ -455,10 +455,21 @@ not required.
 git clone https://github.com/mrfdev/ShopChest.git
 cd ShopChest
 
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-25.0.4.jdk/Contents/Home
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-25.0.4.1.jdk/Contents/Home
+export PATH="$JAVA_HOME/bin:$PATH"
 java -version
 ./gradlew --version
 ./gradlew clean build
+```
+
+Gradle uses the JDK selected by `JAVA_HOME`, with automatic JDK discovery and
+downloads disabled. Compilation remains pinned to Java 25 with `--release 25`.
+To rerun the complete test suite on the installed Java 26 runtime while keeping
+the compiler and Gradle on JDK 25.0.4.1:
+
+```bash
+export JAVA26_HOME=/Library/Java/JavaVirtualMachines/jdk-26.0.2.1.jdk/Contents/Home
+./gradlew :plugin:test -PshopchestTestJavaVersion=26 --rerun-tasks
 ```
 
 The build runs the test suite and writes the deployable shaded jar to:
@@ -476,6 +487,9 @@ disables the ambiguous unshaded jar and assembles only the deployable
 
 Local `servers/`, Gradle output, logs, and test-server jars are ignored and must
 not be committed.
+
+See the [JDK verification record](docs/verification/jdk-2026-09-15.md) for the
+exact runtime versions, artifact checksum, test counts, and Paper smoke results.
 
 ## Configuration and Operations
 

@@ -93,6 +93,11 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(
+            providers.gradleProperty("shopchestTestJavaVersion")
+                .orElse(targetJavaVersion).get().toInt()))
+    })
 }
 
 project.base.archivesName.set(rootProject.name)
@@ -100,17 +105,17 @@ group = "de.epiceric"
 version = releaseVersion
 
 tasks.processResources {
-    expand(
-        mapOf(
-            "version" to releaseVersion,
-            "buildNumber" to releaseBuildNumber,
-            "javaVersion" to targetJavaVersion,
-            "paperVersion" to targetPaperVersion,
-            "paperBuild" to stablePaperBuild,
-            "paperChannel" to stablePaperChannel,
-            "paperApiVersion" to compiledPaperApiVersion,
-        )
+    val releaseProperties = mapOf(
+        "version" to releaseVersion,
+        "buildNumber" to releaseBuildNumber,
+        "javaVersion" to targetJavaVersion,
+        "paperVersion" to targetPaperVersion,
+        "paperBuild" to stablePaperBuild,
+        "paperChannel" to stablePaperChannel,
+        "paperApiVersion" to compiledPaperApiVersion,
     )
+    inputs.properties(releaseProperties)
+    expand(releaseProperties)
 }
 
 val verifyReleaseMetadata by tasks.registering(VerifyShopChestReleaseMetadata::class) {

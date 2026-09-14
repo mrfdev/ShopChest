@@ -146,6 +146,8 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
             "26.2.build.71-beta",
             "jdk-25.0.2",
             "jdk-26.0.1",
+            "jdk-25.0.4.jdk",
+            "jdk-26.0.2.jdk",
         ).forEach { stale ->
             requireThat(!releaseSurface.contains(stale)) {
                 "Release metadata still contains stale value: $stale"
@@ -166,6 +168,11 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
             }
             requireText(state, "\"current_build\": $stableBuild")
             requireText(state, "\"current_channel\": \"$channel\"")
+            listOf("jdk-25.0.4.jdk", "jdk-26.0.2.jdk").forEach { stale ->
+                requireThat(!launcher.readText().contains(stale)) {
+                    "Maintained server launcher still contains removed JDK path: $stale"
+                }
+            }
             requireText(launcher, "_javaBin")
             requireText(launcher, "_minJavaVersion")
             requireThat(!launcher.readText().contains("jdk-25." + "0.2")) {

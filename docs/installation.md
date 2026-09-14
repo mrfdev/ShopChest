@@ -3,7 +3,7 @@
 ## Requirements
 
 - Paper 26.2 build 84 stable as the supported and verified live target
-- Java 25 to run Paper 26.2; Java 26.0.2 is compatibility smoke-tested
+- Java 25.0.4.1 or Java 26.0.2.1 to run Paper 26.2; live uses Java 26
 - Vault
 - A Vault-compatible economy provider registered before ShopChest enables
 - CMI is optional; when present, it enables the configurable worth-price advisory
@@ -59,8 +59,10 @@ Legacy database migrations create backup tables before converting old unprefixed
 From the repository root:
 
 ```bash
-JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-25.0.4.jdk/Contents/Home \
-  ./gradlew clean build
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-25.0.4.1.jdk/Contents/Home
+export PATH="$JAVA_HOME/bin:$PATH"
+java -version
+./gradlew clean build
 ```
 
 The output is `plugin/build/libs/1MB-ShopChest-v1.15.3-SNAPSHOT-<build>-j25-26.2.jar`,
@@ -69,6 +71,11 @@ requires it to match the Git commit count or the single pending release
 increment. The unshaded intermediate jar is disabled, leaving one deployable
 artifact. Local `servers/`, Gradle output, logs, and test-server jars are ignored
 and must not be committed.
+
+For the complete Java 26 test run, keep `JAVA_HOME` and `PATH` on JDK 25.0.4.1,
+set `JAVA26_HOME=/Library/Java/JavaVirtualMachines/jdk-26.0.2.1.jdk/Contents/Home`,
+and run `./gradlew :plugin:test -PshopchestTestJavaVersion=26 --rerun-tasks`.
+Only the test JVM changes; the plugin continues to use Java 25 bytecode.
 
 ## Compatibility Policy
 
