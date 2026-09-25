@@ -12,39 +12,39 @@ class PluginBuildInfoTest {
     @Test
     void readsEmbeddedBuildTargets() throws Exception {
         final String properties = """
-                version=1.15.2
-                build=774
+                version=1.15.4-SNAPSHOT
+                build=794
                 java-target=25
-                paper-target=26.2
-                paper-build=84
-                paper-channel=STABLE
-                paper-api-version=26.2.build.84-stable
+                paper-target=26.3
+                paper-build=41
+                paper-channel=ALPHA
+                paper-api-version=26.3.build.41-alpha
                 """;
 
         final PluginBuildInfo info = PluginBuildInfo.read(new ByteArrayInputStream(
                 properties.getBytes(StandardCharsets.US_ASCII)));
 
-        assertEquals("1.15.2", info.version());
-        assertEquals("774", info.build());
+        assertEquals("1.15.4-SNAPSHOT", info.version());
+        assertEquals("794", info.build());
         assertEquals("25", info.javaTarget());
-        assertEquals("26.2", info.paperTarget());
-        assertEquals("84", info.paperBuild());
-        assertEquals("STABLE", info.paperChannel());
-        assertEquals("26.2.build.84-stable", info.paperApiVersion());
+        assertEquals("26.3", info.paperTarget());
+        assertEquals("41", info.paperBuild());
+        assertEquals("ALPHA", info.paperChannel());
+        assertEquals("26.3.build.41-alpha", info.paperApiVersion());
         assertEquals(
-                "io.papermc.paper:paper-api:26.2.build.84-stable",
+                "io.papermc.paper:paper-api:26.3.build.41-alpha",
                 info.paperApiCoordinate());
     }
 
     @Test
     void replacesMissingAndBlankValuesWithUnknown() throws Exception {
         final PluginBuildInfo info = PluginBuildInfo.read(new ByteArrayInputStream(
-                "build= \npaper-target=26.2\n".getBytes(StandardCharsets.US_ASCII)));
+                "build= \npaper-target=26.3\n".getBytes(StandardCharsets.US_ASCII)));
 
         assertEquals("unknown", info.version());
         assertEquals("unknown", info.build());
         assertEquals("unknown", info.javaTarget());
-        assertEquals("26.2", info.paperTarget());
+        assertEquals("26.3", info.paperTarget());
         assertEquals("unknown", info.paperBuild());
         assertEquals("unknown", info.paperChannel());
         assertEquals("unknown", info.paperApiVersion());

@@ -1,13 +1,14 @@
 # ShopChest Modernization Backlog
 
 This backlog tracks planned work for the 1MoreBlock ShopChest fork. The current
-working Paper 26.2 build remains the baseline while these changes are developed
-and tested.
+working Paper 26.2 build is preserved as rollback material. The maintained
+test target is Paper 26.3 build 41 alpha on Java 27, with Java 25 bytecode.
+See [the upgrade record](docs/verification/paper-26.3-2026-09-25.md).
 
-Last audited against the source tree, automated tests, and Paper 26.2 build 84
-stable on 2026-07-28. Checked items have corresponding implementation or
-verification evidence; unchecked items remain unimplemented or intentionally
-shelved.
+Last audited against the source tree, automated tests, documentation contract,
+and Paper 26.2 build 84 stable on 2026-09-02. Checked items have corresponding
+implementation or verification evidence; unchecked items remain unimplemented
+or intentionally shelved.
 
 ## Holograms and presentation
 
@@ -119,6 +120,17 @@ shelved.
   useful maintenance commands.
 - [x] Add `/shops admin list <player>` to find every shop registered to a player.
   In-game staff retain click-to-teleport on the compact, stock-aware rows.
+- [ ] Add `/shops admin recent <player|uuid> [page]` so authorized staff can
+  review another player's transaction history in game.
+  - Reuse the `/shops recent` view from the target player's perspective,
+    including their own purchases and sales, customer activity at their normal
+    shops, money earned/spent/net totals, and detailed transaction hover text.
+  - Resolve online and offline players by UUID or cached name, clearly identify
+    the target, and preserve that target when navigating between pages.
+  - Require a dedicated `shopchest.admin.recent` permission, granted to operators
+    by default and checked again for each requested page.
+  - Keep database lookups asynchronous and read-only, and retain the existing
+    logging-disabled warning and empty-history handling.
 - [x] Add `/shops debug` under the `shopchest.admin.debug` permission with
   actionable plugin, platform, dependency, database, and shop-state diagnostics
   suitable for support reports. The database snapshot runs asynchronously,
@@ -159,7 +171,7 @@ shelved.
     implementation, platform loader, version parser, and pre-1.13 branches.
 - [x] Drop Spigot support and use modern Paper APIs directly.
   - Build conventions now resolve Paper only and `plugin.yml` declares API
-    version 26.2.
+    version 26.3.
 - [x] Remove the built-in update checker, its command, permissions, messages,
   and default configuration. It queried the original Spigot resource rather
   than this custom fork, so its results were not authoritative.
@@ -202,7 +214,7 @@ shelved.
   - Use one shared public-catalogue policy for profile listings, search results,
     advertisements, stock semantics, owner identity, and location disclosure so
     the three features cannot drift apart.
-  - Complete an integrated live-JAR test on the maintained Paper 26.2 and Java
+  - Complete an integrated live-JAR test on the maintained Paper 26.3 and Java
     25 server with CMI and WorldGuard before release, including clean migration,
     reload, restart persistence, pagination, permissions, scoped location
     disclosure, concurrent advertising, and stale or unloaded shop paths.
@@ -214,8 +226,9 @@ shelved.
     public text cannot prevent shops from loading or trading.
   - Retain a profile when its last normal shop is removed, but keep it dormant
     and publicly unavailable until the owner has another eligible normal shop.
-- [x] Add `/shops profile [player|uuid]` for the public overview and
-  `/shops profile <player|uuid> shops [page]` for individual shop listings.
+- [x] Add `/shops profile shopowner <player|uuid>` for the public overview and
+  `/shops profile shopowner <player|uuid> shops [page]` for individual shop
+  listings, while keeping own-profile actions uncluttered.
   - Let an eligible owner set or clear a custom storefront `name` (32
     characters), `tagline` (80), `description` (180), and `directions` (120).
     Always show the authoritative current or cached player name alongside a
@@ -249,7 +262,7 @@ shelved.
   - Use the first eligible Featured Listing as the default primary advertised
     shop, with up to two additional eligible listings as supporting offers.
     Never silently replace all owner-selected listings with unrelated shops.
-- [ ] Add an optional persistent Storefront Display through
+- [x] Add an optional persistent Storefront Display through
   `/shops profile display create`, separate from advertisement broadcasts.
   - Prompt an eligible owner to hit an Ender Chest, then use it only as the
     display anchor for a special storefront hologram assembled from the profile
@@ -260,6 +273,15 @@ shelved.
   - Give Storefront Displays their own ownership, placement, removal, limit,
     persistence, and moderation rules; do not put them in the advertisement
     queue or apply broadcast cooldowns to them.
+  - Enforce one display per owner and one owner per anchor in the database as
+    well as the live placement flow. Support owner status/removal, staff
+    removal, suspension-aware visibility, unloaded chunks/worlds, restart and
+    reload recovery, blocked display space, explosion protection, and automatic
+    cleanup when an otherwise-authorized block break removes the Ender Chest.
+  - Mark each active display with a harmless rotating and bobbing End Crystal
+    `ItemDisplay`, plus restrained player-local particles that become denser on
+    approach. Keep the feature independently configurable, proximity-gated,
+    capped in dense marketplaces, and inactive for unloaded chunks.
 - [x] Add a configurable marketplace location scope for public profile and
   search results.
   - Default exact world/XYZ disclosure to shops inside world `general` and the
@@ -295,8 +317,10 @@ shelved.
     unchecked, never out of stock; malformed, conflicting, missing, or inactive
     shops are unavailable and omitted from public totals.
   - Present a precise summary such as `7 shops across 5 storefronts are in stock
-    now; 4 more are out of stock; 2 more could not be checked.` Put only the
-    confirmed in-stock Shop Listings on result pages.
+    now; 4 more are out of stock; 2 database-listed offers have unchecked stock.`
+    Put confirmed in-stock Shop Listings first, followed by visibly distinct
+    unchecked listings that explain their chunks are unloaded and current stock
+    is not verified. Do not list confirmed out-of-stock or unavailable records.
   - Show four physical Shop Listings per page. Interleave owners so duplicate
     listings from one Storefront do not displace distinct matching Storefronts;
     after each distinct owner has one row, fill remaining slots from the
@@ -306,7 +330,7 @@ shelved.
     per-item price, owner and Storefront, complete bundles currently available,
     and location details permitted by the Marketplace Location Scope.
   - Keep normal-player coordinates informational and non-clickable. Make only
-    the Storefront link run `/shops profile <owner-uuid>` and show a clickable
+    the Storefront link run `/shops profile shopowner <owner-uuid>` and show a clickable
     `/warp shops` action only when it truthfully helps reach matching marketplace
     listings. Authorized staff may receive a separately permission-rechecked
     shop-ID teleport action that revalidates the current shop and destination.

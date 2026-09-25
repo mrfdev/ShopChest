@@ -1,4 +1,5 @@
 import buildlogic.VerifyGeneratedReleaseMetadata
+import buildlogic.VerifyShopChestDocumentation
 import buildlogic.VerifyShopChestReleaseMetadata
 
 plugins {
@@ -9,8 +10,8 @@ plugins {
 val releaseVersion = providers.gradleProperty("shopchestVersion").get()
 val targetJavaVersion = providers.gradleProperty("shopchestJavaVersion").get()
 val targetPaperVersion = providers.gradleProperty("shopchestPaperVersion").get()
-val stablePaperBuild = providers.gradleProperty("shopchestPaperBuild").get()
-val stablePaperChannel = providers.gradleProperty("shopchestPaperChannel").get()
+val targetPaperBuild = providers.gradleProperty("shopchestPaperBuild").get()
+val targetPaperChannel = providers.gradleProperty("shopchestPaperChannel").get()
 val compiledPaperApiVersion = providers.gradleProperty("shopchestPaperApiVersion").get()
 val releaseBuildNumber = providers.gradleProperty("shopchestBuild").get().padStart(3, '0')
 val repositoryCommitCount = providers.exec {
@@ -110,8 +111,8 @@ tasks.processResources {
         "buildNumber" to releaseBuildNumber,
         "javaVersion" to targetJavaVersion,
         "paperVersion" to targetPaperVersion,
-        "paperBuild" to stablePaperBuild,
-        "paperChannel" to stablePaperChannel,
+        "paperBuild" to targetPaperBuild,
+        "paperChannel" to targetPaperChannel,
         "paperApiVersion" to compiledPaperApiVersion,
     )
     inputs.properties(releaseProperties)
@@ -126,9 +127,10 @@ val verifyReleaseMetadata by tasks.registering(VerifyShopChestReleaseMetadata::c
     this.buildNumber.set(releaseBuildNumber.toInt())
     this.gitCommitCount.set(repositoryCommitCount)
     this.javaVersion.set(targetJavaVersion)
+    this.runtimeJavaVersion.set(providers.gradleProperty("shopchestRuntimeJavaVersion"))
     this.paperVersion.set(targetPaperVersion)
-    this.paperBuild.set(stablePaperBuild.toInt())
-    this.paperChannel.set(stablePaperChannel)
+    this.paperBuild.set(targetPaperBuild.toInt())
+    this.paperChannel.set(targetPaperChannel)
     this.paperApiVersion.set(compiledPaperApiVersion)
     readmeFile.set(rootProject.layout.projectDirectory.file("README.md"))
     todoFile.set(rootProject.layout.projectDirectory.file("TODO.md"))
@@ -144,7 +146,7 @@ val verifyReleaseMetadata by tasks.registering(VerifyShopChestReleaseMetadata::c
     embeddedMetadataFile.set(
         layout.projectDirectory.file("src/main/resources/shopchest-build.properties"))
 
-    val maintainedServer = rootProject.layout.projectDirectory.dir("servers/Paper-26.2")
+    val maintainedServer = rootProject.layout.projectDirectory.dir("servers/Paper-$targetPaperVersion")
     if (maintainedServer.asFile.isDirectory) {
         paperScriptConfigFile.set(maintainedServer.file("paperscript/config.json"))
         paperScriptStateFile.set(maintainedServer.file("paperscript/state.json"))
@@ -161,14 +163,26 @@ val verifyGeneratedReleaseMetadata by tasks.registering(VerifyGeneratedReleaseMe
     this.buildNumber.set(releaseBuildNumber)
     this.javaVersion.set(targetJavaVersion)
     this.paperVersion.set(targetPaperVersion)
-    this.paperBuild.set(stablePaperBuild)
-    this.paperChannel.set(stablePaperChannel)
+    this.paperBuild.set(targetPaperBuild)
+    this.paperChannel.set(targetPaperChannel)
     this.paperApiVersion.set(compiledPaperApiVersion)
     generatedMetadataFile.set(
         layout.buildDirectory.file("resources/main/shopchest-build.properties"))
     generatedDescriptorFile.set(layout.buildDirectory.file("resources/main/plugin.yml"))
 }
 
+val verifyDocumentation by tasks.registering(VerifyShopChestDocumentation::class) {
+    group = "verification"
+    description = "Checks public documentation against shipped config, permissions, and routes."
+
+    readmeFile.set(rootProject.layout.projectDirectory.file("README.md"))
+    configurationFile.set(layout.projectDirectory.file("src/main/resources/config.yml"))
+    pluginDescriptorFile.set(layout.projectDirectory.file("src/main/resources/plugin.yml"))
+    documentationDirectory.set(rootProject.layout.projectDirectory.dir("docs"))
+    commandSourceDirectory.set(
+        layout.projectDirectory.dir("src/main/java/de/epiceric/shopchest/command"))
+}
+
 tasks.named("check") {
-    dependsOn(verifyReleaseMetadata, verifyGeneratedReleaseMetadata)
+    dependsOn(verifyReleaseMetadata, verifyGeneratedReleaseMetadata, verifyDocumentation)
 }

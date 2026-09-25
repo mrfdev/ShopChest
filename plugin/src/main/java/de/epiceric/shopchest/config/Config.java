@@ -4,6 +4,8 @@ import de.epiceric.shopchest.ShopChest;
 import de.epiceric.shopchest.config.hologram.HologramColorPalette;
 import de.epiceric.shopchest.sql.Database;
 import de.epiceric.shopchest.utils.ItemUtils;
+import org.bukkit.Color;
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Registry;
@@ -27,6 +29,19 @@ public class Config {
     static final float DEFAULT_FLOATING_ICON_BOB_AMPLITUDE = 0.06F;
     static final double DEFAULT_FLOATING_ICON_BOB_PERIOD_SECONDS = 3.14D;
     static final double DEFAULT_FLOATING_ICON_ROTATION_PERIOD_SECONDS = 6.28D;
+    static final int DEFAULT_STOREFRONT_DISPLAY_PANEL_WIDTH = 260;
+    static final double DEFAULT_STOREFRONT_DISPLAY_PANEL_VERTICAL_OFFSET = -0.15D;
+    static final int DEFAULT_STOREFRONT_DISPLAY_INTERACTION_COOLDOWN_MILLIS = 3_000;
+    static final double DEFAULT_STOREFRONT_DISPLAY_ICON_VERTICAL_OFFSET = -0.35D;
+    static final double DEFAULT_STOREFRONT_DISPLAY_ICON_HEIGHT = 2.55D;
+    static final float DEFAULT_STOREFRONT_DISPLAY_ICON_SCALE = 0.50F;
+    static final float DEFAULT_STOREFRONT_DISPLAY_ICON_BOB_AMPLITUDE = 0.08F;
+    static final double DEFAULT_STOREFRONT_DISPLAY_ICON_BOB_PERIOD_SECONDS = 3.5D;
+    static final double DEFAULT_STOREFRONT_DISPLAY_ICON_ROTATION_PERIOD_SECONDS = 8.0D;
+    static final double DEFAULT_STOREFRONT_DISPLAY_ICON_VIEW_DISTANCE = 24.0D;
+    static final double DEFAULT_STOREFRONT_DISPLAY_PARTICLE_RADIUS = 8.0D;
+    static final int DEFAULT_STOREFRONT_DISPLAY_PARTICLE_COUNT = 6;
+    static final float DEFAULT_STOREFRONT_DISPLAY_PARTICLE_SIZE = 0.75F;
     static final int DEFAULT_HOLOGRAM_MAX_ITEM_DETAIL_ENTRIES = 7;
     static final int DEFAULT_HOLOGRAM_ITEM_DETAILS_PER_LINE = 2;
     static final int DEFAULT_TRADE_INTERACTION_COOLDOWN_MILLIS = 250;
@@ -37,6 +52,16 @@ public class Config {
     private static final String SUCCESS_PARTICLE = "minecraft:happy_villager";
     private static final String FAILURE_SOUND = "minecraft:block.note_block.bass";
     private static final String FAILURE_PARTICLE = "minecraft:smoke";
+    private static final String STOREFRONT_DISPLAY_ICON_MATERIAL = "minecraft:end_crystal";
+    private static final String STOREFRONT_DISPLAY_PARTICLE = "minecraft:dust";
+    private static final String STOREFRONT_DISPLAY_PARTICLE_COLOR = "#42D6C7";
+    private static final String LEGACY_STOREFRONT_DISPLAY_PARTICLE_V1 =
+            "minecraft:reverse_portal";
+    private static final String LEGACY_STOREFRONT_DISPLAY_PARTICLE_V2 =
+            "minecraft:end_rod";
+    private static final double LEGACY_STOREFRONT_DISPLAY_PANEL_VERTICAL_OFFSET = -0.35D;
+    private static final int LEGACY_STOREFRONT_DISPLAY_PARTICLE_COUNT = 3;
+    private static final int STOREFRONT_DISPLAY_PRESENTATION_VERSION = 3;
 
     /**
      * The item with which a player can click a shop to retrieve information
@@ -441,6 +466,26 @@ public class Config {
     public static int storefrontSearchCooldownMillis;
     public static int storefrontSnapshotSeconds;
 
+    /** Storefront Display landmark icon and proximity-particle presentation. */
+    public static int storefrontDisplayPanelWidth;
+    public static double storefrontDisplayPanelVerticalOffset;
+    public static boolean storefrontDisplayInteractionEnabled;
+    public static int storefrontDisplayInteractionCooldownMillis;
+    public static boolean storefrontDisplayIconEnabled;
+    public static Material storefrontDisplayIconMaterial;
+    public static double storefrontDisplayIconVerticalOffset;
+    public static double storefrontDisplayIconHeight;
+    public static float storefrontDisplayIconScale;
+    public static float storefrontDisplayIconBobAmplitude;
+    public static double storefrontDisplayIconBobPeriodSeconds;
+    public static double storefrontDisplayIconRotationPeriodSeconds;
+    public static double storefrontDisplayIconViewDistance;
+    public static boolean storefrontDisplayParticlesEnabled;
+    public static Particle storefrontDisplayParticle;
+    public static Particle.DustOptions storefrontDisplayParticleDustOptions;
+    public static double storefrontDisplayParticleRadius;
+    public static int storefrontDisplayParticleCount;
+
     /** AFK Shrine Token-backed storefront advertising settings. */
     public static boolean advertisingEnabled;
     public static int advertisingTokenCost;
@@ -595,6 +640,7 @@ public class Config {
      * @param showMessages Whether console (error) messages should be shown
      */
     public void reload(boolean firstLoad, boolean langReload, boolean showMessages) {
+        final boolean previousConfirmShopping = confirmShopping;
         plugin.reloadConfig();
 
         shopInfoItem = ItemUtils.getItemStack(plugin.getConfig().getString("shop-info-item"));
@@ -713,6 +759,71 @@ public class Config {
                 "storefront-discovery.search-cooldown-milliseconds", 1500), 0, 10_000);
         storefrontSnapshotSeconds = clamp(plugin.getConfig().getInt(
                 "storefront-discovery.snapshot-seconds", 30), 5, 300);
+        storefrontDisplayPanelWidth = normalizeStorefrontDisplayPanelWidth(
+                plugin.getConfig().getInt(
+                        "storefront-display.panel.width",
+                        DEFAULT_STOREFRONT_DISPLAY_PANEL_WIDTH));
+        storefrontDisplayPanelVerticalOffset = normalizeStorefrontDisplayPanelVerticalOffset(
+                plugin.getConfig().getDouble(
+                        "storefront-display.panel.vertical-offset",
+                        DEFAULT_STOREFRONT_DISPLAY_PANEL_VERTICAL_OFFSET));
+        storefrontDisplayInteractionEnabled = plugin.getConfig().getBoolean(
+                "storefront-display.interaction.enabled", true);
+        storefrontDisplayInteractionCooldownMillis =
+                normalizeStorefrontDisplayInteractionCooldownMillis(
+                        plugin.getConfig().getInt(
+                                "storefront-display.interaction.cooldown-milliseconds",
+                                DEFAULT_STOREFRONT_DISPLAY_INTERACTION_COOLDOWN_MILLIS));
+        storefrontDisplayIconEnabled = plugin.getConfig().getBoolean(
+                "storefront-display.icon.enabled", true);
+        storefrontDisplayIconMaterial = getStorefrontDisplayIconMaterial();
+        storefrontDisplayIconVerticalOffset = normalizeStorefrontDisplayIconVerticalOffset(
+                plugin.getConfig().getDouble(
+                        "storefront-display.icon.vertical-offset",
+                        DEFAULT_STOREFRONT_DISPLAY_ICON_VERTICAL_OFFSET));
+        storefrontDisplayIconHeight = normalizeStorefrontDisplayIconHeight(
+                plugin.getConfig().getDouble(
+                        "storefront-display.icon.height",
+                        DEFAULT_STOREFRONT_DISPLAY_ICON_HEIGHT));
+        storefrontDisplayIconScale = normalizeStorefrontDisplayIconScale(
+                plugin.getConfig().getDouble(
+                        "storefront-display.icon.scale",
+                        DEFAULT_STOREFRONT_DISPLAY_ICON_SCALE));
+        storefrontDisplayIconBobAmplitude = normalizeStorefrontDisplayIconBobAmplitude(
+                plugin.getConfig().getDouble(
+                        "storefront-display.icon.bob-amplitude",
+                        DEFAULT_STOREFRONT_DISPLAY_ICON_BOB_AMPLITUDE));
+        storefrontDisplayIconBobPeriodSeconds = normalizeStorefrontDisplayIconBobPeriodSeconds(
+                plugin.getConfig().getDouble(
+                        "storefront-display.icon.bob-period-seconds",
+                        DEFAULT_STOREFRONT_DISPLAY_ICON_BOB_PERIOD_SECONDS));
+        storefrontDisplayIconRotationPeriodSeconds =
+                normalizeStorefrontDisplayIconRotationPeriodSeconds(
+                        plugin.getConfig().getDouble(
+                                "storefront-display.icon.rotation-period-seconds",
+                                DEFAULT_STOREFRONT_DISPLAY_ICON_ROTATION_PERIOD_SECONDS));
+        storefrontDisplayIconViewDistance = normalizeStorefrontDisplayIconViewDistance(
+                plugin.getConfig().getDouble(
+                        "storefront-display.icon.view-distance",
+                        DEFAULT_STOREFRONT_DISPLAY_ICON_VIEW_DISTANCE));
+        storefrontDisplayParticlesEnabled = plugin.getConfig().getBoolean(
+                "storefront-display.particles.enabled", true);
+        storefrontDisplayParticle = getStorefrontDisplayParticle();
+        storefrontDisplayParticleDustOptions = storefrontDisplayParticle == Particle.DUST
+                ? new Particle.DustOptions(
+                        getStorefrontDisplayParticleColor(),
+                        normalizeStorefrontDisplayParticleSize(plugin.getConfig().getDouble(
+                                "storefront-display.particles.size",
+                                DEFAULT_STOREFRONT_DISPLAY_PARTICLE_SIZE)))
+                : null;
+        storefrontDisplayParticleRadius = normalizeStorefrontDisplayParticleRadius(
+                plugin.getConfig().getDouble(
+                        "storefront-display.particles.radius",
+                        DEFAULT_STOREFRONT_DISPLAY_PARTICLE_RADIUS));
+        storefrontDisplayParticleCount = normalizeStorefrontDisplayParticleCount(
+                plugin.getConfig().getInt(
+                        "storefront-display.particles.count",
+                        DEFAULT_STOREFRONT_DISPLAY_PARTICLE_COUNT));
         advertisingEnabled = plugin.getConfig().getBoolean("advertising.enabled", true);
         advertisingTokenCost = clamp(plugin.getConfig().getInt("advertising.token-cost", 5), 1, 64);
         advertisingPassDays = clamp(plugin.getConfig().getInt("advertising.pass-days", 7), 1, 90);
@@ -733,6 +844,9 @@ public class Config {
 
         if (langReload) {
             plugin.loadLanguages();
+        }
+        if (!firstLoad && previousConfirmShopping != confirmShopping) {
+            plugin.invalidateTradeConfirmations();
         }
     }
 
@@ -815,6 +929,57 @@ public class Config {
         return Registry.PARTICLE_TYPE.get(NamespacedKey.fromString(fallback));
     }
 
+    private Particle getStorefrontDisplayParticle() {
+        final String path = "storefront-display.particles.particle";
+        final String configured = plugin.getConfig().getString(
+                path, STOREFRONT_DISPLAY_PARTICLE);
+        if (configured == null || configured.isBlank() || configured.equalsIgnoreCase("none")) {
+            return null;
+        }
+
+        final NamespacedKey key = NamespacedKey.fromString(configured);
+        final Particle particle = key == null ? null : Registry.PARTICLE_TYPE.get(key);
+        if (particle != null
+                && (particle.getDataType() == Void.class || particle == Particle.DUST)) {
+            return particle;
+        }
+
+        plugin.getLogger().warning("Invalid storefront particle '" + configured
+                + "'. Use a data-free particle, minecraft:dust, or none. Using "
+                + STOREFRONT_DISPLAY_PARTICLE + ".");
+        return Particle.DUST;
+    }
+
+    private Color getStorefrontDisplayParticleColor() {
+        final String path = "storefront-display.particles.color";
+        final String configured = plugin.getConfig().getString(
+                path, STOREFRONT_DISPLAY_PARTICLE_COLOR);
+        if (!HologramColorPalette.isHexColor(configured)) {
+            plugin.getLogger().warning("Invalid " + path + " '" + configured
+                    + "'. Using " + STOREFRONT_DISPLAY_PARTICLE_COLOR + ".");
+            return Color.fromRGB(Integer.parseInt(
+                    STOREFRONT_DISPLAY_PARTICLE_COLOR.substring(1), 16));
+        }
+
+        final String normalized = configured.strip().replaceFirst("^#", "");
+        return Color.fromRGB(Integer.parseInt(normalized, 16));
+    }
+
+    private Material getStorefrontDisplayIconMaterial() {
+        final String configured = plugin.getConfig().getString(
+                "storefront-display.icon.material", STOREFRONT_DISPLAY_ICON_MATERIAL);
+        final Material material = configured == null
+                ? null
+                : Material.matchMaterial(configured);
+        if (material != null && material.isItem() && !material.isAir()) {
+            return material;
+        }
+
+        plugin.getLogger().warning("Invalid storefront-display.icon.material '"
+                + configured + "'. Using " + STOREFRONT_DISPLAY_ICON_MATERIAL + ".");
+        return Material.END_CRYSTAL;
+    }
+
     private float getBoundedFloat(String path, double fallback, double minimum, double maximum) {
         final double configured = plugin.getConfig().getDouble(path, fallback);
         return normalizeTradeFeedbackValue(configured, fallback, minimum, maximum);
@@ -883,6 +1048,53 @@ public class Config {
         changed |= addDefaultIfMissing(
                 "storefront-discovery.search-cooldown-milliseconds", 1500);
         changed |= addDefaultIfMissing("storefront-discovery.snapshot-seconds", 30);
+        changed |= migrateStorefrontDisplayPresentationDefaults();
+        changed |= addDefaultIfMissing(
+                "storefront-display.panel.width",
+                DEFAULT_STOREFRONT_DISPLAY_PANEL_WIDTH);
+        changed |= addDefaultIfMissing(
+                "storefront-display.panel.vertical-offset",
+                DEFAULT_STOREFRONT_DISPLAY_PANEL_VERTICAL_OFFSET);
+        changed |= addDefaultIfMissing("storefront-display.interaction.enabled", true);
+        changed |= addDefaultIfMissing(
+                "storefront-display.interaction.cooldown-milliseconds",
+                DEFAULT_STOREFRONT_DISPLAY_INTERACTION_COOLDOWN_MILLIS);
+        changed |= addDefaultIfMissing("storefront-display.icon.enabled", true);
+        changed |= addDefaultIfMissing(
+                "storefront-display.icon.material", STOREFRONT_DISPLAY_ICON_MATERIAL);
+        changed |= addDefaultIfMissing(
+                "storefront-display.icon.vertical-offset",
+                DEFAULT_STOREFRONT_DISPLAY_ICON_VERTICAL_OFFSET);
+        changed |= addDefaultIfMissing(
+                "storefront-display.icon.height", DEFAULT_STOREFRONT_DISPLAY_ICON_HEIGHT);
+        changed |= addDefaultIfMissing(
+                "storefront-display.icon.scale", DEFAULT_STOREFRONT_DISPLAY_ICON_SCALE);
+        changed |= addDefaultIfMissing(
+                "storefront-display.icon.bob-amplitude",
+                DEFAULT_STOREFRONT_DISPLAY_ICON_BOB_AMPLITUDE);
+        changed |= addDefaultIfMissing(
+                "storefront-display.icon.bob-period-seconds",
+                DEFAULT_STOREFRONT_DISPLAY_ICON_BOB_PERIOD_SECONDS);
+        changed |= addDefaultIfMissing(
+                "storefront-display.icon.rotation-period-seconds",
+                DEFAULT_STOREFRONT_DISPLAY_ICON_ROTATION_PERIOD_SECONDS);
+        changed |= addDefaultIfMissing(
+                "storefront-display.icon.view-distance",
+                DEFAULT_STOREFRONT_DISPLAY_ICON_VIEW_DISTANCE);
+        changed |= addDefaultIfMissing("storefront-display.particles.enabled", true);
+        changed |= addDefaultIfMissing(
+                "storefront-display.particles.particle", STOREFRONT_DISPLAY_PARTICLE);
+        changed |= addDefaultIfMissing(
+                "storefront-display.particles.color", STOREFRONT_DISPLAY_PARTICLE_COLOR);
+        changed |= addDefaultIfMissing(
+                "storefront-display.particles.size",
+                DEFAULT_STOREFRONT_DISPLAY_PARTICLE_SIZE);
+        changed |= addDefaultIfMissing(
+                "storefront-display.particles.radius",
+                DEFAULT_STOREFRONT_DISPLAY_PARTICLE_RADIUS);
+        changed |= addDefaultIfMissing(
+                "storefront-display.particles.count",
+                DEFAULT_STOREFRONT_DISPLAY_PARTICLE_COUNT);
         changed |= addDefaultIfMissing("advertising.enabled", true);
         changed |= addDefaultIfMissing("advertising.token-cost", 5);
         changed |= addDefaultIfMissing("advertising.pass-days", 7);
@@ -897,6 +1109,42 @@ public class Config {
         if (changed) {
             plugin.saveConfig();
         }
+    }
+
+    private boolean migrateStorefrontDisplayPresentationDefaults() {
+        final String versionPath = "storefront-display.presentation-version";
+        if (plugin.getConfig().contains(versionPath, true)
+                && plugin.getConfig().getInt(versionPath, 1)
+                >= STOREFRONT_DISPLAY_PRESENTATION_VERSION) {
+            return false;
+        }
+
+        final String particlePath = "storefront-display.particles.particle";
+        final String configuredParticle = plugin.getConfig().getString(particlePath);
+        if (LEGACY_STOREFRONT_DISPLAY_PARTICLE_V1.equalsIgnoreCase(configuredParticle)
+                || LEGACY_STOREFRONT_DISPLAY_PARTICLE_V2.equalsIgnoreCase(
+                        configuredParticle)) {
+            plugin.getConfig().set(particlePath, STOREFRONT_DISPLAY_PARTICLE);
+        }
+
+        final String panelOffsetPath = "storefront-display.panel.vertical-offset";
+        if (plugin.getConfig().contains(panelOffsetPath, true)
+                && Double.compare(
+                        plugin.getConfig().getDouble(panelOffsetPath),
+                        LEGACY_STOREFRONT_DISPLAY_PANEL_VERTICAL_OFFSET) == 0) {
+            plugin.getConfig().set(
+                    panelOffsetPath,
+                    DEFAULT_STOREFRONT_DISPLAY_PANEL_VERTICAL_OFFSET);
+        }
+
+        final String countPath = "storefront-display.particles.count";
+        if (plugin.getConfig().contains(countPath, true)
+                && plugin.getConfig().getInt(countPath)
+                == LEGACY_STOREFRONT_DISPLAY_PARTICLE_COUNT) {
+            plugin.getConfig().set(countPath, DEFAULT_STOREFRONT_DISPLAY_PARTICLE_COUNT);
+        }
+        plugin.getConfig().set(versionPath, STOREFRONT_DISPLAY_PRESENTATION_VERSION);
+        return true;
     }
 
     private boolean addDefaultIfMissing(String path, Object value) {
@@ -952,6 +1200,81 @@ public class Config {
     static double normalizeFloatingIconRotationPeriodSeconds(double value) {
         return normalizeFloatingIconPeriod(
                 value, DEFAULT_FLOATING_ICON_ROTATION_PERIOD_SECONDS, 0.5D, 120.0D);
+    }
+
+    static double normalizeStorefrontDisplayIconHeight(double value) {
+        return boundedFinite(
+                value, DEFAULT_STOREFRONT_DISPLAY_ICON_HEIGHT, 1.25D, 4.5D);
+    }
+
+    static double normalizeStorefrontDisplayPanelVerticalOffset(double value) {
+        return boundedFinite(
+                value, DEFAULT_STOREFRONT_DISPLAY_PANEL_VERTICAL_OFFSET, -1.0D, 1.0D);
+    }
+
+    static int normalizeStorefrontDisplayPanelWidth(int value) {
+        return clamp(value, 120, 512);
+    }
+
+    static int normalizeStorefrontDisplayInteractionCooldownMillis(int value) {
+        return clamp(value, 1_000, 30_000);
+    }
+
+    static double normalizeStorefrontDisplayIconVerticalOffset(double value) {
+        return boundedFinite(
+                value, DEFAULT_STOREFRONT_DISPLAY_ICON_VERTICAL_OFFSET, -1.0D, 1.0D);
+    }
+
+    static float normalizeStorefrontDisplayIconScale(double value) {
+        return (float) boundedFinite(
+                value, DEFAULT_STOREFRONT_DISPLAY_ICON_SCALE, 0.1D, 1.5D);
+    }
+
+    static float normalizeStorefrontDisplayIconBobAmplitude(double value) {
+        return (float) boundedFinite(
+                value, DEFAULT_STOREFRONT_DISPLAY_ICON_BOB_AMPLITUDE, 0.0D, 0.35D);
+    }
+
+    static double normalizeStorefrontDisplayIconBobPeriodSeconds(double value) {
+        return boundedFinite(
+                value, DEFAULT_STOREFRONT_DISPLAY_ICON_BOB_PERIOD_SECONDS, 0.5D, 30.0D);
+    }
+
+    static double normalizeStorefrontDisplayIconRotationPeriodSeconds(double value) {
+        return boundedFinite(
+                value,
+                DEFAULT_STOREFRONT_DISPLAY_ICON_ROTATION_PERIOD_SECONDS,
+                0.5D,
+                120.0D);
+    }
+
+    static double normalizeStorefrontDisplayIconViewDistance(double value) {
+        return boundedFinite(
+                value, DEFAULT_STOREFRONT_DISPLAY_ICON_VIEW_DISTANCE, 2.0D, 64.0D);
+    }
+
+    static double normalizeStorefrontDisplayParticleRadius(double value) {
+        return boundedFinite(
+                value, DEFAULT_STOREFRONT_DISPLAY_PARTICLE_RADIUS, 1.0D, 16.0D);
+    }
+
+    static int normalizeStorefrontDisplayParticleCount(int value) {
+        return clamp(value, 0, 8);
+    }
+
+    static float normalizeStorefrontDisplayParticleSize(double value) {
+        return (float) boundedFinite(
+                value, DEFAULT_STOREFRONT_DISPLAY_PARTICLE_SIZE, 0.25D, 2.0D);
+    }
+
+    private static double boundedFinite(
+            double value,
+            double fallback,
+            double minimum,
+            double maximum
+    ) {
+        final double finite = Double.isFinite(value) ? value : fallback;
+        return Math.max(minimum, Math.min(finite, maximum));
     }
 
     private static double normalizeFloatingIconPeriod(

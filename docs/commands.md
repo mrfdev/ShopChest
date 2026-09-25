@@ -15,13 +15,16 @@ The main command is created from `main-command-name` in `config.yml`; its defaul
 | `/shops limits` | Shows used slots and the effective normal-shop limit. | None |
 | `/shops list [page]` | Lists every shop owned by the player using compact rows and a whole-list health summary. Hover a row for prices, stock, type, world, and coordinates. Shop rows do not teleport the player. | None |
 | `/shops recent [page]` | Shows recent purchases and sales made by the player, plus trades completed at the player's normal shops. Each page includes money earned, spent, and net change. | `shopchest.recent` (granted by default) |
-| `/shops search <item> [page]` | Searches an exact base material and lists four in-stock, normal customer-buy shops per page. | `shopchest.search` (granted by default) |
-| `/shops profile [player\|uuid]` | Shows a public Storefront Profile and scoped shop/stock summary. With no target, shows the player's own profile. | `shopchest.profile` (granted by default) |
-| `/shops profile <player\|uuid> shops [page]` | Browses that storefront's scoped shops, four per page. `/shops profile shops [page]` browses the sender's own listings. | `shopchest.profile` (granted by default) |
+| `/shops search <item> [page]` | Searches an exact base material and lists four normal Customer-Buy Offers per page. Verified stock appears first; unloaded shops remain visible as unchecked. | `shopchest.search` (granted by default) |
+| `/shops profile [shops [page]]` | Shows the player's own public Storefront Profile, or browses its scoped shops four per page. | `shopchest.profile` (granted by default) |
+| `/shops profile shopowner <player\|uuid> [shops [page]]` | Shows another shop owner's public Storefront Profile, or browses that storefront's scoped shops. Player names are suggested only after `shopowner`. | `shopchest.profile` (granted by default) |
 | `/shops profile set <name\|advertisement\|description\|location> <text>` | Sets one plain-text field on the player's own profile. The internal aliases `tagline` and `directions` are also accepted. | `shopchest.profile` (granted by default) |
 | `/shops profile clear <field>` | Clears one field without changing shop records or the remaining profile fields. | `shopchest.profile` (granted by default) |
 | `/shops profile featured <add\|remove> <shop-id>` | Adds or removes one owned, eligible customer-buy shop in the ordered Featured Listings; at most three may be selected. | `shopchest.profile` (granted by default) |
 | `/shops profile featured clear` | Clears all Featured Listings. | `shopchest.profile` (granted by default) |
+| `/shops profile display [status]` | Shows whether the player owns a Storefront Display and reports its anchor and current visible state. | `shopchest.profile` (granted by default) |
+| `/shops profile display create` | Starts a 15-second Ender Chest selection for the player's single persistent Storefront Display. | `shopchest.profile` (granted by default) |
+| `/shops profile display remove` | Removes the player's display record and text entity without changing or removing its Ender Chest. | `shopchest.profile` (granted by default) |
 | `/shops advertise` | Shows Advertising Pass state and previews a pass purchase or the next storefront advertisement. | `shopchest.advertise` (granted by default) |
 | `/shops advertise pass` | Previews the configured exact-token cost and creates a one-use 60-second purchase confirmation. | `shopchest.advertise` (granted by default) |
 | `/shops advertise status` | Shows pass expiry, unreserved broadcasts, owner cooldown, and open queue request. | `shopchest.advertise` (granted by default) |
@@ -65,10 +68,13 @@ public catalogue; selecting one starts a new exact search.
 Search does not perform fuzzy matching. Its candidates are scoped, normal
 shops with a positive customer-buy price. Admin shops and shops that only buy
 items from customers are excluded. Stock uses the complete configured bundle
-and exact configured ItemStack variant. Only in-stock rows are displayed, while
-the header separately counts out-of-stock and unchecked candidates. Unavailable
-records are omitted. Results are owner-interleaved so one large storefront does
-not fill every consecutive position.
+and exact configured ItemStack variant. Verified in-stock rows appear first.
+Database-known offers in unloaded chunks remain on result pages with a yellow
+`STOCK UNCHECKED` label and an explanation that visiting will load the chunk and
+allow current stock to be verified. Confirmed out-of-stock shops are counted but
+not listed, and unavailable records are omitted. Results are owner-interleaved
+within each availability group so one large storefront does not fill every
+consecutive position.
 
 Locations are informational for ordinary players. Marketplace results include
 a clickable `/warp shops` call to action. Only a player with
@@ -101,6 +107,21 @@ rows per page. `/shops list` exposes each owned shop's `#ID` for the featured
 commands. The first selected listing is the primary advertised product; up to
 two later selections support it.
 
+A Storefront Display is a separate persistent in-world presentation, not a Shop
+and not an Advertisement Request. An eligible owner may have exactly one. After
+`/shops profile display create`, right-clicking an Ender Chest saves only its
+world and block coordinates as the anchor. The Ender Chest stays a normal Ender
+Chest and cannot buy, sell, hold shared shop stock, or consume a normal-shop
+slot. Its viewer-facing panel uses the Storefront Profile name, owner, bounded
+profile text, and live counts for shops selling to and buying from players. It
+is recreated when its chunk loads and after restart or reload, without
+force-loading its world or chunk. Active displays also have a visual-only,
+slowly rotating End Crystal item above the panel and a player-local particle
+orbit of soft aqua dust that becomes denser as the viewer approaches.
+The item is an
+`ItemDisplay`, never an explosive End Crystal entity, and these landmark
+effects have dedicated `storefront-display.*` live configuration controls.
+
 ## Advertising Pass and Queue
 
 The dashboard's clickable confirmations run hidden nonce-bearing forms of
@@ -128,7 +149,8 @@ narrow opposite failure window, a committed use can be lost before players see
 the message; external Minecraft effects cannot join the database transaction.
 
 The default advertisement presents a title, subtitle, player-local sound, and
-chat line to online players. It links to `/shops profile <owner-uuid>` and
+chat line to online players. It links to
+`/shops profile shopowner <owner-uuid>` and
 `/warp shops`. Public text prefers the `advertisement` field, falls back to the
 description, then uses a neutral stock message.
 
@@ -141,6 +163,7 @@ description, then uses a neutral stock message.
 | `/shops admin list <player> [page]` | Lists every normal and admin shop registered to a player UUID or cached name. In-game staff get the same detailed hover and can click a row to teleport onto the block above its container; console rows retain plain-text coordinates. | `shopchest.admin.list` |
 | `/shops admin audit [player\|all] [page]` | Runs a paginated, read-only maintenance audit across all persisted shops or one player UUID or cached name. | `shopchest.admin.audit` |
 | `/shops admin storefront <player> <hide\|show\|suspend\|unsuspend\|clear>` | Moderates public profile text or removes a storefront from discovery without changing the player's shop records. | `shopchest.admin.storefront` |
+| `/shops admin storefront <player> display remove` | Removes that player's persistent Storefront Display without changing the Ender Chest, profile, or shops. | `shopchest.admin.storefront` |
 | `/shops admin advertise currency status` | Reports whether an authoritative advertising token ItemStack has been captured. | `shopchest.admin.advertise` |
 | `/shops admin advertise currency capture` | Captures the genuine token held in the administrator's main hand and persists its complete amount-normalized ItemStack template. | `shopchest.admin.advertise` |
 | `/shops admin advertise currency clear` | Deletes the captured template and immediately returns advertising purchases to the fail-closed state. | `shopchest.admin.advertise` |
@@ -159,8 +182,15 @@ description, then uses a neutral stock message.
 Display settings such as `/shops config set hologram-text-scale 0.50`,
 positioning settings such as `/shops config set hologram-lift 0.25`, and icon
 settings such as `/shops config set floating-icon-scale 0.45` update currently
-loaded entities immediately. Boolean settings and
-`hologram-text-alignment` provide value tab completion. Settings that affect
+loaded entities immediately. The Ender Chest-only panel width and position can
+be adjusted with `storefront-display.panel.width` and
+`storefront-display.panel.vertical-offset`; the landmark position uses
+`storefront-display.icon.vertical-offset`. None of these move or resize normal
+shops. Storefront panels are right-clickable and open the same permission-checked
+view as `/shops profile shopowner <owner>`; this is not a separate command or
+permission.
+Boolean settings and `hologram-text-alignment` provide value tab
+completion. Settings that affect
 command registration, database selection, debug-file creation, or startup-only
 integrations still require a clean server restart.
 
@@ -172,6 +202,9 @@ shop listings remain discoverable. `show` restores that text. `suspend`
 removes the complete storefront from profiles, search, advertising, and public
 catalogue exports; `unsuspend` restores normal eligibility. `clear` removes the
 stored text fields while preserving the moderation flags and underlying shops.
+A suspended Storefront Display keeps its durable anchor but removes its visible
+text entity until staff unsuspend the storefront. `display remove` releases the
+anchor and the owner's one-display allowance.
 
 Advertising currency capture never guesses token identity from material,
 display name, lore, custom-model data, or a PDC key. It clones one genuine item

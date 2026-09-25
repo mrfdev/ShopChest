@@ -29,6 +29,9 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
     abstract val javaVersion: Property<String>
 
     @get:Input
+    abstract val runtimeJavaVersion: Property<String>
+
+    @get:Input
     abstract val paperVersion: Property<String>
 
     @get:Input
@@ -99,27 +102,29 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
         val version = pluginVersion.get()
         val javaTarget = javaVersion.get()
         val paperTarget = paperVersion.get()
-        val stableBuild = paperBuild.get()
+        val targetBuild = paperBuild.get()
         val channel = paperChannel.get()
         val apiVersion = paperApiVersion.get()
+        val channelLabel = channel.lowercase()
+        val runtimeTarget = runtimeJavaVersion.get()
         val readme = readmeFile.get().asFile
         val todo = todoFile.get().asFile
         val installation = installationFile.get().asFile
         val docsManifest = docsManifestFile.get().asFile
 
-        requireText(readme, "Paper $paperTarget build $stableBuild stable")
+        requireText(readme, "Paper $paperTarget build $targetBuild $channelLabel")
         requireText(readme, "| Plugin version | $version |")
         requireText(
             readme,
             "1MB-ShopChest-v$version-<build>-j$javaTarget-$paperTarget.jar")
-        requireText(installation, "Paper $paperTarget build $stableBuild stable")
+        requireText(installation, "Paper $paperTarget build $targetBuild $channelLabel")
         requireText(
             installation,
             "1MB-ShopChest-v$version-<build>-j$javaTarget-$paperTarget.jar")
         requireText(
             docsManifest,
-            "paper_target: \"$paperTarget build $stableBuild stable\"")
-        requireText(todo, "Paper $paperTarget build $stableBuild stable")
+            "paper_target: \"$paperTarget build $targetBuild $channelLabel\"")
+        requireText(todo, "Paper $paperTarget build $targetBuild $channelLabel")
         requireText(
             paperConventionFile.get().asFile,
             "shopchestPaperApiVersion")
@@ -134,8 +139,8 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
             "paper-api-version=\${paperApiVersion}")
 
         if (version.endsWith("-SNAPSHOT")) {
-            requireText(readme, "| Release status | Beta snapshot, untested |")
-            requireText(installation, "`$version` is an untested beta rollback")
+            requireText(readme, "| Release status | Pre-live beta snapshot |")
+            requireText(installation, "`$version` is a pre-live beta checkpoint")
         }
 
         val releaseSurface = listOf(readme, todo, installation, docsManifest)
@@ -166,7 +171,8 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
             requireThat(!config.readText().contains("\"download_filename_pattern\"")) {
                 "Maintained PaperScript config still contains deprecated download_filename_pattern."
             }
-            requireText(state, "\"current_build\": $stableBuild")
+            requireText(state, "\"current_version\": \"$paperTarget\"")
+            requireText(state, "\"current_build\": $targetBuild")
             requireText(state, "\"current_channel\": \"$channel\"")
             listOf("jdk-25.0.4.jdk", "jdk-26.0.2.jdk").forEach { stale ->
                 requireThat(!launcher.readText().contains(stale)) {
@@ -174,7 +180,9 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
                 }
             }
             requireText(launcher, "_javaBin")
-            requireText(launcher, "_minJavaVersion")
+            requireText(launcher, "_minJavaVersion=$runtimeTarget")
+            requireText(launcher, "_minecraftVersion=\"$paperTarget\"")
+            requireText(launcher, "jdk-$runtimeTarget.jdk/Contents/Home")
             requireThat(!launcher.readText().contains("jdk-25." + "0.2")) {
                 "Maintained server launcher still contains the stale JDK 25.0.2 path."
             }
@@ -183,8 +191,8 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
             }
         }
 
-        requireThat(apiVersion == "$paperTarget.build.$stableBuild-${channel.lowercase()}") {
-            "Paper API $apiVersion does not match $paperTarget build $stableBuild $channel."
+        requireThat(apiVersion == "$paperTarget.build.$targetBuild-${channel.lowercase()}") {
+            "Paper API $apiVersion does not match $paperTarget build $targetBuild $channel."
         }
     }
 

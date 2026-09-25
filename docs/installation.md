@@ -2,8 +2,8 @@
 
 ## Requirements
 
-- Paper 26.2 build 84 stable as the supported and verified live target
-- Java 25.0.4.1 or Java 26.0.2.1 to run Paper 26.2; live uses Java 26
+- Paper 26.3 build 41 alpha as the explicitly selected experimental test target
+- Java 27 for the maintained Paper 26.3 test runtime
 - Vault
 - A Vault-compatible economy provider registered before ShopChest enables
 - CMI is optional; when present, it enables the configurable worth-price advisory
@@ -15,16 +15,17 @@
 
 ShopChest's own classes target Java 25 bytecode for the supported Paper server.
 
-> **Snapshot warning:** `1.15.3-SNAPSHOT` is an untested beta rollback
-> checkpoint, not a production release. Complete the
-> [storefront beta checklist](storefront-beta-test.md) and test-server smoke
-> checks before deploying it.
+> **Snapshot warning:** `1.15.4-SNAPSHOT` is a pre-live beta checkpoint, not a
+> production release. Complete the
+> [storefront beta checklist](storefront-beta-test.md), the
+> [release-readiness checklist](release-readiness.md), and the controlled
+> test-server checks before deploying it.
 
 ## Fresh Installation
 
 1. Stop the server cleanly.
 2. Install Vault and the chosen economy plugin in the top-level `plugins/` directory.
-3. Place the generated `1MB-ShopChest-v1.15.3-SNAPSHOT-<build>-j25-26.2.jar` in `plugins/`. Remove older ShopChest jars so only one top-level jar remains.
+3. Place the generated `1MB-ShopChest-v1.15.4-SNAPSHOT-<build>-j25-26.3.jar` in `plugins/`. Remove older ShopChest jars so only one top-level jar remains.
 4. Start the server and verify that ShopChest reports its version without disabling itself.
 5. Review `plugins/ShopChest/config.yml` and `hologram-format.yml`.
 6. For the recommended `MARKETPLACE` discovery mode, verify that WorldGuard has
@@ -39,6 +40,11 @@ ShopChest's own classes target Java 25 bytecode for the supported Paper server.
 ShopChest disables itself when Vault, an economy provider, or database access
 is unavailable.
 
+No manual database creation or storefront schema upgrade is required. On a
+clean start, ShopChest creates its own shop, profile, display, and advertising
+tables; on an update, it applies the supported legacy migrations before the
+plugin becomes available. A backup is still required before every rollout.
+
 ## Updating
 
 1. Stop the server; do not hot-swap or plugin-reload the jar.
@@ -52,7 +58,9 @@ is unavailable.
 6. Run `/shops admin advertise currency status`. Recapture only when the
    authoritative token intentionally changed or the template is absent.
 
-Legacy database migrations create backup tables before converting old unprefixed shop and economy-log schemas. They do not migrate data between database engines.
+Legacy database migrations create backup tables before converting old
+unprefixed shop and economy-log schemas. They do not migrate data between
+database engines.
 
 ## Build From Source
 
@@ -65,22 +73,22 @@ java -version
 ./gradlew clean build
 ```
 
-The output is `plugin/build/libs/1MB-ShopChest-v1.15.3-SNAPSHOT-<build>-j25-26.2.jar`,
+The output is `plugin/build/libs/1MB-ShopChest-v1.15.4-SNAPSHOT-<build>-j25-26.3.jar`,
 where `<build>` is the shared release build in `gradle.properties`. Verification
 requires it to match the Git commit count or the single pending release
 increment. The unshaded intermediate jar is disabled, leaving one deployable
 artifact. Local `servers/`, Gradle output, logs, and test-server jars are ignored
 and must not be committed.
 
-For the complete Java 26 test run, keep `JAVA_HOME` and `PATH` on JDK 25.0.4.1,
-set `JAVA26_HOME=/Library/Java/JavaVirtualMachines/jdk-26.0.2.1.jdk/Contents/Home`,
-and run `./gradlew :plugin:test -PshopchestTestJavaVersion=26 --rerun-tasks`.
+For the complete optional Java 27 test run, keep `JAVA_HOME` and `PATH` on JDK 25.0.4.1,
+set `JAVA27_HOME=/Library/Java/JavaVirtualMachines/jdk-27.jdk/Contents/Home`,
+and run `./gradlew :plugin:test -PshopchestTestJavaVersion=27 --rerun-tasks`.
 Only the test JVM changes; the plugin continues to use Java 25 bytecode.
 
 ## Compatibility Policy
 
-The project compiles against the exact stable Paper API coordinate
-`io.papermc.paper:paper-api:26.2.build.84-stable` and uses Paper APIs directly.
+The project compiles against the exact experimental Paper API coordinate
+`io.papermc.paper:paper-api:26.3.build.41-alpha` and uses Paper APIs directly.
 It does not support Spigot or older Paper/Minecraft releases. A newer Paper
 release is considered compatible only after the platform contract tests, clean
 build, and test-server smoke checks pass; there is no version-specific NMS gate

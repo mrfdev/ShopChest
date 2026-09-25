@@ -115,7 +115,7 @@ final class ShopSearchCommandHandler {
         final SearchRequestGuard.Ticket requestTicket = ticket.orElseThrow();
         lastSearchAt.put(viewerKey, now);
         sender.sendMessage(Component.text(
-                "Searching in-stock shops for " + friendlyMaterial(request.material()) + "...",
+                "Searching registered shops for " + friendlyMaterial(request.material()) + "...",
                 NamedTextColor.GRAY));
 
         final List<RuntimeCatalogueEntry> candidates = plugin.getPublicCatalogue()
@@ -204,9 +204,16 @@ final class ShopSearchCommandHandler {
                         TextDecoration.BOLD)));
 
         if (summary.inStockShops() == 0) {
-            sender.sendMessage(Component.text(
-                    "No in-stock player shop currently sells this item.",
-                    NamedTextColor.YELLOW));
+            if (summary.uncheckedShops() > 0) {
+                sender.sendMessage(Component.text(
+                        "No shop has verified stock right now. Registered offers with "
+                                + "unchecked stock are shown below.",
+                        NamedTextColor.YELLOW));
+            } else {
+                sender.sendMessage(Component.text(
+                        "No in-stock player shop currently sells this item.",
+                        NamedTextColor.YELLOW));
+            }
         } else {
             sender.sendMessage(Component.text(
                     "Found " + summary.inStockShops() + " in-stock "
@@ -228,7 +235,17 @@ final class ShopSearchCommandHandler {
                     note.append("; ");
                 }
                 note.append(summary.uncheckedShops())
-                        .append(" could not be checked because their chunks are unloaded");
+                        .append(" database-listed ")
+                        .append(plural(
+                                summary.uncheckedShops(),
+                                "offer has",
+                                "offers have"))
+                        .append(" unchecked stock because ")
+                        .append(plural(
+                                summary.uncheckedShops(),
+                                "its chunk is",
+                                "their chunks are"))
+                        .append(" unloaded");
             }
             sender.sendMessage(Component.text(note + ".", NamedTextColor.GRAY));
         }
@@ -293,29 +310,21 @@ final class ShopSearchCommandHandler {
                 .orElse("Shops by " + ownerName);
         final double unitPrice = entry.customerBuyPrice() / entry.bundleAmount();
 
-        sender.sendMessage(Component.text("• ", NamedTextColor.DARK_GRAY)
-                .append(Component.text(entry.bundleAmount() + "x ", NamedTextColor.WHITE))
-                .append(itemNameComponent)
-                .append(Component.text(" for ", NamedTextColor.GRAY))
-                .append(Component.text(
-                        plugin.getEconomy().format(entry.customerBuyPrice()),
-                        NamedTextColor.GREEN))
-                .append(Component.text(
-                        " (" + plugin.getEconomy().format(unitPrice) + " each)",
-                        NamedTextColor.DARK_GRAY)));
-
         final Component storefront = Component.text(storefrontName, NamedTextColor.AQUA)
                 .hoverEvent(HoverEvent.showText(Component.text(
                         "View " + ownerName + "'s storefront profile")))
                 .clickEvent(ClickEvent.runCommand(
-                        "/" + Config.mainCommandName + " profile " + entry.ownerId()));
-        sender.sendMessage(Component.text("  ", NamedTextColor.GRAY)
-                .append(storefront)
-                .append(Component.text(
-                        " • " + listing.stock().completeBundles() + " full "
-                                + plural(listing.stock().completeBundles(), "bundle", "bundles")
-                                + " available",
-                        NamedTextColor.GRAY)));
+                        "/" + Config.mainCommandName
+                                + " profile shopowner " + entry.ownerId()));
+        for (Component line : ShopSearchListingCard.render(
+                entry.bundleAmount(),
+                itemNameComponent,
+                plugin.getEconomy().format(entry.customerBuyPrice()),
+                plugin.getEconomy().format(unitPrice),
+                storefront,
+                listing.stock())) {
+            sender.sendMessage(line);
+        }
 
         final Location location = entry.location();
         Component locationLine = Component.text(

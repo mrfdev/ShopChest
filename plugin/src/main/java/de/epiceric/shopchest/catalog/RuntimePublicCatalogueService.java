@@ -198,6 +198,9 @@ public final class RuntimePublicCatalogueService {
                     .filter(entry -> !entry.ownerId().equals(profile.ownerId()))
                     .toList());
         }
+        if (plugin.getStorefrontDisplayManager() != null) {
+            plugin.getStorefrontDisplayManager().refreshOwner(profile.ownerId());
+        }
     }
 
     public List<RuntimeCatalogueEntry> customerBuyEntries(Material material) {
@@ -341,6 +344,9 @@ public final class RuntimePublicCatalogueService {
                         refreshedAt = System.currentTimeMillis();
                         ready = true;
                         refreshing.set(false);
+                        if (plugin.getStorefrontDisplayManager() != null) {
+                            plugin.getStorefrontDisplayManager().refreshAll();
+                        }
                         scheduleRequestedRefresh();
                         announceRefresh(built.size());
                     }

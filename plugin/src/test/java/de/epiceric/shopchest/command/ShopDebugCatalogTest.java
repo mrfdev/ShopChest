@@ -25,14 +25,20 @@ class ShopDebugCatalogTest {
                 entry.usage().equals("/market search <item> [page]")
                         && entry.permission().equals("shopchest.search")));
         assertTrue(commands.stream().anyMatch(entry ->
-                entry.usage().equals("/market profile [player|uuid] [shops [page]]")
+                entry.usage().equals(
+                        "/market profile [shops [page]] | profile shopowner "
+                                + "<player|uuid> [shops [page]]")
+                        && entry.permission().equals("shopchest.profile")));
+        assertTrue(commands.stream().anyMatch(entry ->
+                entry.usage().equals("/market profile display <create|remove|status>")
                         && entry.permission().equals("shopchest.profile")));
         assertTrue(commands.stream().anyMatch(entry ->
                 entry.usage().equals("/market advertise [pass|status|cancel]")
                         && entry.permission().equals("shopchest.advertise")));
         assertTrue(commands.stream().anyMatch(entry ->
                 entry.usage().equals(
-                        "/market admin storefront <player> <hide|show|suspend|unsuspend|clear>")
+                        "/market admin storefront <player> "
+                                + "<hide|show|suspend|unsuspend|clear|display remove>")
                         && entry.permission().equals("shopchest.admin.storefront")));
         assertTrue(commands.stream().anyMatch(entry ->
                 entry.usage().equals(

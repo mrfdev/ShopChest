@@ -691,7 +691,8 @@ public final class AdvertisingFeature {
                 .decorate(TextDecoration.UNDERLINED)
                 .hoverEvent(HoverEvent.showText(Component.text("Browse this seller's shops")))
                 .clickEvent(ClickEvent.runCommand(
-                        "/" + Config.mainCommandName + " profile " + presentation.ownerId()));
+                        "/" + Config.mainCommandName
+                                + " profile shopowner " + presentation.ownerId()));
         Component chat = Component.text("✦ ", NamedTextColor.GOLD)
                 .append(Component.text(storefrontName, NamedTextColor.YELLOW)
                         .decorate(TextDecoration.BOLD))

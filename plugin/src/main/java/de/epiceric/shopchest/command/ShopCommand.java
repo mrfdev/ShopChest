@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 public class ShopCommand {
 
@@ -108,7 +109,8 @@ public class ShopCommand {
             @Override
             public String getHelpMessage(CommandSender sender) {
                 return sender.hasPermission(Permissions.PROFILE)
-                        ? "§6/" + name + " profile [player] §7- View or edit a storefront profile"
+                        ? "§6/" + name
+                                + " profile [shopowner <player>] §7- View, edit, or display a storefront"
                         : "";
             }
         });
@@ -117,7 +119,8 @@ public class ShopCommand {
             @Override
             public String getHelpMessage(CommandSender sender) {
                 return sender.hasPermission(Permissions.SEARCH)
-                        ? "§6/" + name + " search <item> [page] §7- Find in-stock player shops"
+                        ? "§6/" + name
+                                + " search <item> [page] §7- Find registered player shop offers"
                         : "";
             }
         });
@@ -261,6 +264,11 @@ public class ShopCommand {
      */
     public void inspectShop(Player player, Shop shop) {
         executor.inspect(player, shop);
+    }
+
+    /** Opens the normal Storefront Profile view for a trusted owner UUID. */
+    public void showStorefrontProfile(Player player, UUID ownerId) {
+        executor.showStorefrontProfile(player, ownerId);
     }
 
     public void cacheAdminTeleportTargets(Player player, java.util.Map<Integer, Location> targets) {

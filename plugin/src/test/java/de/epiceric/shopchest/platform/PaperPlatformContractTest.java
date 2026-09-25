@@ -27,11 +27,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PaperPlatformContractTest {
 
     @Test
-    void pluginDescriptorRequiresPaper262Api() throws IOException {
+    void pluginDescriptorRequiresPaper263Api() throws IOException {
         try (InputStream stream = getClass().getResourceAsStream("/plugin.yml")) {
             assertNotNull(stream);
             String descriptor = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-            assertTrue(descriptor.contains("api-version: '26.2'"));
+            assertTrue(descriptor.contains("api-version: '26.3'"));
         }
     }
 

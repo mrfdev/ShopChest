@@ -6,18 +6,20 @@ main_command: /shops
 docs_url: https://docs.1moreblock.com/custom-server-plugins/shopchest/
 player_guide: player-guide.md
 staff_documents:
+  installation: installation.md
   commands: commands.md
   configuration: configuration.md
   permissions: permissions.md
   integrations: integrations.md
   marketplace-snapshot: marketplace-snapshot.md
   placeholders: placeholders.md
+  release-readiness: release-readiness.md
   storefront-beta-test: storefront-beta-test.md
   troubleshooting: troubleshooting.md
 technical_readme: ../README.md
 marketplace_snapshot_json: catalogue/marketplace-snapshot.json
 marketplace_snapshot_csv: catalogue/marketplace-snapshot.csv
 java_target: 25
-paper_target: "26.2 build 84 stable"
+paper_target: "26.3 build 41 alpha"
 official_project: true
 repository: mrfdev/ShopChest

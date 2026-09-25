@@ -57,6 +57,11 @@ public final class TextDisplayWrapper {
         applyDisplayData(display, displayData);
     }
 
+    /** Returns the actual entity location after the wrapper's display offset. */
+    public Location location() {
+        return display.getLocation();
+    }
+
     public void remove() {
         display.remove();
     }

@@ -37,6 +37,55 @@ class ConfigTest {
     }
 
     @Test
+    void boundsStorefrontDisplayLandmarkControls() {
+        assertEquals(120, Config.normalizeStorefrontDisplayPanelWidth(0));
+        assertEquals(260, Config.normalizeStorefrontDisplayPanelWidth(260));
+        assertEquals(512, Config.normalizeStorefrontDisplayPanelWidth(1_000));
+        assertEquals(1_000,
+                Config.normalizeStorefrontDisplayInteractionCooldownMillis(0));
+        assertEquals(3_000,
+                Config.normalizeStorefrontDisplayInteractionCooldownMillis(3_000));
+        assertEquals(30_000,
+                Config.normalizeStorefrontDisplayInteractionCooldownMillis(60_000));
+
+        assertEquals(-0.15D,
+                Config.normalizeStorefrontDisplayPanelVerticalOffset(Double.NaN));
+        assertEquals(-1.0D, Config.normalizeStorefrontDisplayPanelVerticalOffset(-2.0D));
+        assertEquals(1.0D, Config.normalizeStorefrontDisplayPanelVerticalOffset(2.0D));
+
+        assertEquals(-0.35D,
+                Config.normalizeStorefrontDisplayIconVerticalOffset(Double.NaN));
+        assertEquals(-1.0D, Config.normalizeStorefrontDisplayIconVerticalOffset(-2.0D));
+        assertEquals(1.0D, Config.normalizeStorefrontDisplayIconVerticalOffset(2.0D));
+
+        assertEquals(2.55D, Config.normalizeStorefrontDisplayIconHeight(Double.NaN));
+        assertEquals(1.25D, Config.normalizeStorefrontDisplayIconHeight(0.0D));
+        assertEquals(4.5D, Config.normalizeStorefrontDisplayIconHeight(8.0D));
+
+        assertEquals(0.50F, Config.normalizeStorefrontDisplayIconScale(Double.NaN));
+        assertEquals(0.1F, Config.normalizeStorefrontDisplayIconScale(0.0D));
+        assertEquals(1.5F, Config.normalizeStorefrontDisplayIconScale(2.0D));
+
+        assertEquals(0.0F, Config.normalizeStorefrontDisplayIconBobAmplitude(-1.0D));
+        assertEquals(0.35F, Config.normalizeStorefrontDisplayIconBobAmplitude(1.0D));
+        assertEquals(0.5D, Config.normalizeStorefrontDisplayIconBobPeriodSeconds(0.1D));
+        assertEquals(30.0D, Config.normalizeStorefrontDisplayIconBobPeriodSeconds(60.0D));
+        assertEquals(0.5D, Config.normalizeStorefrontDisplayIconRotationPeriodSeconds(0.1D));
+        assertEquals(120.0D, Config.normalizeStorefrontDisplayIconRotationPeriodSeconds(180.0D));
+
+        assertEquals(2.0D, Config.normalizeStorefrontDisplayIconViewDistance(0.0D));
+        assertEquals(64.0D, Config.normalizeStorefrontDisplayIconViewDistance(100.0D));
+        assertEquals(1.0D, Config.normalizeStorefrontDisplayParticleRadius(0.0D));
+        assertEquals(16.0D, Config.normalizeStorefrontDisplayParticleRadius(100.0D));
+        assertEquals(0, Config.normalizeStorefrontDisplayParticleCount(-1));
+        assertEquals(3, Config.normalizeStorefrontDisplayParticleCount(3));
+        assertEquals(8, Config.normalizeStorefrontDisplayParticleCount(50));
+        assertEquals(0.75F, Config.normalizeStorefrontDisplayParticleSize(Double.NaN));
+        assertEquals(0.25F, Config.normalizeStorefrontDisplayParticleSize(0.0D));
+        assertEquals(2.0F, Config.normalizeStorefrontDisplayParticleSize(3.0D));
+    }
+
+    @Test
     void boundsTradeFeedbackToRestrainedValues() {
         assertEquals(0.45f, Config.normalizeTradeFeedbackValue(Double.NaN, 0.45, 0, 2));
         assertEquals(0.0f, Config.normalizeTradeFeedbackValue(-1, 0.45, 0, 2));

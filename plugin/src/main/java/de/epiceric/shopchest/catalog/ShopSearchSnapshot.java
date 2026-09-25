@@ -16,17 +16,17 @@ public final class ShopSearchSnapshot {
 
     private final ResolvedMaterial material;
     private final Instant capturedAt;
-    private final List<PublicShopListing> orderedInStockListings;
+    private final List<PublicShopListing> orderedListings;
     private final ShopSearchSummary summary;
 
     private ShopSearchSnapshot(
             ResolvedMaterial material,
             Instant capturedAt,
-            List<PublicShopListing> orderedInStockListings,
+            List<PublicShopListing> orderedListings,
             ShopSearchSummary summary) {
         this.material = material;
         this.capturedAt = capturedAt;
-        this.orderedInStockListings = List.copyOf(orderedInStockListings);
+        this.orderedListings = List.copyOf(orderedListings);
         this.summary = summary;
     }
 
@@ -39,6 +39,7 @@ public final class ShopSearchSnapshot {
         Objects.requireNonNull(candidateListings, "candidateListings");
 
         final List<PublicShopListing> inStock = new ArrayList<>();
+        final List<PublicShopListing> uncheckedListings = new ArrayList<>();
         final Set<UUID> inStockOwners = new HashSet<>();
         int outOfStock = 0;
         int unchecked = 0;
@@ -57,20 +58,26 @@ public final class ShopSearchSnapshot {
                     inStockOwners.add(candidate.ownerId());
                 }
                 case OUT_OF_STOCK -> outOfStock++;
-                case UNCHECKED -> unchecked++;
+                case UNCHECKED -> {
+                    uncheckedListings.add(listing);
+                    unchecked++;
+                }
                 case UNAVAILABLE -> {
                     // Unavailable records are intentionally omitted from public totals.
                 }
             }
         }
 
-        final List<PublicShopListing> ordered = OwnerListingInterleaver.interleave(inStock);
+        final List<PublicShopListing> ordered = new ArrayList<>(
+                inStock.size() + uncheckedListings.size());
+        ordered.addAll(OwnerListingInterleaver.interleave(inStock));
+        ordered.addAll(OwnerListingInterleaver.interleave(uncheckedListings));
         return new ShopSearchSnapshot(
                 material,
                 capturedAt,
                 ordered,
                 new ShopSearchSummary(
-                        ordered.size(),
+                        inStock.size(),
                         inStockOwners.size(),
                         outOfStock,
                         unchecked));
@@ -85,7 +92,14 @@ public final class ShopSearchSnapshot {
     }
 
     public List<PublicShopListing> orderedInStockListings() {
-        return orderedInStockListings;
+        return orderedListings.stream()
+                .filter(listing -> listing.stock().availability()
+                        == ListingAvailability.IN_STOCK)
+                .toList();
+    }
+
+    public List<PublicShopListing> orderedListings() {
+        return orderedListings;
     }
 
     public ShopSearchSummary summary() {
@@ -99,14 +113,14 @@ public final class ShopSearchSnapshot {
 
         final int pageCount = Math.max(
                 1,
-                (orderedInStockListings.size() + PAGE_SIZE - 1) / PAGE_SIZE);
+                (orderedListings.size() + PAGE_SIZE - 1) / PAGE_SIZE);
         final int page = Math.min(requestedPage, pageCount);
-        final int fromIndex = Math.min((page - 1) * PAGE_SIZE, orderedInStockListings.size());
-        final int toIndex = Math.min(fromIndex + PAGE_SIZE, orderedInStockListings.size());
+        final int fromIndex = Math.min((page - 1) * PAGE_SIZE, orderedListings.size());
+        final int toIndex = Math.min(fromIndex + PAGE_SIZE, orderedListings.size());
         return new ShopSearchPage(
                 material,
                 capturedAt,
-                orderedInStockListings.subList(fromIndex, toIndex),
+                orderedListings.subList(fromIndex, toIndex),
                 page,
                 pageCount,
                 summary);

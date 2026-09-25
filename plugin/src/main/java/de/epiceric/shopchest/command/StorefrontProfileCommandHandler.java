@@ -68,6 +68,9 @@ final class StorefrontProfileCommandHandler {
         if (arguments.length >= 2 && arguments[1].equalsIgnoreCase("featured")) {
             return featured(sender, arguments);
         }
+        if (arguments.length >= 2 && arguments[1].equalsIgnoreCase("display")) {
+            return display(sender, arguments);
+        }
         return view(sender, arguments);
     }
 
@@ -78,10 +81,24 @@ final class StorefrontProfileCommandHandler {
                     NamedTextColor.RED));
             return true;
         }
+        if (arguments.length == 5
+                && arguments[3].equalsIgnoreCase("display")
+                && arguments[4].equalsIgnoreCase("remove")) {
+            final OfflinePlayer owner = findOfflinePlayer(arguments[2]);
+            if (owner == null) {
+                sender.sendMessage(Component.text(
+                        "That player is not cached on this server.", NamedTextColor.RED));
+                return true;
+            }
+            plugin.getStorefrontDisplayManager().removeForStaff(
+                    owner.getUniqueId(), displayOwnerName(owner), sender);
+            return true;
+        }
         if (arguments.length != 4) {
             sender.sendMessage(Component.text(
                     "Usage: /" + Config.mainCommandName
-                            + " admin storefront <player> <hide|show|suspend|unsuspend|clear>",
+                            + " admin storefront <player> "
+                            + "<hide|show|suspend|unsuspend|clear|display remove>",
                     NamedTextColor.YELLOW));
             return true;
         }
@@ -131,6 +148,33 @@ final class StorefrontProfileCommandHandler {
                 persistenceError(sender, throwable);
             }
         });
+        return true;
+    }
+
+    private boolean display(CommandSender sender, String[] arguments) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(Component.text(
+                    "Only players can place their Storefront Display.",
+                    NamedTextColor.RED));
+            return true;
+        }
+        if (arguments.length == 2
+                || (arguments.length == 3 && arguments[2].equalsIgnoreCase("status"))) {
+            plugin.getStorefrontDisplayManager().showStatus(player);
+            return true;
+        }
+        if (arguments.length == 3 && arguments[2].equalsIgnoreCase("create")) {
+            plugin.getStorefrontDisplayManager().beginPlacement(player);
+            return true;
+        }
+        if (arguments.length == 3 && arguments[2].equalsIgnoreCase("remove")) {
+            plugin.getStorefrontDisplayManager().removeOwn(player);
+            return true;
+        }
+        sender.sendMessage(Component.text(
+                "Usage: /" + Config.mainCommandName
+                        + " profile display <create|remove|status>",
+                NamedTextColor.YELLOW));
         return true;
     }
 
@@ -265,7 +309,8 @@ final class StorefrontProfileCommandHandler {
         if (target == null) {
             sender.sendMessage(Component.text(
                     "Usage: /" + Config.mainCommandName
-                            + " profile [player|uuid] [shops [page]]",
+                            + " profile [shops [page]], or /" + Config.mainCommandName
+                            + " profile shopowner <player|uuid> [shops [page]]",
                     NamedTextColor.YELLOW));
             return true;
         }
@@ -326,29 +371,14 @@ final class StorefrontProfileCommandHandler {
         final String ownerName = displayOwnerName(owner);
         final String storefrontName = publicValue(profile, StorefrontProfile::name)
                 .orElse("Shops by " + ownerName);
-        sender.sendMessage(Component.empty());
-        sender.sendMessage(Component.text(storefrontName, NamedTextColor.GOLD)
-                .decorate(TextDecoration.BOLD));
-        if (!storefrontName.equals("Shops by " + ownerName)) {
-            sender.sendMessage(Component.text("by " + ownerName, NamedTextColor.GRAY));
-        }
-        if (profile.textHidden()) {
-            sender.sendMessage(Component.text(
-                    "Storefront details are temporarily hidden by staff.",
-                    NamedTextColor.YELLOW));
-        } else {
-            publicValue(profile, StorefrontProfile::tagline).ifPresent(value ->
-                    sender.sendMessage(Component.text(value, NamedTextColor.AQUA)));
-            publicValue(profile, StorefrontProfile::description).ifPresent(value ->
-                    sender.sendMessage(Component.text("About: " + value, NamedTextColor.WHITE)));
-            publicValue(profile, StorefrontProfile::directions).ifPresent(value ->
-                    sender.sendMessage(Component.text("Find us: " + value, NamedTextColor.GRAY)));
-        }
-
         final long buyOffers = listings.stream()
                 .filter(listing -> listing.entry().customerBuyPrice() > 0.0D).count();
         final long sellOffers = listings.stream()
                 .filter(listing -> listing.entry().customerSellPrice() > 0.0D).count();
+        final long inStock = listings.stream()
+                .filter(listing -> listing.entry().customerBuyPrice() > 0.0D)
+                .filter(listing -> listing.stock().availability() == ListingAvailability.IN_STOCK)
+                .count();
         final long outOfStock = listings.stream()
                 .filter(listing -> listing.entry().customerBuyPrice() > 0.0D)
                 .filter(listing -> listing.stock().availability() == ListingAvailability.OUT_OF_STOCK)
@@ -360,6 +390,10 @@ final class StorefrontProfileCommandHandler {
         final long unavailableStock = listings.stream()
                 .filter(listing -> listing.entry().customerBuyPrice() > 0.0D)
                 .filter(listing -> listing.stock().availability() == ListingAvailability.UNAVAILABLE)
+                .count();
+        final long canAccept = listings.stream()
+                .filter(listing -> listing.entry().customerSellPrice() > 0.0D)
+                .filter(listing -> listing.capacity().state() == ListingCapacityState.CAN_ACCEPT)
                 .count();
         final long full = listings.stream()
                 .filter(listing -> listing.entry().customerSellPrice() > 0.0D)
@@ -373,34 +407,37 @@ final class StorefrontProfileCommandHandler {
                 .filter(listing -> listing.entry().customerSellPrice() > 0.0D)
                 .filter(listing -> listing.capacity().state() == ListingCapacityState.UNAVAILABLE)
                 .count();
-        sender.sendMessage(Component.text(
-                "Shops: " + listings.size() + " total • " + buyOffers
-                        + " sell to players • " + sellOffers + " buy from players",
-                NamedTextColor.GRAY));
-        if (buyOffers > 0) {
-            sender.sendMessage(Component.text(
-                    "Customer-buy stock: " + outOfStock + " out of stock • "
-                            + uncheckedStock + " unchecked • "
-                            + unavailableStock + " unavailable",
-                    NamedTextColor.GRAY));
-        }
-        if (sellOffers > 0) {
-            sender.sendMessage(Component.text(
-                    "Customer-sell capacity: " + full + " full • "
-                            + uncheckedCapacity + " unchecked • "
-                            + unavailableCapacity + " unavailable",
-                    NamedTextColor.GRAY));
-        }
 
-        sender.sendMessage(Component.text("[Browse this storefront's shops]", NamedTextColor.AQUA)
-                .hoverEvent(HoverEvent.showText(Component.text("Show four shop listings per page")))
-                .clickEvent(ClickEvent.runCommand(
-                        "/" + Config.mainCommandName + " profile "
-                                + owner.getUniqueId() + " shops 1")));
-        if (listings.stream().anyMatch(listing -> listing.entry().marketplaceLocation())) {
-            sender.sendMessage(Component.text("[/warp shops]", NamedTextColor.AQUA)
-                    .clickEvent(ClickEvent.runCommand("/warp shops")));
-        }
+        final StorefrontProfileCard.Content content = new StorefrontProfileCard.Content(
+                storefrontName,
+                ownerName,
+                publicValue(profile, StorefrontProfile::tagline).orElse(null),
+                publicValue(profile, StorefrontProfile::description).orElse(null),
+                publicValue(profile, StorefrontProfile::directions).orElse(null),
+                profile.textHidden());
+        final StorefrontProfileCard.Metrics metrics = new StorefrontProfileCard.Metrics(
+                listings.size(),
+                buyOffers,
+                sellOffers,
+                inStock,
+                outOfStock,
+                uncheckedStock,
+                unavailableStock,
+                canAccept,
+                full,
+                uncheckedCapacity,
+                unavailableCapacity);
+        final boolean marketplaceLocation = listings.stream()
+                .anyMatch(listing -> listing.entry().marketplaceLocation());
+
+        sender.sendMessage(Component.empty());
+        StorefrontProfileCard.render(
+                        content,
+                        metrics,
+                        Config.mainCommandName,
+                        owner.getUniqueId(),
+                        marketplaceLocation)
+                .forEach(sender::sendMessage);
         sender.sendMessage(Component.empty());
     }
 
@@ -544,7 +581,7 @@ final class StorefrontProfileCommandHandler {
         if (page.pageCount() <= 1) {
             return;
         }
-        final String base = "/" + Config.mainCommandName + " profile "
+        final String base = "/" + Config.mainCommandName + " profile shopowner "
                 + ownerId + " shops ";
         Component navigation = Component.empty();
         if (page.page() > 1) {
@@ -572,6 +609,26 @@ final class StorefrontProfileCommandHandler {
                 return null;
             }
             return new Target(player, true, parsePage(arguments.length == 3 ? arguments[2] : null));
+        }
+        if (arguments[1].equalsIgnoreCase("shopowner")) {
+            if (arguments.length < 3) {
+                return null;
+            }
+            final OfflinePlayer owner = findOfflinePlayer(arguments[2]);
+            if (owner == null) {
+                return null;
+            }
+            if (arguments.length == 3) {
+                return new Target(owner, false, 1);
+            }
+            if (arguments.length >= 4 && arguments[3].equalsIgnoreCase("shops")
+                    && arguments.length <= 5) {
+                return new Target(
+                        owner,
+                        true,
+                        parsePage(arguments.length == 5 ? arguments[4] : null));
+            }
+            return null;
         }
         final OfflinePlayer owner = findOfflinePlayer(arguments[1]);
         if (owner == null) {

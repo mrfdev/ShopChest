@@ -40,4 +40,8 @@ public final class ShopInteractionCooldown {
     public void clear(UUID playerId) {
         nextAllowedInteraction.remove(playerId);
     }
+
+    public void clearAll() {
+        nextAllowedInteraction.clear();
+    }
 }
