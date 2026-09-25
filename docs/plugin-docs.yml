@@ -6,12 +6,14 @@ main_command: /shops
 docs_url: https://docs.1moreblock.com/custom-server-plugins/shopchest/
 player_guide: player-guide.md
 staff_documents:
+  installation: installation.md
   commands: commands.md
   configuration: configuration.md
   permissions: permissions.md
   integrations: integrations.md
   marketplace-snapshot: marketplace-snapshot.md
   placeholders: placeholders.md
+  release-readiness: release-readiness.md
   storefront-beta-test: storefront-beta-test.md
   troubleshooting: troubleshooting.md
 technical_readme: ../README.md

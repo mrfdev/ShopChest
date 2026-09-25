@@ -23,7 +23,9 @@ public final class ShopSearchPageReconciler {
         for (PublicShopListing listing : captured.listings()) {
             final ListingStock current = currentStockByShopId.get(
                     listing.candidate().shopId());
-            if (current == null || current.availability() != ListingAvailability.IN_STOCK) {
+            if (current == null
+                    || (current.availability() != ListingAvailability.IN_STOCK
+                    && current.availability() != ListingAvailability.UNCHECKED)) {
                 changed++;
                 continue;
             }

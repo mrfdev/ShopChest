@@ -4,7 +4,7 @@ name: ShopChest
 main: de.epiceric.shopchest.ShopChest
 version: ${version}
 author: EpicEric
-description: Create persistent container shops and trade items with other players.
+description: Create persistent container shops, searchable storefronts, and player advertisements.
 softdepend: [CMI, WorldGuard, Towny, AuthMe, PlotSquared, uSkyBlock, ASkyBlock, IslandWorld, GriefPrevention, AreaShop, Multiverse-Core, MultiWorld, BentoBox]
 depend: [Vault]
 api-version: '${paperVersion}'
@@ -109,7 +109,7 @@ permissions:
     description: Allows ShopChest support status, command, permission, and placeholder diagnostics.
     default: op
   shopchest.admin.storefront:
-    description: Allows hiding or suspending public storefront profiles.
+    description: Allows moderating public storefront profiles and removing Storefront Displays.
     default: op
   shopchest.admin.advertise:
     description: Allows managing ShopChest advertising and capturing its currency template.
@@ -121,7 +121,7 @@ permissions:
     description: Allows viewing your own recent ShopChest transactions.
     default: true
   shopchest.profile:
-    description: Allows creating and viewing public storefront profiles.
+    description: Allows creating and viewing public profiles and one persistent Storefront Display.
     default: true
   shopchest.search:
     description: Allows searching public customer-buy shop listings.

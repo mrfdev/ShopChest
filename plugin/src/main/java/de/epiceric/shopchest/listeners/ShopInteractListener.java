@@ -56,6 +56,8 @@ public class ShopInteractListener implements Listener {
     private Database database;
     private ShopUtils shopUtils;
     private final ShopInteractionCooldown tradeInteractionCooldown = new ShopInteractionCooldown();
+    private final TradeConfirmationGuard<Shop, ItemStack> tradeConfirmations =
+            new TradeConfirmationGuard<>();
 
     public ShopInteractListener(ShopChest plugin) {
         this.plugin = plugin;
@@ -138,7 +140,42 @@ public class ShopInteractListener implements Listener {
         ClickType.removePlayerClickType(p);
     }
 
-    private Map<UUID, Set<Integer>> needsConfirmation = new HashMap<>();
+    private boolean confirmTrade(
+            Player player,
+            Shop shop,
+            TradeConfirmationGuard.Direction direction,
+            boolean stack,
+            int amount,
+            double price
+    ) {
+        final UUID playerId = player.getUniqueId();
+        if (!Config.confirmShopping) {
+            tradeConfirmations.clear(playerId);
+            return true;
+        }
+
+        final ItemStack productIdentity = new ItemStack(
+                shop.getProduct().getItemStack());
+        productIdentity.setAmount(1);
+
+        final TradeConfirmationGuard.Proposal<Shop, ItemStack> proposal =
+                new TradeConfirmationGuard.Proposal<>(
+                        shop,
+                        direction,
+                        stack,
+                        amount,
+                        price,
+                        productIdentity);
+
+        if (tradeConfirmations.confirmOrRemember(playerId, proposal)) {
+            return true;
+        }
+
+        plugin.debug("Needs confirmation");
+        player.sendMessage(plugin.getLanguageManager().getMessageRegistry()
+                .getMessage(Message.CLICK_TO_CONFIRM));
+        return false;
+    }
 
     private void handleInteractEvent(PlayerInteractEvent e) {
         final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
@@ -199,8 +236,6 @@ public class ShopInteractListener implements Listener {
             if (shop == null)
                 return;
 
-            boolean confirmed = needsConfirmation.containsKey(p.getUniqueId()) && needsConfirmation.get(p.getUniqueId()).contains(shop.getID());
-            
             if (e.getAction() == Action.LEFT_CLICK_BLOCK && p.isSneaking() && Utils.hasAxeInHand(p)) {
                 return;
             }
@@ -281,21 +316,7 @@ public class ShopInteractListener implements Listener {
                             
                             if (shop.getShopType() == ShopType.ADMIN) {
                                 if (externalPluginsAllowed || p.hasPermission(Permissions.BYPASS_EXTERNAL_PLUGIN)) {
-                                    if (confirmed || !Config.confirmShopping) {
-                                        buy(p, shop, p.isSneaking());
-                                        if (Config.confirmShopping) {
-                                            Set<Integer> ids = needsConfirmation.containsKey(p.getUniqueId()) ? needsConfirmation.get(p.getUniqueId()) : new HashSet<Integer>();
-                                            ids.remove(shop.getID());
-                                            if (ids.isEmpty()) needsConfirmation.remove(p.getUniqueId());
-                                            else needsConfirmation.put(p.getUniqueId(), ids);
-                                        }
-                                    } else {
-                                        plugin.debug("Needs confirmation");
-                                        p.sendMessage(messageRegistry.getMessage(Message.CLICK_TO_CONFIRM));
-                                        Set<Integer> ids = needsConfirmation.containsKey(p.getUniqueId()) ? needsConfirmation.get(p.getUniqueId()) : new HashSet<Integer>();
-                                        ids.add(shop.getID());
-                                        needsConfirmation.put(p.getUniqueId(), ids);
-                                    }
+                                    buy(p, shop, p.isSneaking());
                                 } else {
                                     plugin.debug(p.getName() + " doesn't have external plugin's permission");
                                     p.sendMessage(messageRegistry.getMessage(Message.NO_PERMISSION_BUY_HERE));
@@ -308,41 +329,14 @@ public class ShopInteractListener implements Listener {
                                         return;
                                     }
                                     ItemStack itemStack = shop.getProduct().getItemStack();
-                                    int amount = (p.isSneaking() ? itemStack.getMaxStackSize() : shop.getProduct().getAmount());
+                                    boolean stack = p.isSneaking();
+                                    int amount = (stack ? itemStack.getMaxStackSize() : shop.getProduct().getAmount());
 
                                     if (Utils.getAmount(shopInventory, itemStack) >= amount) {
-                                        if (confirmed || !Config.confirmShopping) {
-                                            buy(p, shop, p.isSneaking());
-                                            if (Config.confirmShopping) {
-                                                Set<Integer> ids = needsConfirmation.containsKey(p.getUniqueId()) ? needsConfirmation.get(p.getUniqueId()) : new HashSet<Integer>();
-                                                ids.remove(shop.getID());
-                                                if (ids.isEmpty()) needsConfirmation.remove(p.getUniqueId());
-                                                else needsConfirmation.put(p.getUniqueId(), ids);
-                                            }
-                                        } else {
-                                            plugin.debug("Needs confirmation");
-                                            p.sendMessage(messageRegistry.getMessage(Message.CLICK_TO_CONFIRM));
-                                            Set<Integer> ids = needsConfirmation.containsKey(p.getUniqueId()) ? needsConfirmation.get(p.getUniqueId()) : new HashSet<Integer>();
-                                            ids.add(shop.getID());
-                                            needsConfirmation.put(p.getUniqueId(), ids);
-                                        }
+                                        buy(p, shop, stack);
                                     } else {
                                         if (Config.autoCalculateItemAmount && Utils.getAmount(shopInventory, itemStack) > 0) {
-                                            if (confirmed || !Config.confirmShopping) {
-                                                buy(p, shop, p.isSneaking());
-                                                if (Config.confirmShopping) {
-                                                    Set<Integer> ids = needsConfirmation.containsKey(p.getUniqueId()) ? needsConfirmation.get(p.getUniqueId()) : new HashSet<Integer>();
-                                                    ids.remove(shop.getID());
-                                                    if (ids.isEmpty()) needsConfirmation.remove(p.getUniqueId());
-                                                    else needsConfirmation.put(p.getUniqueId(), ids);
-                                                }
-                                            } else {
-                                                plugin.debug("Needs confirmation");
-                                                p.sendMessage(messageRegistry.getMessage(Message.CLICK_TO_CONFIRM));
-                                                Set<Integer> ids = needsConfirmation.containsKey(p.getUniqueId()) ? needsConfirmation.get(p.getUniqueId()) : new HashSet<Integer>();
-                                                ids.add(shop.getID());
-                                                needsConfirmation.put(p.getUniqueId(), ids);
-                                            }
+                                            buy(p, shop, stack);
                                         } else {
                                             p.sendMessage(messageRegistry.getMessage(Message.OUT_OF_STOCK));
                                             TradeFeedback.failure(p, shop);
@@ -419,38 +413,10 @@ public class ShopInteractListener implements Listener {
                                 int amount = stack ? itemStack.getMaxStackSize() : shop.getProduct().getAmount();
 
                                 if (Utils.getAmount(p.getInventory(), itemStack) >= amount) {
-                                    if (confirmed || !Config.confirmShopping) {
-                                        sell(p, shop, stack);
-                                        if (Config.confirmShopping) {
-                                            Set<Integer> ids = needsConfirmation.containsKey(p.getUniqueId()) ? needsConfirmation.get(p.getUniqueId()) : new HashSet<Integer>();
-                                            ids.remove(shop.getID());
-                                            if (ids.isEmpty()) needsConfirmation.remove(p.getUniqueId());
-                                            else needsConfirmation.put(p.getUniqueId(), ids);
-                                        }
-                                    } else {
-                                        plugin.debug("Needs confirmation");
-                                        p.sendMessage(messageRegistry.getMessage(Message.CLICK_TO_CONFIRM));
-                                        Set<Integer> ids = needsConfirmation.containsKey(p.getUniqueId()) ? needsConfirmation.get(p.getUniqueId()) : new HashSet<Integer>();
-                                        ids.add(shop.getID());
-                                        needsConfirmation.put(p.getUniqueId(), ids);
-                                    }
+                                    sell(p, shop, stack);
                                 } else {
                                     if (Config.autoCalculateItemAmount && Utils.getAmount(p.getInventory(), itemStack) > 0) {
-                                        if (confirmed || !Config.confirmShopping) {
-                                            sell(p, shop, stack);
-                                            if (Config.confirmShopping) {
-                                                Set<Integer> ids = needsConfirmation.containsKey(p.getUniqueId()) ? needsConfirmation.get(p.getUniqueId()) : new HashSet<Integer>();
-                                                ids.remove(shop.getID());
-                                                if (ids.isEmpty()) needsConfirmation.remove(p.getUniqueId());
-                                                else needsConfirmation.put(p.getUniqueId(), ids);
-                                            }
-                                        } else {
-                                            plugin.debug("Needs confirmation");
-                                            p.sendMessage(messageRegistry.getMessage(Message.CLICK_TO_CONFIRM));
-                                            Set<Integer> ids = needsConfirmation.containsKey(p.getUniqueId()) ? needsConfirmation.get(p.getUniqueId()) : new HashSet<Integer>();
-                                            ids.add(shop.getID());
-                                            needsConfirmation.put(p.getUniqueId(), ids);
-                                        }
+                                        sell(p, shop, stack);
                                     } else {
                                         p.sendMessage(messageRegistry.getMessage(Message.NOT_ENOUGH_ITEMS));
                                         TradeFeedback.failure(p, shop);
@@ -485,7 +451,18 @@ public class ShopInteractListener implements Listener {
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent e) {
-        tradeInteractionCooldown.clear(e.getPlayer().getUniqueId());
+        final UUID playerId = e.getPlayer().getUniqueId();
+        tradeInteractionCooldown.clear(playerId);
+        tradeConfirmations.clear(playerId);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onShopReload(ShopReloadEvent e) {
+        tradeConfirmations.clearAll();
+    }
+
+    public void invalidateTradeConfirmations() {
+        tradeConfirmations.clearAll();
     }
 
     /**
@@ -710,6 +687,16 @@ public class ShopInteractListener implements Listener {
             if (freeSpace >= newAmount) {
                 plugin.debug(executor.getName() + " has enough inventory space for " + freeSpace + " items (#" + shop.getID() + ")");
 
+                if (!confirmTrade(
+                        executor,
+                        shop,
+                        TradeConfirmationGuard.Direction.BUY,
+                        stack,
+                        newAmount,
+                        newPrice)) {
+                    return;
+                }
+
                 EconomyResponse r = econ.withdrawPlayer(executor, worldName, newPrice);
 
                 if (r.transactionSuccess()) {
@@ -892,6 +879,16 @@ public class ShopInteractListener implements Listener {
 
             if (freeSpace >= newAmount || shop.getShopType() == ShopType.ADMIN) {
                 plugin.debug("Chest has enough inventory space for " + freeSpace + " items (#" + shop.getID() + ")");
+
+                if (!confirmTrade(
+                        executor,
+                        shop,
+                        TradeConfirmationGuard.Direction.SELL,
+                        stack,
+                        newAmount,
+                        newPrice)) {
+                    return;
+                }
 
                 EconomyResponse r = econ.depositPlayer(executor, worldName, newPrice);
 

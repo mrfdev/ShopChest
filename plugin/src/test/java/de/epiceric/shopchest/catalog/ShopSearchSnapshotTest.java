@@ -18,7 +18,7 @@ class ShopSearchSnapshotTest {
     private static final Instant CAPTURED_AT = Instant.parse("2026-08-31T08:00:00Z");
 
     @Test
-    void summarizesOnlyEligibleExactMaterialListingsAndOmitsUnavailableTotals() {
+    void includesUncheckedOffersButOmitsUnavailableAndIneligibleListings() {
         final ShopSearchSnapshot snapshot = ShopSearchSnapshot.capture(
                 STONE_BRICKS,
                 CAPTURED_AT,
@@ -34,7 +34,23 @@ class ShopSearchSnapshotTest {
                         listing(9, owner(8), Material.DIRT, ListingAvailability.IN_STOCK)));
 
         assertEquals(new ShopSearchSummary(3, 2, 1, 1), snapshot.summary());
-        assertEquals(List.of(1, 3, 2), snapshot.page(1).listings().stream()
+        assertEquals(List.of(1, 3, 2, 5), snapshot.page(1).listings().stream()
+                .map(listing -> listing.candidate().shopId())
+                .toList());
+    }
+
+    @Test
+    void keepsVerifiedStockAheadOfUncheckedOffers() {
+        final ShopSearchSnapshot snapshot = ShopSearchSnapshot.capture(
+                STONE_BRICKS,
+                CAPTURED_AT,
+                List.of(
+                        listing(1, owner(1), ListingAvailability.UNCHECKED,
+                                PublicShopKind.NORMAL, false),
+                        listing(2, owner(2), ListingAvailability.IN_STOCK,
+                                PublicShopKind.NORMAL, false)));
+
+        assertEquals(List.of(2, 1), snapshot.page(1).listings().stream()
                 .map(listing -> listing.candidate().shopId())
                 .toList());
     }

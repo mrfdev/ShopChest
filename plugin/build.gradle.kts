@@ -1,4 +1,5 @@
 import buildlogic.VerifyGeneratedReleaseMetadata
+import buildlogic.VerifyShopChestDocumentation
 import buildlogic.VerifyShopChestReleaseMetadata
 
 plugins {
@@ -169,6 +170,18 @@ val verifyGeneratedReleaseMetadata by tasks.registering(VerifyGeneratedReleaseMe
     generatedDescriptorFile.set(layout.buildDirectory.file("resources/main/plugin.yml"))
 }
 
+val verifyDocumentation by tasks.registering(VerifyShopChestDocumentation::class) {
+    group = "verification"
+    description = "Checks public documentation against shipped config, permissions, and routes."
+
+    readmeFile.set(rootProject.layout.projectDirectory.file("README.md"))
+    configurationFile.set(layout.projectDirectory.file("src/main/resources/config.yml"))
+    pluginDescriptorFile.set(layout.projectDirectory.file("src/main/resources/plugin.yml"))
+    documentationDirectory.set(rootProject.layout.projectDirectory.dir("docs"))
+    commandSourceDirectory.set(
+        layout.projectDirectory.dir("src/main/java/de/epiceric/shopchest/command"))
+}
+
 tasks.named("check") {
-    dependsOn(verifyReleaseMetadata, verifyGeneratedReleaseMetadata)
+    dependsOn(verifyReleaseMetadata, verifyGeneratedReleaseMetadata, verifyDocumentation)
 }

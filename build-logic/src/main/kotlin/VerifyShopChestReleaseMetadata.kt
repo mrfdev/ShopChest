@@ -134,8 +134,8 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
             "paper-api-version=\${paperApiVersion}")
 
         if (version.endsWith("-SNAPSHOT")) {
-            requireText(readme, "| Release status | Beta snapshot, untested |")
-            requireText(installation, "`$version` is an untested beta rollback")
+            requireText(readme, "| Release status | Pre-live beta snapshot |")
+            requireText(installation, "`$version` is a pre-live beta checkpoint")
         }
 
         val releaseSurface = listOf(readme, todo, installation, docsManifest)

@@ -22,6 +22,9 @@ import de.epiceric.shopchest.storefront.FeaturedListingChoices;
 import de.epiceric.shopchest.utils.Permissions;
 
 class ShopTabCompleter implements TabCompleter {
+    private static final List<String> PROFILE_SUBCOMMANDS = List.of(
+            "set", "clear", "featured", "display", "shops", "shopowner");
+
     private ShopChest plugin;
 
     ShopTabCompleter(ShopChest plugin) {
@@ -71,10 +74,7 @@ class ShopTabCompleter implements TabCompleter {
                     }
                     return filterCompletions(adminCommands, args[1]);
                 } else if (args[0].equalsIgnoreCase("profile")) {
-                    final List<String> profileCommands = new ArrayList<>(
-                            Arrays.asList("set", "clear", "featured", "shops"));
-                    profileCommands.addAll(playerNames);
-                    return filterCompletions(profileCommands, args[1]);
+                    return profileSubcommandCompletions(args[1]);
                 } else if (args[0].equalsIgnoreCase("advertise")) {
                     return filterCompletions(
                             Arrays.asList("pass", "status", "cancel"), args[1]);
@@ -148,6 +148,9 @@ class ShopTabCompleter implements TabCompleter {
                         && sender.hasPermission(Permissions.ADMIN_EXPORT)) {
                     return filterCompletions(List.of("marketplace"), args[2]);
                 } else if (args[0].equalsIgnoreCase("profile")
+                        && args[1].equalsIgnoreCase("shopowner")) {
+                    return profileShopOwnerCompletions(playerNames, args[2]);
+                } else if (args[0].equalsIgnoreCase("profile")
                         && (args[1].equalsIgnoreCase("set")
                         || args[1].equalsIgnoreCase("clear"))) {
                     return filterCompletions(
@@ -156,6 +159,10 @@ class ShopTabCompleter implements TabCompleter {
                 } else if (args[0].equalsIgnoreCase("profile")
                         && args[1].equalsIgnoreCase("featured")) {
                     return filterCompletions(Arrays.asList("add", "remove", "clear"), args[2]);
+                } else if (args[0].equalsIgnoreCase("profile")
+                        && args[1].equalsIgnoreCase("display")) {
+                    return filterCompletions(
+                            Arrays.asList("create", "remove", "status"), args[2]);
                 } else if (args[0].equalsIgnoreCase("profile")
                         && !args[1].equalsIgnoreCase("shops")) {
                     return filterCompletions(List.of("shops"), args[2]);
@@ -174,6 +181,9 @@ class ShopTabCompleter implements TabCompleter {
                 }
             } else if (args.length == 4) {
                 if (args[0].equalsIgnoreCase("profile")
+                        && args[1].equalsIgnoreCase("shopowner")) {
+                    return filterCompletions(List.of("shops"), args[3]);
+                } else if (args[0].equalsIgnoreCase("profile")
                         && args[1].equalsIgnoreCase("featured")
                         && args[2].equalsIgnoreCase("add")
                         && sender instanceof Player player
@@ -194,7 +204,8 @@ class ShopTabCompleter implements TabCompleter {
                         && args[1].equalsIgnoreCase("storefront")
                         && sender.hasPermission(Permissions.ADMIN_STOREFRONT)) {
                     return filterCompletions(
-                            Arrays.asList("hide", "show", "suspend", "unsuspend", "clear"),
+                            Arrays.asList(
+                                    "hide", "show", "suspend", "unsuspend", "clear", "display"),
                             args[3]);
                 } else if (args[0].equals("config")) {
                     if (args[1].equalsIgnoreCase("set")
@@ -231,7 +242,12 @@ class ShopTabCompleter implements TabCompleter {
                     }
                 }
             } else if (args.length == 5) {
-                if (args[0].equals("create")) {
+                if (args[0].equalsIgnoreCase("admin")
+                        && args[1].equalsIgnoreCase("storefront")
+                        && args[3].equalsIgnoreCase("display")
+                        && sender.hasPermission(Permissions.ADMIN_STOREFRONT)) {
+                    return filterCompletions(List.of("remove"), args[4]);
+                } else if (args[0].equals("create")) {
                     if (!args[4].equals("")) {
                         for (String s : createSubCommands) {
                             if (s.startsWith(args[4])) {
@@ -261,6 +277,17 @@ class ShopTabCompleter implements TabCompleter {
                 .map(String::valueOf)
                 .toList();
         return filterCompletions(eligibleShopIds, input);
+    }
+
+    static List<String> profileSubcommandCompletions(String input) {
+        return filterCompletions(PROFILE_SUBCOMMANDS, input);
+    }
+
+    static List<String> profileShopOwnerCompletions(
+            List<String> playerNames,
+            String input
+    ) {
+        return filterCompletions(playerNames, input);
     }
 
     private static List<String> filterCompletions(List<String> candidates, String input) {

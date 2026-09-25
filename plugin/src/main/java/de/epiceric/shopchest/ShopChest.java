@@ -25,6 +25,7 @@ import de.epiceric.shopchest.sql.JdbcStorefrontRepository;
 import de.epiceric.shopchest.sql.JdbcAdvertisingRepository;
 import de.epiceric.shopchest.sql.MySQL;
 import de.epiceric.shopchest.sql.SQLite;
+import de.epiceric.shopchest.storefront.StorefrontDisplayManager;
 import de.epiceric.shopchest.utils.*;
 import fr.xephi.authme.AuthMe;
 import me.ryanhamshire.GriefPrevention.GriefPrevention;
@@ -65,6 +66,7 @@ public class ShopChest extends JavaPlugin {
     private JdbcAdvertisingRepository advertisingRepository;
     private RuntimePublicCatalogueService publicCatalogue;
     private AdvertisingFeature advertisingFeature;
+    private StorefrontDisplayManager storefrontDisplayManager;
     private ShopUtils shopUtils;
     private FileWriter fw;
     private Plugin worldGuard;
@@ -79,6 +81,7 @@ public class ShopChest extends JavaPlugin {
     private CmiWorthPriceAdvisor cmiWorthPriceAdvisor;
     private ShopItemAnimator shopItemAnimator;
     private ShopUpdater updater;
+    private ShopInteractListener shopInteractListener;
 
     /**
      * @return An instance of ShopChest
@@ -211,6 +214,9 @@ public class ShopChest extends JavaPlugin {
         if (publicCatalogue != null) {
             publicCatalogue.stop();
         }
+        if (storefrontDisplayManager != null) {
+            storefrontDisplayManager.stop();
+        }
         if (advertisingFeature != null) {
             advertisingFeature.stop();
         }
@@ -327,13 +333,15 @@ public class ShopChest extends JavaPlugin {
         advertisingRepository = new JdbcAdvertisingRepository(this, database);
         publicCatalogue = new RuntimePublicCatalogueService(this);
         advertisingFeature = new AdvertisingFeature(this);
+        storefrontDisplayManager = new StorefrontDisplayManager(this);
     }
 
     private void registerListeners() {
         debug("Registering listeners...");
         getServer().getPluginManager().registerEvents(new ShopUpdateListener(this), this);
         getServer().getPluginManager().registerEvents(new ShopItemListener(this), this);
-        getServer().getPluginManager().registerEvents(new ShopInteractListener(this), this);
+        shopInteractListener = new ShopInteractListener(this);
+        getServer().getPluginManager().registerEvents(shopInteractListener, this);
         getServer().getPluginManager().registerEvents(new NotifyPlayerOnJoinListener(this), this);
         getServer().getPluginManager().registerEvents(new ChestProtectListener(this), this);
         getServer().getPluginManager().registerEvents(new CreativeModeListener(this), this);
@@ -341,6 +349,7 @@ public class ShopChest extends JavaPlugin {
                 new PublicCatalogueInvalidationListener(this), this);
         getServer().getPluginManager().registerEvents(
                 new AdvertisingPurchaseLockListener(this), this);
+        getServer().getPluginManager().registerEvents(storefrontDisplayManager, this);
 
         getServer().getPluginManager().registerEvents(new BlockExplodeListener(this), this);
 
@@ -405,6 +414,7 @@ public class ShopChest extends JavaPlugin {
                     public void onResult(Integer result) {
                         publicCatalogue.start();
                         advertisingFeature.start();
+                        storefrontDisplayManager.start();
                         getLogger().info("Loaded " + result + " shops in already loaded chunks");
                         debug("Loaded " + result + " shops in already loaded chunks");
                     }
@@ -467,6 +477,12 @@ public class ShopChest extends JavaPlugin {
 
     public ShopCommand getShopCommand() {
         return shopCommand;
+    }
+
+    public void invalidateTradeConfirmations() {
+        if (shopInteractListener != null) {
+            shopInteractListener.invalidateTradeConfirmations();
+        }
     }
 
     /**
@@ -606,6 +622,10 @@ public class ShopChest extends JavaPlugin {
 
     public AdvertisingFeature getAdvertisingFeature() {
         return advertisingFeature;
+    }
+
+    public StorefrontDisplayManager getStorefrontDisplayManager() {
+        return storefrontDisplayManager;
     }
 
     /**

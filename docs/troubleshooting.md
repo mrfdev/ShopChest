@@ -62,7 +62,7 @@ Blue entity outlines or direction lines are normally the client's entity-hitbox 
 - A normal shop may lack stock, container space, or vendor funds.
 - The player may lack `shopchest.buy` or `shopchest.sell`.
 - A WorldGuard, PlotSquared, BentoBox, Towny, island, or claim rule may deny use.
-- When confirmation is enabled, repeat the click.
+- When confirmation is enabled, repeat the same click within 60 seconds. Changing direction, terms, product, or normal-versus-stack mode prompts again.
 
 ## Search or a Storefront Is Missing a Shop
 
@@ -79,11 +79,14 @@ search, advertising, and export; hiding only its text should leave eligible
 listings visible.
 
 `/shops search` takes an exact base material, not a fuzzy name. Use a key such
-as `stone_bricks` or `minecraft:stone_bricks`. A matching shop appears as a row
-only when an already-loaded container has at least one complete configured
-bundle of the exact ItemStack variant. Out-of-stock shops are counted below the
-results. Unloaded chunks are counted as unchecked, and unavailable records are
-omitted. No discovery command force-loads a chunk.
+as `stone_bricks` or `minecraft:stone_bricks`. A loaded matching shop is
+verified against its exact configured ItemStack variant and full bundle amount.
+A matching database-known shop in an unloaded chunk remains visible with
+`STOCK UNCHECKED`; its row confirms that the offer exists but does not claim
+that its unseen chest currently has stock. Visit the location to load the chunk
+and search again for a verified count. Confirmed out-of-stock shops are counted
+below the results, unavailable records are omitted, and no discovery command
+force-loads a chunk.
 
 The public catalogue warms up in bounded batches after startup or reload. If
 the command says it is warming, wait briefly and retry. Shop create/remove and
@@ -102,6 +105,60 @@ Use `/shops profile clear <field>` to remove one field. If players see that the
 text is hidden or the storefront is unavailable, trusted staff should inspect
 the moderation state and use `/shops admin storefront <player> show` or
 `unsuspend` only after review.
+
+## Storefront Display Is Missing or Cannot Be Placed
+
+Run `/shops profile display status` first. Placement requires the public
+catalogue to be ready, at least one eligible normal shop, an Ender Chest the
+player is allowed to interact with, and air directly above it. The 15-second
+selection accepts a right-click in the main hand. Another ShopChest selection
+must be finished first.
+
+Each owner has a hard limit of one Storefront Display, and each Ender Chest can
+anchor only one display. Remove the old record with
+`/shops profile display remove` before moving it. Trusted staff can use
+`/shops admin storefront <player> display remove` when the owner cannot.
+
+The anchor persists without force-loading its world or chunk. Its TextDisplay
+is intentionally absent while the chunk or world is unloaded, the storefront
+is suspended, or the block above is obstructed. It returns when the chunk loads,
+the storefront is unsuspended, or the obstruction is removed. If the Ender
+Chest itself was removed while the plugin was offline, loading that chunk
+cleans up the stale anchor and releases the player's allowance.
+
+The rotating End Crystal item is intentionally visible only inside
+`storefront-display.icon.view-distance`; orbit particles begin inside
+`storefront-display.particles.radius` and become denser closer to the chest.
+They can be adjusted independently from ordinary shop holograms while the
+server is running:
+
+```text
+/shops config set storefront-display.panel.width 260
+/shops config set storefront-display.panel.vertical-offset -0.15
+/shops config set storefront-display.interaction.enabled true
+/shops config set storefront-display.interaction.cooldown-milliseconds 3000
+/shops config set storefront-display.icon.vertical-offset -0.35
+/shops config set storefront-display.icon.height 2.55
+/shops config set storefront-display.icon.view-distance 24
+/shops config set storefront-display.particles.radius 8
+/shops config set storefront-display.particles.particle minecraft:dust
+/shops config set storefront-display.particles.color #42D6C7
+/shops config set storefront-display.particles.size 0.75
+/shops config set storefront-display.particles.count 6
+```
+
+Use `storefront-display.icon.enabled false` or
+`storefront-display.particles.enabled false` to disable either layer. Do not
+change the shared `hologram-panel-width` or `hologram-lift` to resize or move
+this special display. Use `panel.width` and the panel and icon
+`vertical-offset` settings above; negative offsets lower only the Storefront
+Display. Use `icon.height` when changing the gap between the panel and landmark.
+
+If the visible panel does not open a profile when right-clicked, confirm
+`storefront-display.interaction.enabled` is `true` and that the viewer has
+`shopchest.profile`. The invisible hitbox follows the panel's current width,
+scale, line count, vertical offset, chunk lifecycle, and suspension state. It
+does not require CMI or a separate hologram plugin.
 
 ## Advertising Purchase or Queue Problems
 

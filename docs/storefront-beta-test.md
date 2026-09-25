@@ -60,7 +60,9 @@ Verify the fields, shop counts, Customer-Buy stock, Customer-Sell capacity,
 four-row page size, coordinates, and clickable `/warp shops` link. Hover the
 item row, price line, and coordinates and confirm each names the same unique
 shop ID. Confirm that the coordinates themselves do not teleport the ordinary
-player. View the same profile by player name and UUID from the second account.
+player. From the second account, verify `/shops profile ` suggests only profile
+actions and `shopowner`, while `/shops profile shopowner ` suggests online
+player names. View the same profile by player name and UUID through that route.
 
 Create or locate an enchanted-book shop plus regular, splash, and lingering
 potion shops. In both profile shop pages and search results, hover each generic
@@ -123,7 +125,69 @@ As staff, test moderation:
 export. `clear` should remove text without deleting shop or Featured Listing
 records and should retain the current moderation flags.
 
-## 3. Exact Item Search
+## 3. Persistent Storefront Display
+
+As an eligible owner, place an Ender Chest with air above it and run:
+
+```text
+/shops profile display status
+/shops profile display create
+```
+
+Right-click a wrong block and confirm selection remains active, then right-click
+the Ender Chest. Verify the panel shows the profile name, owner, bounded profile
+text, live shop/selling/buying counts, and the profile command. Confirm the
+Ender Chest still opens as the player's ordinary personal Ender Chest, does not
+trade on either click, shows the configured rotating landmark item rather than
+a shop product, and does not change `/shops limits`. Confirm no live End Crystal
+entity exists and the landmark therefore cannot explode, take damage, or drop.
+Walk from outside the configured view distance toward the chest: the item
+should appear only nearby, and the soft aqua, player-local dust-particle orbit
+should begin at its smaller radius and become denser on approach. It
+should be easy to distinguish from the Ender Chest's native purple particles.
+
+Try to create a second display, use another player's occupied anchor, obstruct
+the block above, place in a protected location, start another ShopChest
+selection first, and let selection expire. Each path must fail without creating
+a record. Rapidly repeat `create` and verify the owner and anchor uniqueness
+constraints still leave only one display.
+
+Unload and reload the chunk, run `/shops reload`, and restart the server. The
+transient text entity should disappear while unloaded and be recreated once for
+the saved anchor afterward, together with exactly one transient landmark item.
+Change profile text and create or remove an eligible shop, then wait for the
+catalogue refresh and confirm the panel updates. Block and clear the space above
+it and confirm the panel, landmark, and particles follow the obstruction.
+
+Set an 80-character `advertisement` and confirm it wraps onto no more than two
+panel lines without the old early truncation. Change `storefront-display.panel.width`,
+`storefront-display.panel.vertical-offset`,
+`storefront-display.icon.vertical-offset`, icon height, material, scale,
+periods, view distance, particle type, color, size, radius, and count with
+`/shops config set`; each change should apply live without moving ordinary shop holograms.
+Disable the icon and particle layers separately and verify that no stale entity
+or effect remains. In a dense area, confirm each viewer receives particles from
+at most the six nearest active Storefront Displays.
+
+Right-click the title, middle, and footer areas of the panel and confirm each
+opens `/shops profile shopowner <owner>`. Rapidly click the same panel and
+alternate between multiple panels; only one profile load per player should be
+accepted within `storefront-display.interaction.cooldown-milliseconds`.
+Off-hand packets must not trigger a second load. Disable
+`storefront-display.interaction.enabled` live and confirm the invisible hitbox
+is removed, then enable it again. Unload the chunk and verify both the text and
+interaction entity disappear.
+
+Suspend and unsuspend the storefront. Suspension must hide the text while
+retaining the anchor; unsuspension restores it. Verify
+`/shops admin storefront <player> display remove` releases the owner's allowance.
+Place again, then break the Ender Chest through an otherwise permitted block
+break and confirm the record is cleaned up. Finally, use
+`/shops profile display remove` and confirm it removes only the display, leaving
+the Ender Chest, profile, Featured Listings, ordinary shops, and advertising
+state unchanged.
+
+## 4. Exact Item Search
 
 Run these equivalent searches:
 
@@ -140,11 +204,14 @@ The summary should mention the out-of-stock shop. It must not list the admin
 shop, customer-sell-only shop, suspended owner, or outside-region shop.
 
 Unload a candidate shop chunk and search again after the previous snapshot
-expires. It should contribute to the unchecked count without loading the chunk.
-Remove the complete configured bundle from one loaded shop and confirm it moves
-from the result rows to the out-of-stock count. Stock an item with the same
-material but different metadata and verify that it does not satisfy the exact
-configured variant.
+expires. It should remain on the result pages after all verified-stock rows,
+with a yellow `STOCK UNCHECKED` label and the registered-offer explanation,
+without loading the chunk. Visit its displayed location, search again, and
+confirm the row changes to a verified bundle count or moves to the out-of-stock
+count according to its chest contents. Remove the complete configured bundle
+from one loaded shop and confirm it moves from the result rows to the
+out-of-stock count. Stock an item with the same material but different metadata
+and verify that it does not satisfy the exact configured variant.
 
 Misspell a material, such as `/shops search stone_briks`, and confirm no fuzzy
 results appear. At most three clickable suggestions may be offered, and every
@@ -161,7 +228,7 @@ Temporarily set `storefront-discovery.location-scope` to `GLOBAL`, reload, and
 confirm the outside-region normal shop becomes discoverable but still does not
 give ordinary players a teleport action. Restore `MARKETPLACE` afterward.
 
-## 4. Exact Advertising Currency
+## 5. Exact Advertising Currency
 
 Prepare these inventory fixtures beside genuine tokens:
 
@@ -191,7 +258,7 @@ Run `/shops admin advertise currency clear` and confirm the template file is
 removed, status reports fail-closed state, and purchases consume nothing.
 Recapture the genuine token before continuing.
 
-## 5. Advertisement Preview and Queue
+## 6. Advertisement Preview and Queue
 
 With an active pass and restored Featured Listings, run:
 
@@ -223,7 +290,7 @@ it waits rather than spends a use. Restore stock and verify a later poll can
 broadcast it. Exercise request expiry on disposable data and verify the
 reservation returns.
 
-## 6. Website Snapshot Export
+## 7. Website Snapshot Export
 
 Run:
 
@@ -249,7 +316,7 @@ and build, and open the website page. Search by owner name, storefront name,
 item name, and material. The capture banner must stay prominent and explain
 that prices and stock may have changed.
 
-## 7. Restore Beta Defaults
+## 8. Restore Beta Defaults
 
 Before handing the test server back, restore:
 

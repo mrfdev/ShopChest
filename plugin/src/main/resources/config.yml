@@ -18,8 +18,8 @@ language-file: "en_US"
 # You can set this to an empty string ("") to disable this feature.
 shop-info-item: "STICK"
 
-# Set whether buys or sells need to be confirmed by the player
-# in order to prevent accidents.
+# Set whether buys or sells need a second matching click within 60 seconds.
+# Changing the direction, product, amount, price, or stack mode prompts again.
 confirm-shopping: false
 
 # Silently ignore additional buy or sell attempts from the same player during
@@ -103,19 +103,21 @@ only-show-shops-in-sight: true
 # but goes higher.
 hologram-fixed-bottom: true
 
-# Set the amount (may be negative) a hologram should be lifted in the y-axis.
+# Set the amount (may be negative) an ordinary shop hologram should be lifted
+# in the y-axis. Storefront Displays have independent vertical offsets below.
 # A value of '1' equals to one block, and a value of '0.25' is equal to the
 # height of one line.
 hologram-lift: 0.25
 
-# Set the maximum width of the complete hologram text panel in client font
-# pixels. Text that does not fit wraps inside the panel without overlapping
-# neighboring hologram lines. Valid values are clamped between 40 and 1024.
+# Set the maximum width of each ordinary shop hologram in client font pixels.
+# Text that does not fit wraps inside the panel without overlapping neighboring
+# lines. Storefront Ender Chests have their own width below. Valid values are
+# clamped between 40 and 1024.
 hologram-panel-width: 200
 
-# Set the visual scale of the complete TextDisplay panel. Lower values make
-# neighboring shop holograms easier to distinguish while scaling the text and
-# background together. Values are clamped between 0.50 and 1.25.
+# Set the visual scale of a shop's complete TextDisplay panel. Storefront
+# Displays use 80% of this value to keep their extra profile lines compact.
+# Values are clamped between 0.50 and 1.25.
 hologram-text-scale: 0.50
 
 # Set the TextDisplay panel background color and opacity. The opacity range is
@@ -133,8 +135,9 @@ hologram-text-shadowed: false
 hologram-text-see-through: false
 hologram-text-alignment: CENTER
 
-# Set the global text palette used by every shop hologram. Players cannot
-# override these colors. Each value must be a six-digit RGB hex color.
+# Set the global text palette used by shop holograms and Storefront Displays.
+# Players cannot override these colors. Each value must be a six-digit RGB hex
+# color.
 # Labels and values remain separate so the display is understandable without
 # relying on color alone.
 hologram-colors:
@@ -177,6 +180,42 @@ floating-icon-bob-amplitude: 0.06
 floating-icon-bob-period-seconds: 3.14
 floating-icon-rotation-enabled: true
 floating-icon-rotation-period-seconds: 6.28
+
+# Give each Ender Chest Storefront Display its own landmark treatment. This is
+# independent from ordinary shop holograms and product icons: a harmless
+# ItemDisplay holds the configured item above the profile panel, and nearby
+# players receive a configurable colored particle orbit. No End Crystal entity
+# is spawned. Negative vertical offsets lower only this special display.
+# Existing config files receive these defaults automatically on startup.
+storefront-display:
+  presentation-version: 3
+  panel:
+    # Wider than ordinary shop holograms so the 80-character advertisement can
+    # wrap across at most two readable lines before ShopChest ellipsizes it.
+    width: 260
+    vertical-offset: -0.15
+  interaction:
+    # A transient vanilla Interaction entity makes the text panel right-clickable.
+    # The enforced per-player cooldown is clamped between 1000 and 30000 ms.
+    enabled: true
+    cooldown-milliseconds: 3000
+  icon:
+    enabled: true
+    material: minecraft:end_crystal
+    vertical-offset: -0.35
+    height: 2.55
+    scale: 0.50
+    bob-amplitude: 0.08
+    bob-period-seconds: 3.5
+    rotation-period-seconds: 8.0
+    view-distance: 24.0
+  particles:
+    enabled: true
+    particle: minecraft:dust
+    color: "#42D6C7"
+    size: 0.75
+    radius: 8.0
+    count: 6
 
 # Set whether players should be allowed to buy or sell less items
 # than the vendor has specified, in case the player does not have enough

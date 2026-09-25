@@ -36,7 +36,37 @@ class ShopSearchPageReconcilerTest {
         assertEquals(1, reconciled.changedRows());
     }
 
+    @Test
+    void keepsAnUncheckedOfferVisibleUntilItCanBeVerified() {
+        final ResolvedMaterial material = new ResolvedMaterial(
+                Material.STONE_BRICKS, "minecraft:stone_bricks");
+        final PublicShopListing unchecked = listing(
+                3,
+                new ListingStock(ListingAvailability.UNCHECKED, 0, 0));
+        final ShopSearchPage page = ShopSearchSnapshot.capture(
+                material,
+                Instant.parse("2026-08-31T12:00:00Z"),
+                List.of(unchecked)).page(1);
+
+        final ReconciledSearchPage reconciled = ShopSearchPageReconciler.reconcile(
+                page,
+                Map.of(3, ListingStock.unchecked()));
+
+        assertEquals(List.of(3), reconciled.listings().stream()
+                .map(listing -> listing.candidate().shopId())
+                .toList());
+        assertEquals(ListingAvailability.UNCHECKED,
+                reconciled.listings().getFirst().stock().availability());
+        assertEquals(0, reconciled.changedRows());
+    }
+
     private static PublicShopListing listing(int shopId) {
+        return listing(
+                shopId,
+                new ListingStock(ListingAvailability.IN_STOCK, 32, 2));
+    }
+
+    private static PublicShopListing listing(int shopId, ListingStock stock) {
         return new PublicShopListing(
                 new PublicShopCandidate(
                         shopId,
@@ -47,6 +77,6 @@ class ShopSearchPageReconcilerTest {
                         PublicShopKind.NORMAL,
                         false),
                 new TestItemStack(Material.STONE_BRICKS, 1),
-                new ListingStock(ListingAvailability.IN_STOCK, 32, 2));
+                stock);
     }
 }

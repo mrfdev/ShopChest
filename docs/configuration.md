@@ -9,7 +9,7 @@ ShopChest creates `config.yml`, `hologram-format.yml`, and a `lang/` directory u
 | `main-command-name` | `shops` | Dynamic root command. Requires a restart to re-register after changing. |
 | `language-file` | `en_US` | Selects `messages-<locale>.lang` and `items-<locale>.lang`. |
 | `shop-info-item` | `STICK` | Clicking a shop with this item shows details; an empty value disables it. |
-| `confirm-shopping` | `false` | Requires a second click before a buy or sell. |
+| `confirm-shopping` | `false` | Requires a matching second click within 60 seconds. Direction, product, amount, price, and normal-versus-stack mode must remain unchanged. |
 | `trade-interaction-cooldown-milliseconds` | `250` | Silently limits each player to one shop trade attempt per interval before permission, inventory, economy, or database work. Values are clamped from `0` (disabled) through `5000`. |
 | `offline-revenue-notification-delay-seconds` | `3` | Waits after loading a joining player's offline shop revenue before showing the summary, leaving room for welcome/MOTD messages. Values are clamped from `0` (immediate) through `30`. |
 | `creative-select-item` | `true` | Lets a creator select a product from the creative inventory when no item is held. |
@@ -31,12 +31,12 @@ prices with CMI's loaded `/sell` worth. The check is advisory: it does not
 change a price or prevent the shop from being created. Admin shops and products
 without a positive CMI worth are skipped silently.
 
-| Key under `cmi-worth-price-warning` | Default | Behavior |
+| Key | Default | Behavior |
 | --- | --- | --- |
-| `enabled` | `true` | Enables the optional CMI comparison when CMI and its worth API are available. |
-| `warn-resale-risk` | `true` | Warns whenever a customer could buy an item below its CMI `/sell` worth and immediately resell it for profit. |
-| `low-multiplier` | `0.50` | Warns when the shop's per-item payout is below this fraction of CMI worth. Clamped from `0.01` through `1.00`. |
-| `high-multiplier` | `20.00` | Warns when either per-item price is above this multiple of CMI worth. Clamped from `1.00` through `10000.00`. |
+| `cmi-worth-price-warning.enabled` | `true` | Enables the optional CMI comparison when CMI and its worth API are available. |
+| `cmi-worth-price-warning.warn-resale-risk` | `true` | Warns whenever a customer could buy an item below its CMI `/sell` worth and immediately resell it for profit. |
+| `cmi-worth-price-warning.low-multiplier` | `0.50` | Warns when the shop's per-item payout is below this fraction of CMI worth. Clamped from `0.01` through `1.00`. |
+| `cmi-worth-price-warning.high-multiplier` | `20.00` | Warns when either per-item price is above this multiple of CMI worth. Clamped from `1.00` through `10000.00`. |
 
 The comparison runs only after the proposed shop passes normal validation. It
 uses CMI's in-memory `WorthManager`, makes one metadata-aware lookup for the
@@ -51,13 +51,13 @@ Storefront profiles, in-game search, advertising eligibility, and catalogue
 exports read a separate public projection of normal shop records. Discovery
 never changes a shop and never force-loads a chunk.
 
-| Key under `storefront-discovery` | Default | Behavior |
+| Key | Default | Behavior |
 | --- | --- | --- |
-| `location-scope` | `MARKETPLACE` | `MARKETPLACE` includes only the named world and WorldGuard region. `GLOBAL` includes eligible normal shops in every loaded world. Any other value is treated conservatively as marketplace-only. |
-| `marketplace-world` | `general` | Exact world name for `/warp shops` marketplace discovery. |
-| `marketplace-region` | `shops` | Exact WorldGuard region ID for the marketplace. |
-| `search-cooldown-milliseconds` | `1500` | Minimum interval before one sender starts a new material search. Clamped from `0` through `10000`. Paging through a still-valid result does not rebuild it. |
-| `snapshot-seconds` | `30` | Time one viewer's immutable search result remains available for stable pagination. Clamped from `5` through `300`. |
+| `storefront-discovery.location-scope` | `MARKETPLACE` | `MARKETPLACE` includes only the named world and WorldGuard region. `GLOBAL` includes eligible normal shops in every loaded world. Any other value is treated conservatively as marketplace-only. |
+| `storefront-discovery.marketplace-world` | `general` | Exact world name for `/warp shops` marketplace discovery. |
+| `storefront-discovery.marketplace-region` | `shops` | Exact WorldGuard region ID for the marketplace. |
+| `storefront-discovery.search-cooldown-milliseconds` | `1500` | Minimum interval before one sender starts a new material search. Clamped from `0` through `10000`. Paging through a still-valid result does not rebuild it. |
+| `storefront-discovery.snapshot-seconds` | `30` | Time one viewer's immutable search result remains available for stable pagination. Clamped from `5` through `300`. |
 
 `MARKETPLACE` is the recommended public default. It fails closed if WorldGuard
 is unavailable, the named world is unavailable, the region lookup fails, or a
@@ -84,18 +84,18 @@ not a configurable material or display name; an administrator captures the
 complete genuine AFK Shrine Token ItemStack separately in
 `plugins/ShopChest/advertising-currency.yml`.
 
-| Key under `advertising` | Default | Behavior |
+| Key | Default | Behavior |
 | --- | --- | --- |
-| `enabled` | `true` | Enables pass purchase, preview, queue processing, and broadcast. Currency capture/status remain staff setup actions. |
-| `token-cost` | `5` | Exact matching AFK Shrine Tokens consumed for one pass. Clamped from `1` through `64`. |
-| `pass-days` | `7` | Pass lifetime from successful issuance. Clamped from `1` through `90`. Passes do not stack. |
-| `broadcasts-per-pass` | `3` | Successful broadcasts included in one pass. Clamped from `1` through `30`. A queued request reserves one until it broadcasts or closes. |
-| `owner-cooldown-hours` | `24` | Minimum delay after one owner's successful broadcast. Clamped from `1` through `168`. |
-| `global-cooldown-minutes` | `30` | Minimum interval between any two successful ShopChest advertisements. Clamped from `1` through `1440`. |
-| `minimum-online-players` | `6` | Minimum number of logged-in players required at dispatch. A valid request stays queued without spending its reserved broadcast while fewer players are online. Clamped from `1` through `1000`. |
-| `request-ttl-hours` | `48` | Maximum age of a queued request before it is closed and its reservation returned. Clamped from `1` through `168`. |
-| `poll-seconds` | `15` | How often the durable queue checks for the next globally and owner-eligible request. Clamped from `5` through `300`. |
-| `sound` | `minecraft:block.amethyst_block.chime` | Namespaced sound played locally to each online recipient. An invalid or unavailable key disables only the sound for that broadcast. |
+| `advertising.enabled` | `true` | Enables pass purchase, preview, queue processing, and broadcast. Currency capture/status remain staff setup actions. |
+| `advertising.token-cost` | `5` | Exact matching AFK Shrine Tokens consumed for one pass. Clamped from `1` through `64`. |
+| `advertising.pass-days` | `7` | Pass lifetime from successful issuance. Clamped from `1` through `90`. Passes do not stack. |
+| `advertising.broadcasts-per-pass` | `3` | Successful broadcasts included in one pass. Clamped from `1` through `30`. A queued request reserves one until it broadcasts or closes. |
+| `advertising.owner-cooldown-hours` | `24` | Minimum delay after one owner's successful broadcast. Clamped from `1` through `168`. |
+| `advertising.global-cooldown-minutes` | `30` | Minimum interval between any two successful ShopChest advertisements. Clamped from `1` through `1440`. |
+| `advertising.minimum-online-players` | `6` | Minimum number of logged-in players required at dispatch. A valid request stays queued without spending its reserved broadcast while fewer players are online. Clamped from `1` through `1000`. |
+| `advertising.request-ttl-hours` | `48` | Maximum age of a queued request before it is closed and its reservation returned. Clamped from `1` through `168`. |
+| `advertising.poll-seconds` | `15` | How often the durable queue checks for the next globally and owner-eligible request. Clamped from `5` through `300`. |
+| `advertising.sound` | `minecraft:block.amethyst_block.chime` | Namespaced sound played locally to each online recipient. An invalid or unavailable key disables only the sound for that broadcast. |
 
 The queue is first-in, first-out among eligible requests, stores at most one
 open request per owner, has a fixed safety cap of 100 open requests, and
@@ -131,14 +131,14 @@ Completed and failed trade attempts use separate, container-local effects. Both 
 sound and particles are sent only to the player making the attempt, so nearby
 players do not receive noise or effects from unrelated shops.
 
-| Key suffix under `trade-feedback.success` / `trade-feedback.failure` | Success default | Failure default | Behavior |
-| --- | --- | --- | --- |
-| `enabled` | `true` | `true` | Enables the complete outcome effect. |
-| `sound` | `minecraft:entity.experience_orb.pickup` | `minecraft:block.note_block.bass` | Namespaced sound event; use `none` to disable sound. |
-| `volume` | `0.45` | `0.35` | Player-local sound volume, clamped from `0` through `2`. |
-| `pitch` | `1.20` | `0.70` | Sound pitch, clamped from `0.50` through `2`. |
-| `particle` | `minecraft:happy_villager` | `minecraft:smoke` | Data-free namespaced particle; use `none` to disable particles. |
-| `particle-count` | `4` | `3` | Particles emitted immediately above the container, clamped from `0` through `16`. |
+| Success key | Failure key | Success default | Failure default | Behavior |
+| --- | --- | --- | --- | --- |
+| `trade-feedback.success.enabled` | `trade-feedback.failure.enabled` | `true` | `true` | Enables the complete outcome effect. |
+| `trade-feedback.success.sound` | `trade-feedback.failure.sound` | `minecraft:entity.experience_orb.pickup` | `minecraft:block.note_block.bass` | Namespaced sound event; use `none` to disable sound. |
+| `trade-feedback.success.volume` | `trade-feedback.failure.volume` | `0.45` | `0.35` | Player-local sound volume, clamped from `0` through `2`. |
+| `trade-feedback.success.pitch` | `trade-feedback.failure.pitch` | `1.20` | `0.70` | Sound pitch, clamped from `0.50` through `2`. |
+| `trade-feedback.success.particle` | `trade-feedback.failure.particle` | `minecraft:happy_villager` | `minecraft:smoke` | Data-free namespaced particle; use `none` to disable particles. |
+| `trade-feedback.success.particle-count` | `trade-feedback.failure.particle-count` | `4` | `3` | Particles emitted immediately above the container, clamped from `0` through `16`. |
 
 These settings reload immediately through `/shops config set`, for example
 `/shops config set trade-feedback.failure.enabled false`. Confirmation prompts
@@ -152,8 +152,8 @@ by the built-in config migration are added to existing files automatically.
 | --- | --- | --- |
 | `only-show-shops-in-sight` | `true` | Shows only the shop being targeted instead of all nearby shop holograms. |
 | `hologram-fixed-bottom` | `true` | Anchors the bottom line so extra lines grow upward. |
-| `hologram-lift` | `0.25` | Vertical hologram offset in blocks; updates loaded holograms live through `/shops config set hologram-lift <value>`. |
-| `hologram-panel-width` | `200` | Maximum width of the unified TextDisplay panel in client font pixels. Text wraps inside the panel. Values are clamped from `40` through `1024`. |
+| `hologram-lift` | `0.25` | Vertical offset for ordinary shop holograms in blocks; updates loaded shop holograms live through `/shops config set hologram-lift <value>`. Storefront Displays use their dedicated offsets below. |
+| `hologram-panel-width` | `200` | Maximum width of an ordinary shop's unified TextDisplay panel in client font pixels. Text wraps inside the panel. Values are clamped from `40` through `1024`; Storefront Ender Chests use their dedicated width below. |
 | `hologram-text-scale` | `0.50` | Uniform size of the TextDisplay text and background. Values are clamped from `0.50` through `1.25`, and loaded holograms update immediately. |
 | `hologram-background-color` | `#315B7D` | Six-digit hex color used for the unified panel background. The default is a muted, readable blue. |
 | `hologram-background-opacity` | `112` | Panel background alpha from `0` (transparent) through `255` (opaque). |
@@ -192,6 +192,53 @@ Every display setting in this table can be changed while the server is running
 with `/shops config set <key> <value>`. Text panels, icon locations, and icon
 animations refresh in place; no shop reload, entity recreation, or server
 restart is required. Boolean values and text alignment provide tab completion.
+
+Storefront Displays have their own panel width and reuse the shared background,
+opacity, shadow, see-through, alignment, and semantic color palette rather than
+adding a player-controlled theme. Their vertical placement is independent from
+`hologram-lift`, their profile panel uses 80 percent of `hologram-text-scale`,
+and it always faces the viewer. Their dedicated landmark is not an ordinary
+shop product icon and is not governed by the ordinary shop sight-selection
+radius.
+
+### Storefront Display Landmark
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `storefront-display.presentation-version` | `3` | Internal one-time presentation migration marker. ShopChest manages this value; administrators should not change it manually. |
+| `storefront-display.panel.width` | `260` | Ender Chest-only panel width in client font pixels, clamped from `120` through `512`. The advertisement wraps across at most two manually bounded lines before ellipsizing, without widening ordinary shop holograms. |
+| `storefront-display.panel.vertical-offset` | `-0.15` | Ender Chest-only text-panel adjustment, clamped from `-1.0` through `1.0` blocks. Negative values lower it without moving ordinary shop holograms. |
+| `storefront-display.interaction.enabled` | `true` | Adds a transient vanilla `Interaction` hitbox over the Storefront panel. Right-clicking it opens `/shops profile shopowner <owner>` and still requires `shopchest.profile`. |
+| `storefront-display.interaction.cooldown-milliseconds` | `3000` | Enforced per-player delay between Storefront panel activations, clamped from `1000` through `30000`. Rejected rapid clicks are silent and do not query profile or shop data. |
+| `storefront-display.icon.enabled` | `true` | Shows a transient landmark `ItemDisplay` above each active Storefront Display. |
+| `storefront-display.icon.material` | `minecraft:end_crystal` | Item held by the landmark display. It must resolve to an item material; ShopChest never spawns a live End Crystal entity. |
+| `storefront-display.icon.vertical-offset` | `-0.35` | Ender Chest-only landmark adjustment, clamped from `-1.0` through `1.0` blocks. Negative values lower it independently from both the panel and ordinary shop icons. |
+| `storefront-display.icon.height` | `2.55` | Base landmark center above the Ender Chest block, clamped from `1.25` through `4.50` blocks before its dedicated vertical offset is applied. |
+| `storefront-display.icon.scale` | `0.50` | Uniform item size, clamped from `0.10` through `1.50`. |
+| `storefront-display.icon.bob-amplitude` | `0.08` | Maximum vertical travel, clamped from `0` through `0.35` blocks. Use `0` to disable bobbing. |
+| `storefront-display.icon.bob-period-seconds` | `3.5` | Seconds per complete bob cycle, clamped from `0.50` through `30`. |
+| `storefront-display.icon.rotation-period-seconds` | `8.0` | Seconds per complete rotation, clamped from `0.50` through `120`. |
+| `storefront-display.icon.view-distance` | `24.0` | Per-player landmark visibility radius, clamped from `2` through `64` blocks. |
+| `storefront-display.particles.enabled` | `true` | Enables the player-local particle orbit near active displays. |
+| `storefront-display.particles.particle` | `minecraft:dust` | Particle used for the orbit. `dust`, any data-free particle, and `none` are accepted. Colored dust avoids the Ender Chest's native purple effect without the white bloom of End Rod particles. |
+| `storefront-display.particles.color` | `#42D6C7` | Aqua RGB color used when the selected particle is `minecraft:dust`. Six hexadecimal digits are accepted with or without `#`. |
+| `storefront-display.particles.size` | `0.75` | Dust-particle size, clamped from `0.25` through `2.0`. It has no effect on data-free particle types. |
+| `storefront-display.particles.radius` | `8.0` | Radius where the orbit begins, clamped from `1` through `16` blocks. |
+| `storefront-display.particles.count` | `6` | Maximum particles per half-second effect update, clamped from `0` through `8`; density increases as the viewer approaches. |
+
+These settings are independent from `floating-icon-*` and can also be changed
+live with `/shops config set <key> <value>`. The click hitbox is sized from the
+current Storefront panel width, scale, and rendered line count. It is removed
+alongside the text whenever the display is inactive or its chunk unloads. The
+landmark is only sent within
+its configured view distance, and its animation is updated only while it has a
+viewer. Particles are emitted only to the approaching player. ShopChest limits
+each player to the six nearest particle-emitting Storefront Displays per update
+so a dense marketplace remains bounded. Unloaded chunks have no transient
+landmark entities or effects and are never force-loaded. Existing installations
+still using either earlier default particle are migrated once to aqua `dust`
+with count `6`, and the previous `-0.35` panel default is raised to `-0.15`.
+Values differing from those earlier defaults are preserved.
 
 ### Item Name Localization
 
@@ -237,16 +284,47 @@ remote update requests.
 
 ## Protection Integrations
 
-The `enable-*-integration` flags control WorldGuard, Towny, AuthMe, PlotSquared, uSkyBlock, ASkyBlock, BentoBox, IslandWorld, GriefPrevention, and AreaShop hooks. Integrations and custom flags are registered during startup, so restart after changing these values or the installed plugin set. Marketplace-scoped public discovery additionally requires the WorldGuard hook to be active and the configured region to exist.
+Each optional protection hook has an explicit startup setting:
 
-`worldguard-default-flag-values` sets defaults for `create-shop`, `use-shop`, and `use-admin-shop`. `towny-shop-plots` lists allowed plot types by resident, mayor, and king roles. `areashop-remove-shops` selects the AreaShop lifecycle events that remove shops; valid values are `DELETE`, `UNRENT`, `RESELL`, and `SELL`.
+- `enable-worldguard-integration`
+- `enable-towny-integration`
+- `enable-authme-integration`
+- `enable-plotsquared-integration`
+- `enable-uskyblock-integration`
+- `enable-askyblock-integration`
+- `enable-bentobox-integration`
+- `enable-islandworld-integration`
+- `enable-griefprevention-integration`
+- `enable-areashop-integration`
+
+Integrations and custom flags are registered during startup, so restart after
+changing these values or the installed plugin set. Marketplace-scoped public
+discovery additionally requires the WorldGuard hook to be active and the
+configured region to exist.
+
+`worldguard-default-flag-values.create-shop`,
+`worldguard-default-flag-values.use-shop`, and
+`worldguard-default-flag-values.use-admin-shop` set the three WorldGuard flag
+defaults. `towny-shop-plots.residents`, `towny-shop-plots.mayor`, and
+`towny-shop-plots.king` list allowed plot types by role.
+`areashop-remove-shops` selects the AreaShop lifecycle events that remove
+shops; valid values are `DELETE`, `UNRENT`, `RESELL`, and `SELL`.
 
 ## Database
 
-`database.type` accepts exactly `SQLite` or `MySQL`. `database.table-prefix` defaults to `shopchest_` and may contain only letters, numbers, dashes, and underscores. SQLite stores its file in the plugin data folder. MySQL requires `hostname`, `port`, `database`, `username`, and `password`; `ping-interval` defaults to 3600 seconds and `0` disables keepalive pings.
+`database.type` accepts exactly `SQLite` or `MySQL`.
+`database.table-prefix` defaults to `shopchest_` and may contain only letters,
+numbers, dashes, and underscores. SQLite stores its file in the plugin data
+folder. MySQL uses `database.mysql.hostname`, `database.mysql.port`,
+`database.mysql.database`, `database.mysql.username`, and
+`database.mysql.password`; `database.mysql.ping-interval` defaults to `3600`
+seconds and `0` disables keepalive pings. Keep database credentials private.
 
-Storefront Profiles and ordered Featured Listings use dedicated prefixed tables
-instead of adding player-written text to the authoritative shop rows.
+Storefront Profiles, ordered Featured Listings, and Storefront Display anchors
+use dedicated prefixed tables instead of adding player-written text or Ender
+Chest coordinates to the authoritative shop rows. The display table has a
+unique owner key and a unique world/block key, enforcing one display per player
+and preventing two displays from sharing an anchor.
 Advertising Passes, requests, and the global dispatch cooldown likewise use
 separate durable tables. This separation lets discovery/presentation features
 be moderated, rebuilt, or disabled without rewriting shop products, prices,
@@ -256,7 +334,7 @@ Database selection, connection details, and table prefix should be changed only 
 
 ## Reload Versus Restart
 
-`/shops reload` reloads normal configuration values, language files, the hologram format, CMI worth-price thresholds, storefront discovery policy, advertising terms and queue poller, shop visibility tasks, database connection, and shops in loaded chunks. The captured advertising ItemStack is loaded from its dedicated file rather than reconstructed from configuration. Use a full restart for `main-command-name`, database backend changes, debug-file creation, integration registration, or plugin dependency changes. Display and positioning settings changed through `/shops config set` refresh loaded holograms immediately, including any `hologram-colors.*` value.
+`/shops reload` reloads normal configuration values, language files, the hologram format, CMI worth-price thresholds, storefront discovery policy, Storefront Display anchors, advertising terms and queue poller, shop visibility tasks, database connection, and shops in loaded chunks. The captured advertising ItemStack is loaded from its dedicated file rather than reconstructed from configuration. Use a full restart for `main-command-name`, database backend changes, debug-file creation, integration registration, or plugin dependency changes. Display and positioning settings changed through `/shops config set` refresh loaded shop holograms and Storefront Displays immediately, including any `hologram-colors.*` value.
 
 `/shops admin debug` is independent of `enable-debug-log`. It collects a
 bounded, privacy-conscious runtime snapshot on demand, while the debug log is a

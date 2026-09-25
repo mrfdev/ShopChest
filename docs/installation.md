@@ -15,10 +15,11 @@
 
 ShopChest's own classes target Java 25 bytecode for the supported Paper server.
 
-> **Snapshot warning:** `1.15.3-SNAPSHOT` is an untested beta rollback
-> checkpoint, not a production release. Complete the
-> [storefront beta checklist](storefront-beta-test.md) and test-server smoke
-> checks before deploying it.
+> **Snapshot warning:** `1.15.3-SNAPSHOT` is a pre-live beta checkpoint, not a
+> production release. Complete the
+> [storefront beta checklist](storefront-beta-test.md), the
+> [release-readiness checklist](release-readiness.md), and the controlled
+> test-server checks before deploying it.
 
 ## Fresh Installation
 
@@ -39,6 +40,11 @@ ShopChest's own classes target Java 25 bytecode for the supported Paper server.
 ShopChest disables itself when Vault, an economy provider, or database access
 is unavailable.
 
+No manual database creation or storefront schema upgrade is required. On a
+clean start, ShopChest creates its own shop, profile, display, and advertising
+tables; on an update, it applies the supported legacy migrations before the
+plugin becomes available. A backup is still required before every rollout.
+
 ## Updating
 
 1. Stop the server; do not hot-swap or plugin-reload the jar.
@@ -52,7 +58,9 @@ is unavailable.
 6. Run `/shops admin advertise currency status`. Recapture only when the
    authoritative token intentionally changed or the template is absent.
 
-Legacy database migrations create backup tables before converting old unprefixed shop and economy-log schemas. They do not migrate data between database engines.
+Legacy database migrations create backup tables before converting old
+unprefixed shop and economy-log schemas. They do not migrate data between
+database engines.
 
 ## Build From Source
 

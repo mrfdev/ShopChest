@@ -25,11 +25,11 @@ Player-facing documentation is published at
 | Required plugins | Vault and a Vault-compatible economy provider |
 | Optional price advisory | CMI |
 | Plugin version | 1.15.3-SNAPSHOT |
-| Release status | Beta snapshot, untested |
+| Release status | Pre-live beta snapshot |
 
-`1.15.3-SNAPSHOT` is a rollback checkpoint, not a production release. Automated
-verification does not replace the live-server beta checklist and smoke tests,
-which have not yet been completed for this snapshot.
+`1.15.3-SNAPSHOT` is a pre-live beta checkpoint, not a production release.
+Automated tests and local Paper smoke tests do not replace the complete
+live-server beta checklist, approval, backup, and controlled rollout.
 
 The exact compile target is declared in
 [`plugin/build.gradle.kts`](plugin/build.gradle.kts). The deployable jar uses
@@ -86,9 +86,15 @@ tests, test-server startup, and focused shop testing pass.
   and one-click Featured Listing controls
 - Separate public Storefront Profiles with safe plain-text name, advertisement,
   description, location hint, and up to three ordered Featured Listings
-- Exact base-material `/shops search` with in-stock-only results, four-row
-  pagination, out-of-stock/unchecked totals, owner interleaving, and no forced
-  chunk loads
+- One persistent Storefront Display per owner, anchored to a non-tradable Ender
+  Chest and rebuilt from live profile and public-shop data across chunk loads,
+  with an independently sized and positioned panel whose advertisement wraps
+  across two lines, a right-click target that opens the owner's profile with an
+  enforced per-player cooldown, a rotating End Crystal item, and a proximity-only
+  orbit of configurable aqua dust particles
+- Exact base-material `/shops search` with verified in-stock results followed by
+  visibly distinct database-known offers from unloaded chunks, four-row
+  pagination, out-of-stock totals, owner interleaving, and no forced chunk loads
 - Durable AFK Shrine Token Advertising Passes with exact captured-ItemStack
   currency matching, one-use purchase confirmation, owner/global cooldowns,
   a configurable six-player audience minimum, FIFO queueing, and
@@ -136,8 +142,14 @@ an economy provider, or its configured database is unavailable.
 4. Start the server and confirm that ShopChest enables without an exception.
 5. Review `plugins/ShopChest/config.yml` and
    `plugins/ShopChest/hologram-format.yml`.
-6. Run `/shops info`, `/shops limits`, and a controlled create, buy, and sell
-   test before opening the server to players.
+6. With the default `MARKETPLACE` discovery scope, verify that WorldGuard has
+   the configured world and region.
+7. Capture and verify one genuine AFK Shrine Token with
+   `/shops admin advertise currency capture` and
+   `/shops admin advertise currency status`; capture does not consume it.
+8. Run `/shops info`, `/shops limits`, and controlled shop, profile, display,
+   search, advertising, buy, and sell tests before opening the server to
+   players.
 
 Do not hot-swap ShopChest or use a plugin manager to reload its jar. Use a clean
 server stop and start.
@@ -148,16 +160,19 @@ server stop and start.
 2. Back up the complete `plugins/ShopChest/` directory. For MySQL, also back up
    the configured ShopChest tables.
 3. Replace the old jar and keep exactly one ShopChest jar in `plugins/`.
-4. Preserve `config.yml`, `hologram-format.yml`, language files, and database
-   data.
+4. Preserve `config.yml`, `hologram-format.yml`, language files,
+   `advertising-currency.yml`, and database data.
 5. Start the server, watch the migration and enable messages, then test
-   `/shops info`, `/shops reload`, existing displays, shop creation, and both
-   trade directions.
+   `/shops info`, `/shops reload`, existing displays, shop creation, both trade
+   directions, storefront profiles, search, advertising status, and queue
+   cancellation.
 
 Modern display, feedback, cooldown, palette, and CMI advisory settings managed
 by the built-in config migration are added without overwriting existing values.
 Review newly added settings after an update. Database migrations can create
-backup tables, but do not migrate data between SQLite and MySQL.
+backup tables, but do not migrate data between SQLite and MySQL. ShopChest
+creates its profile, display, and advertising tables automatically; there is no
+manual schema command to run.
 
 ## Player Quick Start
 
@@ -205,6 +220,7 @@ Useful player commands:
 /shops recent
 /shops search stone_bricks
 /shops profile
+/shops profile display create
 /shops advertise
 /shops inspect
 /shops open
@@ -230,10 +246,13 @@ requires a clean server restart.
 | `/shops limits` | Shows used slots and the effective normal-shop limit. | None |
 | `/shops list [page]` | Lists owned shops with whole-list health counts. Hover rows for prices, stock, type, world, and coordinates. | None |
 | `/shops recent [page]` | Shows recorded purchases, sales, shop income, spending, and net change. | `shopchest.recent` |
-| `/shops search <item> [page]` | Lists four in-stock normal player shops selling the exact base material per page. | `shopchest.search` |
-| `/shops profile [player\|uuid] [shops [page]]` | Shows public Storefront Profile text, summary, and paginated listings. | `shopchest.profile` |
+| `/shops search <item> [page]` | Lists four normal player offers for the exact base material per page; unloaded shops remain visible with stock explicitly marked unchecked. | `shopchest.search` |
+| `/shops profile [shops [page]]` | Shows your own public Storefront Profile or paginated listings. | `shopchest.profile` |
+| `/shops profile shopowner <player\|uuid> [shops [page]]` | Shows another shop owner's public Storefront Profile or paginated listings. Player names are suggested only after `shopowner`. | `shopchest.profile` |
 | `/shops profile set <name\|advertisement\|description\|location> <text>` | Sets one safe plain-text storefront field. | `shopchest.profile` |
+| `/shops profile clear <field>` | Clears one storefront field without changing shops or the remaining profile. | `shopchest.profile` |
 | `/shops profile featured <add\|remove> <shop-id>` | Manages up to three ordered Featured Listings; `featured clear` removes all. | `shopchest.profile` |
+| `/shops profile display <create\|remove\|status>` | Manages the player's one persistent Ender Chest-anchored Storefront Display. | `shopchest.profile` |
 | `/shops advertise [pass\|status\|cancel]` | Previews or manages an exact-token Advertising Pass and durable queued request. | `shopchest.advertise` |
 | `/shops inspect` | Immediately inspects the shop in sight; otherwise starts a 15-second selection. Owners and staff see its unique ID. | None |
 | `/shops info shop` | Compatibility alias for `/shops inspect`. | None |
@@ -249,6 +268,7 @@ requires a clean server restart.
 | `/shops admin list <player> [page]` | Lists a player's shops. In-game rows can teleport authorized staff. | `shopchest.admin.list` |
 | `/shops admin audit [player\|all] [page]` | Runs a paginated dry-run maintenance audit over all shops or one player UUID or cached name. | `shopchest.admin.audit` |
 | `/shops admin storefront <player> <hide\|show\|suspend\|unsuspend\|clear>` | Moderates storefront text or public discovery independently from shop records. | `shopchest.admin.storefront` |
+| `/shops admin storefront <player> display remove` | Removes a persistent Storefront Display without changing the Ender Chest, profile, or shops. | `shopchest.admin.storefront` |
 | `/shops admin advertise currency <status\|capture\|clear>` | Manages the authoritative AFK Shrine Token ItemStack template; no template means purchases fail closed. | `shopchest.admin.advertise` |
 | `/shops admin export marketplace` | Writes a review-only public marketplace JSON/CSV snapshot without publishing it. | `shopchest.admin.export` |
 | `/shops debug [status]` | Generates a copyable platform, dependency, database, config, translation, and shop-state report. | `shopchest.admin.debug` |
@@ -272,13 +292,16 @@ requires a clean server restart.
 # Customer-sell-only shop
 /shops create 64 0 25
 
-# Find live in-stock sellers of an exact base material
+# Find registered offers, with currently verified stock shown first
 /shops search stone_bricks
 
 # Set and preview a public Storefront Profile
 /shops profile set name JahLion's special gear shop!
 /shops profile set advertisement Need protection? I sell OP armor and weapons
 /shops profile
+
+# Place the one persistent Storefront Display, then right-click an Ender Chest
+/shops profile display create
 
 # Choose the first advertised product, then preview the ad dashboard
 /shops profile featured add 123
@@ -342,14 +365,14 @@ means granted to server operators by default.
 | `shopchest.extend.protected` | `op` | Extends a shop into a protected location. |
 | `shopchest.external.bypass` | `op` | Bypasses an integrated claim, region, plot, or island denial. |
 | `shopchest.recent` | `true` | Views the player's recorded transaction history. |
-| `shopchest.profile` | `true` | Creates, edits, and views public storefront profiles and Featured Listings. |
-| `shopchest.search` | `true` | Searches scoped in-stock player shops by exact base material. |
+| `shopchest.profile` | `true` | Creates, edits, and views public storefront profiles, Featured Listings, and the player's one Storefront Display. |
+| `shopchest.search` | `true` | Searches scoped player shop offers by exact base material, including clearly marked unloaded shops with unchecked stock. |
 | `shopchest.advertise` | `true` | Purchases a pass and previews, queues, checks, or cancels a storefront advertisement. |
 | `shopchest.admin` | `op` | Parent permission for ShopChest administration. |
 | `shopchest.admin.list` | `op` | Lists another player's shops and teleports to an authorized listed shop. |
 | `shopchest.admin.audit` | `op` | Runs a read-only maintenance audit without loading shop chunks. Output includes owner UUIDs, world names, and exact coordinates. |
 | `shopchest.admin.debug` | `op` | Uses `/shops debug` for support status and metadata catalogs. |
-| `shopchest.admin.storefront` | `op` | Moderates public storefront text and suspension state. |
+| `shopchest.admin.storefront` | `op` | Moderates public storefront data and removes persistent Storefront Displays without changing shop records. |
 | `shopchest.admin.advertise` | `op` | Captures, checks, or clears the exact advertising currency template. |
 | `shopchest.admin.export` | `op` | Creates review-only public marketplace snapshot files. |
 | `shopchest.limit.*` | `op` | Removes the normal-shop limit. |
@@ -616,11 +639,18 @@ placeholders. Its display entities are Paper display entities, not players.
 - [Integrations](docs/integrations.md)
 - [Marketplace snapshot export](docs/marketplace-snapshot.md)
 - [Storefront beta test checklist](docs/storefront-beta-test.md)
+- [Release readiness and documentation freeze](docs/release-readiness.md)
 - [Troubleshooting](docs/troubleshooting.md)
 
 The source documentation in this repository is imported into the central
 1MoreBlock documentation site. This repository does not build or force-push
 that public site.
+
+`./gradlew :plugin:verifyDocumentation` checks every shipped configuration
+leaf key, every declared permission and default, the canonical external
+Storefront Profile route, imported manifest references, and local Markdown
+links. The task is also part of `check`, so documentation drift blocks a future
+release build.
 
 ## License, Credits, and Support
 

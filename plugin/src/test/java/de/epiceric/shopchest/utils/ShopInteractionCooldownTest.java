@@ -40,5 +40,8 @@ class ShopInteractionCooldownTest {
 
         cooldown.clear(playerId);
         assertTrue(cooldown.tryAcquire(playerId, 250));
+
+        cooldown.clearAll();
+        assertTrue(cooldown.tryAcquire(playerId, 250));
     }
 }

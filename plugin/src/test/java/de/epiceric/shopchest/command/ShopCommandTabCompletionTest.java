@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 
 class ShopCommandTabCompletionTest {
@@ -49,6 +50,21 @@ class ShopCommandTabCompletionTest {
         assertEquals(
                 List.of(),
                 ShopCommand.rootTabCompletions(ROOT_COMMANDS, new String[]{"profile", ""}));
+    }
+
+    @Test
+    void separatesProfileActionsFromShopOwnerNames() {
+        final List<String> profileActions =
+                ShopTabCompleter.profileSubcommandCompletions("");
+
+        assertEquals(
+                List.of("set", "clear", "featured", "display", "shops", "shopowner"),
+                profileActions);
+        assertFalse(profileActions.contains("JahLion"));
+        assertEquals(
+                List.of("JahLion"),
+                ShopTabCompleter.profileShopOwnerCompletions(
+                        List.of("JahLion", "mrfloris"), "jahl"));
     }
 
     @Test

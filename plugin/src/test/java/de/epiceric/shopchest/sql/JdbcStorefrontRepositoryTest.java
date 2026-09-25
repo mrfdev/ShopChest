@@ -1,6 +1,8 @@
 package de.epiceric.shopchest.sql;
 
 import de.epiceric.shopchest.storefront.StorefrontProfile;
+import de.epiceric.shopchest.storefront.StorefrontDisplay;
+import de.epiceric.shopchest.storefront.StorefrontDisplayConflictException;
 import org.junit.jupiter.api.Test;
 
 import java.sql.DriverManager;
@@ -8,9 +10,14 @@ import java.util.UUID;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JdbcStorefrontRepositoryTest {
+
+    private static final UUID WORLD =
+            UUID.fromString("00000000-0000-0000-0000-000000000026");
 
     @Test
     void savesOneIndependentProfilePerOwnerUuid() throws Exception {
@@ -96,5 +103,78 @@ class JdbcStorefrontRepositoryTest {
             assertTrue(JdbcStorefrontRepository.findProfiles(
                     connection, "shopchest_").get(owner).suspended());
         }
+    }
+
+    @Test
+    void persistsExactlyOneStorefrontDisplayPerOwner() throws Exception {
+        final UUID owner = UUID.fromString("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
+        final StorefrontDisplay display = display(owner, 10, 64, -20);
+        try (var connection = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            JdbcStorefrontRepository.initialize(connection, "shopchest_");
+
+            JdbcStorefrontRepository.createDisplay(connection, "shopchest_", display);
+
+            assertEquals(
+                    display,
+                    JdbcStorefrontRepository.findDisplay(
+                            connection, "shopchest_", owner).orElseThrow());
+            assertEquals(
+                    List.of(display),
+                    JdbcStorefrontRepository.findDisplays(connection, "shopchest_"));
+            final StorefrontDisplayConflictException conflict = assertThrows(
+                    StorefrontDisplayConflictException.class,
+                    () -> JdbcStorefrontRepository.createDisplay(
+                            connection,
+                            "shopchest_",
+                            display(owner, 40, 70, 40)));
+            assertEquals(StorefrontDisplayConflictException.Kind.OWNER, conflict.kind());
+        }
+    }
+
+    @Test
+    void preventsTwoDisplaysFromUsingTheSameEnderChest() throws Exception {
+        final UUID firstOwner = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        final UUID secondOwner = UUID.fromString("22222222-2222-2222-2222-222222222222");
+        try (var connection = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            JdbcStorefrontRepository.initialize(connection, "shopchest_");
+            JdbcStorefrontRepository.createDisplay(
+                    connection, "shopchest_", display(firstOwner, 5, 80, 5));
+
+            final StorefrontDisplayConflictException conflict = assertThrows(
+                    StorefrontDisplayConflictException.class,
+                    () -> JdbcStorefrontRepository.createDisplay(
+                            connection,
+                            "shopchest_",
+                            display(secondOwner, 5, 80, 5)));
+
+            assertEquals(StorefrontDisplayConflictException.Kind.LOCATION, conflict.kind());
+        }
+    }
+
+    @Test
+    void deletingAStorefrontDisplayReleasesItsOwnerAndAnchor() throws Exception {
+        final UUID firstOwner = UUID.fromString("33333333-3333-3333-3333-333333333333");
+        final UUID secondOwner = UUID.fromString("44444444-4444-4444-4444-444444444444");
+        final StorefrontDisplay first = display(firstOwner, 9, 90, 9);
+        try (var connection = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            JdbcStorefrontRepository.initialize(connection, "shopchest_");
+            JdbcStorefrontRepository.createDisplay(connection, "shopchest_", first);
+
+            assertEquals(
+                    first,
+                    JdbcStorefrontRepository.deleteDisplay(
+                            connection, "shopchest_", firstOwner).orElseThrow());
+            assertFalse(JdbcStorefrontRepository.findDisplay(
+                    connection, "shopchest_", firstOwner).isPresent());
+
+            JdbcStorefrontRepository.createDisplay(
+                    connection, "shopchest_", display(secondOwner, 9, 90, 9));
+            assertTrue(JdbcStorefrontRepository.findDisplay(
+                    connection, "shopchest_", secondOwner).isPresent());
+        }
+    }
+
+    private static StorefrontDisplay display(UUID owner, int x, int y, int z) {
+        return new StorefrontDisplay(owner, WORLD, "world", x, y, z, 1234L);
     }
 }

@@ -114,9 +114,18 @@ class ShopCommandExecutor implements CommandExecutor {
         adminTeleportTargetExpiry.put(player.getUniqueId(), System.currentTimeMillis() + 60_000L);
     }
 
+    void showStorefrontProfile(Player player, UUID ownerId) {
+        storefrontProfileCommandHandler.handle(
+                player,
+                new String[]{"profile", "shopowner", ownerId.toString()});
+    }
+
     void invalidateEphemeralState() {
         shopSearchCommandHandler.invalidate();
         advertisingCommandHandler.invalidateDrafts();
+        if (plugin.getStorefrontDisplayManager() != null) {
+            plugin.getStorefrontDisplayManager().cancelPendingPlacements();
+        }
         adminTeleportTargets.clear();
         adminTeleportTargetExpiry.clear();
     }
@@ -776,8 +785,9 @@ class ShopCommandExecutor implements CommandExecutor {
         }
         if (sender.hasPermission(Permissions.ADMIN_STOREFRONT)) {
             sender.sendMessage("§6/" + Config.mainCommandName
-                    + " admin storefront <player> <hide|show|suspend|unsuspend|clear>"
-                    + " §7- Moderate public storefront discovery");
+                    + " admin storefront <player> "
+                    + "<hide|show|suspend|unsuspend|clear|display remove>"
+                    + " §7- Moderate public storefronts and displays");
         }
         if (sender.hasPermission(Permissions.ADMIN_ADVERTISE)) {
             sender.sendMessage("§6/" + Config.mainCommandName
@@ -1633,6 +1643,7 @@ class ShopCommandExecutor implements CommandExecutor {
         plugin.getCmiWorthPriceAdvisor().refresh();
         plugin.getUpdater().restart();
         plugin.getPublicCatalogue().stop();
+        plugin.getStorefrontDisplayManager().stop();
         plugin.getAdvertisingFeature().stop();
 
         // Remove all shops
@@ -1652,6 +1663,7 @@ class ShopCommandExecutor implements CommandExecutor {
                     public void onResult(Integer result) {
                         plugin.getPublicCatalogue().start();
                         plugin.getAdvertisingFeature().start();
+                        plugin.getStorefrontDisplayManager().start();
                         sender.sendMessage(messageRegistry.getMessage(Message.RELOADED_SHOPS,
                                 new Replacement(Placeholder.AMOUNT, String.valueOf(result))));
                         plugin.debug(sender.getName() + " has reloaded " + result + " shops");
@@ -2342,6 +2354,12 @@ class ShopCommandExecutor implements CommandExecutor {
         boolean updateHologramLocations = isHologramLocationProperty(property);
         boolean updateHologramDisplays = isHologramDisplayProperty(property);
         boolean updateFloatingIconAnimation = isFloatingIconAnimationProperty(property);
+        boolean updateStorefrontDisplayEffects = property.regionMatches(
+                true,
+                0,
+                "storefront-display.",
+                0,
+                "storefront-display.".length());
 
         if (args[1].equalsIgnoreCase("set")) {
             plugin.getShopChestConfig().set(property, value);
@@ -2365,6 +2383,11 @@ class ShopCommandExecutor implements CommandExecutor {
             for (Shop shop : shopUtils.getShops()) {
                 shop.updateHologramText();
             }
+        }
+        if (updateStorefrontDisplayEffects) {
+            plugin.getStorefrontDisplayManager().refreshEffects();
+        } else if (updateHologramLocations || updateHologramDisplays) {
+            plugin.getStorefrontDisplayManager().refreshAll();
         }
         if (updateFloatingIconAnimation) {
             plugin.getShopItemAnimator().refresh();
