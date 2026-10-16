@@ -1,9 +1,11 @@
 package de.epiceric.shopchest.utils;
 
-import java.util.ArrayDeque;
 import java.util.Collection;
-import java.util.LinkedHashSet;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -11,8 +13,9 @@ final class PeriodicRefreshSweep<T> {
 
     private final int intervalTicks;
     private final int maxPerTick;
-    private final ArrayDeque<T> pending = new ArrayDeque<>();
-    private int ticksSinceSnapshot;
+    private Iterator<? extends T> pending = Collections.emptyIterator();
+    private Set<T> visited = new HashSet<>();
+    private int ticksSinceSweep;
 
     PeriodicRefreshSweep(int intervalTicks, int maxPerTick) {
         if (intervalTicks <= 0) {
@@ -36,27 +39,37 @@ final class PeriodicRefreshSweep<T> {
             return;
         }
 
-        if (pending.isEmpty()) {
-            ticksSinceSnapshot++;
-            if (ticksSinceSnapshot < intervalTicks) {
+        if (!pending.hasNext()) {
+            ticksSinceSweep++;
+            if (ticksSinceSweep < intervalTicks) {
                 return;
             }
 
-            Collection<? extends T> snapshot = Objects.requireNonNull(
+            Collection<? extends T> values = Objects.requireNonNull(
                     currentValues.get(), "currentValues returned null");
-            pending.addAll(new LinkedHashSet<>(snapshot));
-            ticksSinceSnapshot = 0;
+            // The production source is a weakly consistent concurrent-map view. Do not copy
+            // every shop on one tick. Duplicate container entries count against the budget too.
+            pending = values.iterator();
+            ticksSinceSweep = 0;
         }
 
-        int refreshed = 0;
-        while (refreshed < maxPerTick && !pending.isEmpty()) {
-            refresher.accept(pending.removeFirst());
-            refreshed++;
+        int examined = 0;
+        while (examined < maxPerTick && pending.hasNext()) {
+            T value = pending.next();
+            if (visited.add(value)) {
+                refresher.accept(value);
+            }
+            examined++;
+        }
+        if (!pending.hasNext()) {
+            pending = Collections.emptyIterator();
+            visited = new HashSet<>();
         }
     }
 
     void reset() {
-        pending.clear();
-        ticksSinceSnapshot = 0;
+        pending = Collections.emptyIterator();
+        visited = new HashSet<>();
+        ticksSinceSweep = 0;
     }
 }

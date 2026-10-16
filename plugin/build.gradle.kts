@@ -14,9 +14,12 @@ val targetPaperBuild = providers.gradleProperty("shopchestPaperBuild").get()
 val targetPaperChannel = providers.gradleProperty("shopchestPaperChannel").get()
 val compiledPaperApiVersion = providers.gradleProperty("shopchestPaperApiVersion").get()
 val releaseBuildNumber = providers.gradleProperty("shopchestBuild").get().padStart(3, '0')
-val repositoryCommitCount = providers.exec {
-    commandLine("git", "rev-list", "--count", "HEAD")
-}.standardOutput.asText.get().trim().toInt()
+val committedReleaseBuild = providers.exec {
+    commandLine("git", "show", "HEAD:gradle.properties")
+}.standardOutput.asText.get().lineSequence()
+    .first { it.startsWith("shopchestBuild=") }.substringAfter('=').trim().toInt()
+
+val mockitoAgent = configurations.create("mockitoAgent")
 
 repositories {
     mavenLocal {
@@ -86,19 +89,47 @@ dependencies {
     // Using implementation makes shadow to include them in the final jar.
     // Local dependencies are not handled well and can't be excluded (see https://github.com/GradleUp/shadow/issues/142)
     compileOnly(files("../lib/AreaShop-2.6.0.jar", "../lib/IslandWorld-8.5.jar"))
-    testImplementation("io.papermc.paper:paper-api:$compiledPaperApiVersion")
+    testImplementation("io.papermc.paper:paper-api:$compiledPaperApiVersion") {
+        version { strictly(compiledPaperApiVersion) }
+    }
     testImplementation("org.xerial:sqlite-jdbc:3.49.1.0")
     testImplementation("org.junit.jupiter:junit-jupiter:5.13.4")
+    testImplementation("org.mockito:mockito-core:5.23.0")
+    mockitoAgent("org.mockito:mockito-core:5.23.0") { isTransitive = false }
+    testRuntimeOnly(files("../lib/AreaShop-2.6.0.jar", "../lib/IslandWorld-8.5.jar"))
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.13.4")
 }
 
 tasks.test {
     useJUnitPlatform()
+    jvmArgs("-javaagent:${mockitoAgent.singleFile}")
     javaLauncher.set(javaToolchains.launcherFor {
         languageVersion.set(JavaLanguageVersion.of(
             providers.gradleProperty("shopchestTestJavaVersion")
                 .orElse(targetJavaVersion).get().toInt()))
     })
+}
+
+// Disposable-server fixtures are separate artifacts and never enter the release JAR.
+val paperSmoke = sourceSets.create("paperSmoke") {
+    java.srcDir(rootProject.file("scripts/verification"))
+    compileClasspath += sourceSets.main.get().output + sourceSets.main.get().compileClasspath
+}
+val paperSmokeJars by tasks.registering {
+    group = "verification"
+    description = "Builds the isolated Paper runtime verification plugins."
+}
+listOf("PaperStableSmoke", "ShopTransferSmoke").forEach { fixture ->
+    val fixtureJar = tasks.register<Jar>("${fixture.replaceFirstChar { it.lowercase() }}Jar") {
+        archiveFileName.set("$fixture.jar")
+        destinationDirectory.set(layout.buildDirectory.dir("paper-smoke"))
+        from(paperSmoke.output) { include("$fixture*.class") }
+        from(rootProject.file("scripts/verification/descriptors/$fixture.yml")) {
+            rename { "plugin.yml" }
+            expand("paperVersion" to targetPaperVersion)
+        }
+    }
+    paperSmokeJars { dependsOn(fixtureJar) }
 }
 
 project.base.archivesName.set(rootProject.name)
@@ -125,19 +156,24 @@ val verifyReleaseMetadata by tasks.registering(VerifyShopChestReleaseMetadata::c
 
     this.pluginVersion.set(releaseVersion)
     this.buildNumber.set(releaseBuildNumber.toInt())
-    this.gitCommitCount.set(repositoryCommitCount)
+    this.committedBuildNumber.set(committedReleaseBuild)
     this.javaVersion.set(targetJavaVersion)
     this.runtimeJavaVersion.set(providers.gradleProperty("shopchestRuntimeJavaVersion"))
     this.paperVersion.set(targetPaperVersion)
     this.paperBuild.set(targetPaperBuild.toInt())
     this.paperChannel.set(targetPaperChannel)
     this.paperApiVersion.set(compiledPaperApiVersion)
+    this.paperSha256.set(providers.gradleProperty("shopchestPaperSha256"))
     readmeFile.set(rootProject.layout.projectDirectory.file("README.md"))
     todoFile.set(rootProject.layout.projectDirectory.file("TODO.md"))
     installationFile.set(
         rootProject.layout.projectDirectory.file("docs/installation.md"))
     docsManifestFile.set(
         rootProject.layout.projectDirectory.file("docs/plugin-docs.yml"))
+    agentInstructionsFile.set(rootProject.layout.projectDirectory.file("AGENTS.md"))
+    serverGuideFile.set(rootProject.layout.projectDirectory.file("docs/agents/test-server.md"))
+    releaseReadinessFile.set(rootProject.layout.projectDirectory.file("docs/release-readiness.md"))
+    troubleshootingFile.set(rootProject.layout.projectDirectory.file("docs/troubleshooting.md"))
     paperConventionFile.set(rootProject.layout.projectDirectory.file(
         "build-logic/src/main/kotlin/buildlogic.java-paper-conventions.gradle.kts"))
     pluginBuildFile.set(layout.projectDirectory.file("build.gradle.kts"))
@@ -176,6 +212,7 @@ val verifyDocumentation by tasks.registering(VerifyShopChestDocumentation::class
     description = "Checks public documentation against shipped config, permissions, and routes."
 
     readmeFile.set(rootProject.layout.projectDirectory.file("README.md"))
+    additionalMarkdownFiles.from(rootProject.files("AGENTS.md", "TODO.md", "CONTEXT.md"))
     configurationFile.set(layout.projectDirectory.file("src/main/resources/config.yml"))
     pluginDescriptorFile.set(layout.projectDirectory.file("src/main/resources/plugin.yml"))
     documentationDirectory.set(rootProject.layout.projectDirectory.dir("docs"))

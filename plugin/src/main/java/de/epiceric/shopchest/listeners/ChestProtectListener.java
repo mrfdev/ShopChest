@@ -25,7 +25,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
-import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.inventory.InventoryPickupItemEvent;
 
 import java.util.ArrayList;
 import java.util.Set;
@@ -54,13 +54,7 @@ public class ChestProtectListener implements Listener {
             }
             final Shop newShop = new Shop(shop.getID(), plugin, shop.getVendor(), shop.getProduct(), loc, shop.getBuyPrice(), shop.getSellPrice(), shop.getShopType());
 
-            shopUtils.removeShop(shop, true, new Callback<Void>(plugin) {
-                @Override
-                public void onResult(Void result) {
-                    newShop.create(true);
-                    shopUtils.addShop(newShop, true);
-                }
-            });
+            shopUtils.replaceShopContainer(shop, newShop, Set.of(loc));
             return;
         }
 
@@ -93,17 +87,15 @@ public class ChestProtectListener implements Listener {
             final Shop shop = shopUtils.getShop(e.getBlock().getLocation());
             Player p = e.getPlayer();
 
-            if (p.isSneaking() && Utils.hasAxeInHand(p)) {
+            if (shop.hasId() && p.isSneaking() && Utils.hasAxeInHand(p)) {
                 plugin.debug(String.format("%s tries to break %s's shop (#%d)", p.getName(), shop.getVendor().getName(), shop.getID()));
 
                 if (shop.getShopType() == Shop.ShopType.ADMIN) {
                     if (p.hasPermission(Permissions.REMOVE_ADMIN)) {
-                        remove(shop, b, p);
                         return;
                     }
                 } else {
                     if (shop.getVendor().getUniqueId().equals(p.getUniqueId()) || p.hasPermission(Permissions.REMOVE_OTHER)) {
-                        remove(shop, b, p);
                         return;
                     }
                 }
@@ -117,6 +109,12 @@ public class ChestProtectListener implements Listener {
             final MessageRegistry messageRegistry = plugin.getLanguageManager().getMessageRegistry();
             e.getPlayer().sendMessage(messageRegistry.getMessage(Message.CANNOT_BREAK_SHOP));
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onShopBlockBroken(BlockBreakEvent event) {
+        Shop shop = shopUtils.getShop(event.getBlock().getLocation());
+        if (shop != null) remove(shop, event.getBlock(), event.getPlayer());
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -139,8 +137,6 @@ public class ChestProtectListener implements Listener {
             return;
         }
 
-        Block b2;
-
         // Can't use Utils::getChestLocations since inventory holder
         // has not been updated yet in this event (for 1.13+)
 
@@ -148,19 +144,13 @@ public class ChestProtectListener implements Listener {
             return;
         }
 
-        BlockFace neighborFacing = switch (data.getFacing()) {
-            case NORTH -> data.getType() == Type.LEFT ? BlockFace.EAST : BlockFace.WEST;
-            case EAST -> data.getType() == Type.LEFT ? BlockFace.SOUTH : BlockFace.NORTH;
-            case SOUTH -> data.getType() == Type.LEFT ? BlockFace.WEST : BlockFace.EAST;
-            case WEST -> data.getType() == Type.LEFT ? BlockFace.NORTH : BlockFace.SOUTH;
-            default -> throw new IllegalStateException("Unsupported chest facing: " + data.getFacing());
-        };
-
-        b2 = b.getRelative(neighborFacing);
-
-        final Shop shop = shopUtils.getShop(b2.getLocation());
+        final Shop shop = shopUtils.getShop(b.getRelative(connectedSide(data)).getLocation());
         if (shop == null)
             return;
+        if (!shop.hasId()) {
+            e.setCancelled(true);
+            return;
+        }
 
         plugin.debug(String.format("%s tries to extend %s's shop (#%d)", p.getName(), shop.getVendor().getName(), shop.getID()));
 
@@ -188,29 +178,45 @@ public class ChestProtectListener implements Listener {
             return;
         }
 
-        final Shop newShop = new Shop(shop.getID(), plugin, shop.getVendor(), shop.getProduct(), shop.getLocation(), shop.getBuyPrice(), shop.getSellPrice(), shop.getShopType());
+        // Commit membership only after every protection listener has accepted placement.
+    }
 
-        shopUtils.removeShop(shop, true, new Callback<Void>(plugin) {
-            @Override
-            public void onResult(Void result) {
-                newShop.create(true);
-                shopUtils.addShop(newShop, true);
-                plugin.debug(String.format("%s extended %s's shop (#%d)", p.getName(), shop.getVendor().getName(), shop.getID()));
-            }
-        });
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onShopBlockPlaced(BlockPlaceEvent e) {
+        Block block = e.getBlockPlaced();
+        if (!ShopContainer.isSupported(block.getType())
+                || !(block.getBlockData() instanceof org.bukkit.block.data.type.Chest data)
+                || data.getType() == Type.SINGLE) return;
+        Shop shop = shopUtils.getShop(block.getRelative(connectedSide(data)).getLocation());
+        if (shop == null) return;
+        Shop replacement = new Shop(shop.getID(), plugin, shop.getVendor(), shop.getProduct(),
+                shop.getLocation(), shop.getBuyPrice(), shop.getSellPrice(), shop.getShopType());
+        shopUtils.replaceShopContainer(shop, replacement, Set.of(shop.getLocation(), block.getLocation()));
+    }
+
+    private static BlockFace connectedSide(org.bukkit.block.data.type.Chest data) {
+        return switch (data.getFacing()) {
+            case NORTH -> data.getType() == Type.LEFT ? BlockFace.EAST : BlockFace.WEST;
+            case EAST -> data.getType() == Type.LEFT ? BlockFace.SOUTH : BlockFace.NORTH;
+            case SOUTH -> data.getType() == Type.LEFT ? BlockFace.WEST : BlockFace.EAST;
+            case WEST -> data.getType() == Type.LEFT ? BlockFace.NORTH : BlockFace.SOUTH;
+            default -> throw new IllegalStateException("Unsupported chest facing: " + data.getFacing());
+        };
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onItemMove(InventoryMoveItemEvent e) {
-        if (e.getInitiator().getType().equals(InventoryType.PLAYER)) {
-            return;
+        if (shopUtils.getShopByInventory(e.getSource()) != null
+                || shopUtils.getShopByInventory(e.getDestination()) != null) {
+            // Let Paper restore the source item. Never read or replace the event item.
+            e.setCancelled(true);
         }
+    }
 
-        for (Location location : ShopContainer.locationsOf(e.getSource().getHolder())) {
-            if (shopUtils.isShop(location)) {
-                e.setCancelled(true);
-                return;
-            }
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onItemPickup(InventoryPickupItemEvent e) {
+        if (shopUtils.getShopByInventory(e.getInventory()) != null) {
+            e.setCancelled(true);
         }
     }
 

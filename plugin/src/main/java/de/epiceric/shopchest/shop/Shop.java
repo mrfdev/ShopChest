@@ -8,6 +8,7 @@ import de.epiceric.shopchest.config.hologram.HologramFormat;
 import de.epiceric.shopchest.config.hologram.HologramItemDetails;
 import de.epiceric.shopchest.config.hologram.HologramTradeAvailability;
 import de.epiceric.shopchest.language.Message;
+import de.epiceric.shopchest.language.LanguageManager;
 import de.epiceric.shopchest.language.Replacement;
 import de.epiceric.shopchest.exceptions.ChestNotFoundException;
 import de.epiceric.shopchest.exceptions.NotEnoughSpaceException;
@@ -16,6 +17,7 @@ import de.epiceric.shopchest.display.HologramOrientation;
 import de.epiceric.shopchest.display.HologramTextFormatter;
 import de.epiceric.shopchest.utils.ChunkCoordinates;
 import de.epiceric.shopchest.utils.ItemUtils;
+import de.epiceric.shopchest.utils.OwnerNameCache;
 import de.epiceric.shopchest.utils.Utils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.Style;
@@ -66,6 +68,23 @@ public class Shop {
     private Hologram hologram;
     private Location holoLocation;
     private ShopItem item;
+    private OwnerNameCache.Entry ownerName;
+    private String renderedOwnerName;
+    private HologramTextState renderedTextState;
+    private Component[] renderedText;
+
+    /** The retained ItemStack is a clone, so changes to any item component invalidate the text. */
+    private record HologramTextState(
+            ItemStack item, int amount, double buyPrice, double sellPrice, int stock, int space,
+            String owner, HologramFormat format, long formatRevision, LanguageManager language,
+            HologramColorPalette colors, int maxName, int maxDetails, int detailsPerLine,
+            String buyValue, String sellValue, String outOfStock) {
+        HologramTextState snapshot() {
+            return new HologramTextState(item.clone(), amount, buyPrice, sellPrice, stock, space,
+                    owner, format, formatRevision, language, colors, maxName, maxDetails, detailsPerLine,
+                    buyValue, sellValue, outOfStock);
+        }
+    }
 
     public Shop(int id, ShopChest plugin, OfflinePlayer vendor, ShopProduct product, Location location, double buyPrice, double sellPrice, ShopType shopType) {
         this.id = id;
@@ -161,6 +180,13 @@ public class Shop {
      * Removes the hologram of the shop
      */
     public void removeHologram() {
+        if (ownerName != null) {
+            plugin.getOwnerNames().release(ownerName);
+            ownerName = null;
+        }
+        renderedOwnerName = null;
+        renderedTextState = null;
+        renderedText = null;
         if (hologram != null) {
             plugin.debug("Removing hologram (#" + id + ")");
             hologram.remove();
@@ -274,6 +300,9 @@ public class Shop {
      * <p><b>Has to be called synchronously!</b></p>
      */
     public void updateHologramText() {
+        if (!Bukkit.isPrimaryThread()) {
+            throw new IllegalStateException("Shop holograms must be refreshed on the server thread");
+        }
         if (hologram == null || !hologram.exists()) return;
 
         final InventoryHolder inventoryHolder = getInventoryHolder();
@@ -281,6 +310,18 @@ public class Shop {
 
         Component[] lines = getHologramText(inventoryHolder.getInventory());
         hologram.setLines(lines);
+    }
+
+    /** Cheap invalidation for a join/rename even when stock placeholders are disabled. */
+    public boolean hasOwnerNameChange() {
+        return ownerName != null && !ownerName.name().equals(renderedOwnerName);
+    }
+
+    private String ownerDisplayName() {
+        if (ownerName == null) {
+            ownerName = plugin.getOwnerNames().acquire(vendor.getUniqueId());
+        }
+        return ownerName.name();
     }
 
     /**
@@ -329,9 +370,24 @@ public class Shop {
     }
 
     private Component[] getHologramText(Inventory inventory) {
-        List<Component> lines = new ArrayList<>();
-
+        final String vendorName = ownerDisplayName();
         ItemStack itemStack = getProduct().getItemStack();
+        final int stock = Utils.getAmount(inventory, itemStack);
+        final int chestSpace = Utils.getFreeSpaceForItem(inventory, itemStack);
+        final HologramFormat format = plugin.getHologramFormat();
+        final LanguageManager language = plugin.getLanguageManager();
+        final HologramTextState state = new HologramTextState(
+                itemStack, getProduct().getAmount(), getBuyPrice(), getSellPrice(), stock, chestSpace,
+                vendorName, format, format.getRevision(), language, Config.hologramColors,
+                Config.hologramMaxItemNameLength, Config.hologramMaxItemDetailEntries,
+                Config.hologramItemDetailsPerLine, plugin.getEconomy().format(getBuyPrice()),
+                plugin.getEconomy().format(getSellPrice()),
+                language.getMessageRegistry().getMessage(Message.HOLOGRAM_OUT_OF_STOCK));
+        if (state.equals(renderedTextState)) {
+            return renderedText;
+        }
+
+        List<Component> lines = new ArrayList<>();
         final HologramItemDetails itemDetails = HologramItemDetails.from(
                 itemStack,
                 Config.hologramColors.textColor(HologramColorPalette.Role.DETAILS),
@@ -363,11 +419,9 @@ public class Shop {
         // (As requirements are always the same, only set requirements to the shop value)
         Map<HologramFormat.Requirement, Object> requirements = new EnumMap<>(HologramFormat.Requirement.class);
         final int damage = ItemUtils.getDamage(itemStack);
-        final int stock = Utils.getAmount(inventory, itemStack);
-        final int chestSpace = Utils.getFreeSpaceForItem(inventory, itemStack);
         final boolean buyOutOfStock = HologramTradeAvailability.isBuyOutOfStock(
                 getBuyPrice(), getShopType() == ShopType.ADMIN, stock, getProduct().getAmount());
-        requirements.put(HologramFormat.Requirement.VENDOR, getVendor().getName());
+        requirements.put(HologramFormat.Requirement.VENDOR, vendorName);
         requirements.put(HologramFormat.Requirement.AMOUNT, getProduct().getAmount());
         requirements.put(HologramFormat.Requirement.ITEM_TYPE, itemStack.getType() + (damage > 0 ? ":" + damage : ""));
         requirements.put(HologramFormat.Requirement.ITEM_NAME, getLegacyDisplayName(itemStack));
@@ -390,7 +444,7 @@ public class Shop {
 
         // Same as requirements
         Map<Placeholder, Object> placeholders = new EnumMap<>(Placeholder.class);
-        placeholders.put(Placeholder.VENDOR, getVendor().getName());
+        placeholders.put(Placeholder.VENDOR, vendorName);
         placeholders.put(Placeholder.AMOUNT, getProduct().getAmount());
         placeholders.put(Placeholder.ITEM_NAME, Placeholder.ITEM_NAME.toString());
         placeholders.put(Placeholder.ENCHANTMENT, Placeholder.ENCHANTMENT.toString());
@@ -423,38 +477,40 @@ public class Shop {
                 Placeholder.POTION_EFFECT.toString(), potionDetails,
                 Placeholder.ITEM_DETAILS.toString(), combinedItemDetails);
 
-        int lineCount = plugin.getHologramFormat().getLineCount();
+        int lineCount = format.getLineCount();
 
         for (int i = 0; i < lineCount; i++) {
-            String format = plugin.getHologramFormat().getFormat(i, requirements, placeholders);
+            String lineFormat = format.getFormat(i, requirements, placeholders);
             for (Placeholder placeholder : placeholders.keySet()) {
                 String replace;
 
                 switch (placeholder) {
                     case BUY_PRICE:
                         replace = HologramTradeAvailability.formatBuyValue(
-                                plugin.getEconomy().format(getBuyPrice()),
+                                state.buyValue(),
                                 buyOutOfStock,
-                                plugin.getLanguageManager().getMessageRegistry()
-                                        .getMessage(Message.HOLOGRAM_OUT_OF_STOCK),
+                                state.outOfStock(),
                                 Config.hologramColors.color(HologramColorPalette.Role.UNAVAILABLE));
                         break;
                     case SELL_PRICE:
-                        replace = plugin.getEconomy().format(getSellPrice());
+                        replace = state.sellValue();
                         break;
                     default:
                         replace = String.valueOf(placeholders.get(placeholder));
                 }
 
-                format = format.replace(placeholder.toString(), replace);
+                lineFormat = lineFormat.replace(placeholder.toString(), replace);
             }
 
-            if (!format.isEmpty()) {
-                lines.add(HologramTextFormatter.replaceComponents(format, componentReplacements));
+            if (!lineFormat.isEmpty()) {
+                lines.add(HologramTextFormatter.replaceComponents(lineFormat, componentReplacements));
             }
         }
 
-        return lines.toArray(new Component[0]);
+        renderedOwnerName = vendorName;
+        renderedTextState = state.snapshot();
+        renderedText = lines.toArray(new Component[0]);
+        return renderedText;
     }
 
     private Location getHologramLocation(ShopContainer container) {

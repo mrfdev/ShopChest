@@ -1,0 +1,8 @@
+name: PaperStableSmoke
+version: '1'
+main: PaperStableSmoke
+api-version: '${paperVersion}'
+depend: [ShopChest]
+commands:
+  stablesmoke:
+    description: Disposable-server compatibility fixture, console only

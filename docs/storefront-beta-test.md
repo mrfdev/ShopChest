@@ -35,12 +35,21 @@ then inspects the selected shop. A second ordinary player should not see the ID
 for someone else's shop, while a staff account should see it.
 
 For one normal customer-buy shop, exercise each stock-update path. Empty and
-restock it with ordinary clicks, shift-clicks, an inventory drag, and a hopper,
+restock it with ordinary clicks, shift-clicks, and an inventory drag,
 then confirm the hologram updates immediately after the inventory settles. Also
 change its contents with a command or test helper that bypasses inventory
 events. Without opening or touching the container afterward, verify the stale
-`[Out of stock]` state repairs itself within a few seconds. Repeat with a full
-configured bundle of an enchanted book to confirm exact metadata matching.
+`[Out of stock]` state repairs itself after the periodic sweep reaches the shop.
+Allow a few seconds for a small fixture; larger loaded-shop collections and
+server lag take longer because the sweep checks at most 32 container entries
+per tick and pauses 40 ticks between sweeps. Repeat with a full configured
+bundle of an enchanted book to confirm exact metadata matching.
+
+Hoppers, hopper minecarts and droppers must not insert into or extract from any
+shop, including owner/admin shops and either half of a double chest. Check
+unchanged item counts/components and no transfer-triggered hologram updates after
+repeated blocked attempts. Confirm ordinary container transfers still work. Repeat after shop
+creation, extension, splitting, chunk unload/reload, removal and a clean restart.
 
 ## 2. Profile and Moderation
 

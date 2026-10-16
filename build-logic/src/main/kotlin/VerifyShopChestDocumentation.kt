@@ -2,11 +2,13 @@ package buildlogic
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
@@ -19,6 +21,10 @@ abstract class VerifyShopChestDocumentation : DefaultTask() {
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val readmeFile: RegularFileProperty
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val additionalMarkdownFiles: ConfigurableFileCollection
 
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)
@@ -158,7 +164,7 @@ abstract class VerifyShopChestDocumentation : DefaultTask() {
     }
 
     private fun verifyMarkdownLinks(readme: File, docs: File) {
-        val markdownFiles = sequenceOf(readme) + docs.walkTopDown()
+        val markdownFiles = sequenceOf(readme) + additionalMarkdownFiles.files.asSequence() + docs.walkTopDown()
             .filter { it.isFile && it.extension.equals("md", ignoreCase = true) }
         val inlineLink = Regex("""!?\[[^]\r\n]*]\(([^)\r\n]+)\)""")
         markdownFiles.forEach { source ->
@@ -178,7 +184,7 @@ abstract class VerifyShopChestDocumentation : DefaultTask() {
                 }
                 val target = source.parentFile.resolve(path).normalize()
                 requireThat(target.exists()) {
-                    "${source.relativeToOrSelf(project.projectDir)} links to missing $destination"
+                    "${source.relativeToOrSelf(readme.parentFile)} links to missing $destination"
                 }
             }
         }

@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
+import java.util.AbstractCollection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -74,5 +76,36 @@ class PeriodicRefreshSweepTest {
                 () -> new PeriodicRefreshSweep<>(0, 1));
         assertThrows(IllegalArgumentException.class,
                 () -> new PeriodicRefreshSweep<>(1, 0));
+    }
+
+    @Test
+    void traversesTenThousandEntriesIncrementallyIncludingDuplicates() {
+        AtomicInteger reads = new AtomicInteger();
+        var values = new AbstractCollection<Integer>() {
+            @Override public int size() { return 10_000; }
+            @Override public Iterator<Integer> iterator() {
+                return new Iterator<>() {
+                    private int next;
+                    @Override public boolean hasNext() { return next < size(); }
+                    @Override public Integer next() {
+                        reads.incrementAndGet();
+                        return next++ / 2; // two physical blocks per shop
+                    }
+                };
+            }
+        };
+        PeriodicRefreshSweep<Integer> sweep = new PeriodicRefreshSweep<>(1, 32);
+        List<Integer> refreshed = new ArrayList<>();
+        while (reads.get() < values.size()) {
+            int before = reads.get();
+            sweep.tick(true, () -> values, refreshed::add);
+            assertEquals(Math.min(32, values.size() - before), reads.get() - before);
+        }
+        assertEquals(5_000, refreshed.size());
+        assertEquals(5_000, new java.util.HashSet<>(refreshed).size());
+        sweep.reset();
+        int before = reads.get();
+        sweep.tick(true, List::of, refreshed::add);
+        assertEquals(before, reads.get());
     }
 }

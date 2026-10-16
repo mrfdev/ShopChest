@@ -8,7 +8,8 @@ Check the first ShopChest error in `logs/latest.log`.
 - `Could not find any Vault economy dependency`: install and enable an economy provider; Vault by itself does not hold balances.
 - Database connection failure: verify SQLite file access or MySQL host, port, database, credentials, and network access.
 - Unsupported server/platform: use the maintained jar on Paper 26.3.
-- `UnsupportedClassVersionError`: run the supported Paper server with Java 25.
+- `UnsupportedClassVersionError`: check the Java executable used by the launcher.
+  ShopChest bytecode requires Java 25 or newer; this project's verified server runtime is Java 27.
 
 ## Shop Creation Does Not Finish
 

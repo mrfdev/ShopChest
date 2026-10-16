@@ -10,7 +10,8 @@ Storefront beta checklist and has been deliberately installed.
 Use these files when implementation and prose disagree:
 
 1. `gradle.properties` defines the plugin version, build number, Java target,
-   Paper version, Paper build, channel, and exact Paper API coordinate.
+   Paper version, Paper build, STABLE channel, exact Paper API coordinate, and
+   the Fill server SHA-256.
 2. `plugin/src/main/resources/config.yml` defines every shipped configuration
    key and default.
 3. `plugin/src/main/resources/plugin.yml` defines declared permissions and
@@ -22,10 +23,12 @@ Use these files when implementation and prose disagree:
 6. The reviewed JSON and CSV under `docs/catalogue/` are a dated marketplace
    snapshot. They are data artifacts, not current-stock documentation.
 
-`./gradlew clean check` enforces release metadata, complete configuration-key
-coverage, declared-permission coverage, the canonical Storefront Profile
-route, manifest file references, and local Markdown links. A failure is a
-release blocker, not a warning to ignore.
+`./gradlew clean check` enforces release metadata and documented server runtimes,
+complete configuration-key coverage, declared-permission coverage, the canonical
+Storefront Profile route, manifest file references, and local Markdown links in
+README, TODO, AGENTS, CONTEXT, and `docs/`. A failure is a release blocker, not a
+warning to ignore. Behavior prose and historical verification claims still need
+review against the implementation and dated evidence.
 
 ## Freeze the Candidate
 
@@ -37,12 +40,17 @@ Complete these steps on one fixed commit:
 2. Review [commands](commands.md), [configuration](configuration.md),
    [permissions](permissions.md), [integrations](integrations.md), and
    [troubleshooting](troubleshooting.md) against that commit.
-3. Run `./gradlew clean check` with Java 25, then build the shaded jar with
-   `./gradlew :plugin:shadowJar`.
+3. Select JDK 25.0.4.1 through `JAVA_HOME` and `PATH`, then run
+   `./gradlew clean build :plugin:paperSmokeJars --no-build-cache` to check the
+   documentation, run the unit suite, and build the shaded jar and isolated fixtures.
 4. Record the commit, complete artifact filename, and SHA-256 checksum in the
    release record. Do not rebuild after recording the checksum.
-5. Start a clean Paper 26.3 test server with exactly the candidate jar and the
-   intended live dependencies. Stop it cleanly after the final checks.
+5. Start a disposable Paper 26.3 build 175 STABLE test server with exactly the
+   candidate jar on Java 27 and the intended live dependencies. Follow the
+   [isolated verification instructions](verification/paper-26.3-stable-2026-10-11.md#repeatable-isolated-verification)
+   using only the runner command with the already-frozen artifact; do not repeat
+   its build commands after recording the checksum. Stop the server cleanly
+   after the final checks.
 6. Confirm that `/shops profile ` suggests profile actions and `shopowner`, and
    that player names appear only after `/shops profile shopowner `.
 7. Confirm the selected `storefront-discovery.location-scope`. Test the actual

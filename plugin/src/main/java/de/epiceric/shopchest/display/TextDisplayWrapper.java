@@ -23,6 +23,7 @@ public final class TextDisplayWrapper {
 
     private final ShopChest plugin;
     private final TextDisplay display;
+    private TextDisplayData lastDisplayData;
 
     public TextDisplayWrapper(ShopChest plugin, Location location, TextDisplayData displayData) {
         this.plugin = plugin;
@@ -39,6 +40,7 @@ public final class TextDisplayWrapper {
                     entity.setDisplayHeight(DISPLAY_HEIGHT);
                     applyDisplayData(entity, displayData);
                 });
+        this.lastDisplayData = displayData;
     }
 
     public void setVisible(Player player, boolean visible) {
@@ -54,7 +56,11 @@ public final class TextDisplayWrapper {
     }
 
     public void setDisplayData(TextDisplayData displayData) {
+        if (displayData.equals(lastDisplayData)) {
+            return;
+        }
         applyDisplayData(display, displayData);
+        lastDisplayData = displayData;
     }
 
     /** Returns the actual entity location after the wrapper's display offset. */

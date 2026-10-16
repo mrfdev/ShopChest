@@ -18,6 +18,8 @@ public class Hologram {
 
     private final Set<UUID> viewers = ConcurrentHashMap.newKeySet();
     private final List<Component> lines = new ArrayList<>();
+    private List<Component> renderedLines = List.of();
+    private Component panelText = Component.empty();
     private final TextDisplayWrapper wrapper;
     private Location location;
     private boolean exists;
@@ -77,6 +79,8 @@ public class Hologram {
         viewers.clear();
         wrapper.remove();
         lines.clear();
+        renderedLines = List.of();
+        panelText = Component.empty();
         exists = false;
     }
 
@@ -158,8 +162,12 @@ public class Hologram {
     }
 
     private TextDisplayData createDisplayData() {
+        if (!lines.equals(renderedLines)) {
+            panelText = HologramTextFormatter.toPanelComponent(lines);
+            renderedLines = List.copyOf(lines);
+        }
         return new TextDisplayData(
-                HologramTextFormatter.toPanelComponent(lines),
+                panelText,
                 Config.hologramPanelWidth,
                 Config.hologramBackgroundColor,
                 Config.hologramFixedFacing,

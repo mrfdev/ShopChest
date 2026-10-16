@@ -20,9 +20,11 @@ shop containers.
 When an enabled buy side cannot supply the full configured purchase amount, its
 hologram price changes to `[Out of stock]`. A separately enabled sell side
 remains visible and usable. Normal chest interactions update the display on the
-next server tick. Changes made by hoppers, commands, or other plugins are also
-reconciled automatically in small batches, so a stale display should correct
-itself within a few seconds without moving an item by hand.
+next server tick. Automated transfers into and out of shops are blocked,
+including owner/admin hoppers and hopper minecarts. Restock shops manually.
+Changes made by commands or other plugins are also reconciled automatically in
+small batches, usually within a few seconds without moving an item by hand.
+Large numbers of loaded shops or a slow server can make this take longer.
 
 Enchanted books and other enchanted products list their enchantments and
 levels. Potions list their localized effects, amplifiers, and durations. Dense

@@ -44,6 +44,7 @@ public abstract class Database {
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     private boolean initialized;
+    private final PendingShopMoves pendingShopMoves = new PendingShopMoves();
 
     String tableShops;
     String tableLogs;
@@ -264,14 +265,14 @@ public abstract class Database {
                 try {
                     dataSource = getDataSource();
                 } catch (Exception e) {
-                    callback.onError(e);
+                    if (callback != null) callback.callSyncError(e);
                     plugin.debug(e);
                     return;
                 }
 
                 if (dataSource == null) {
                     Exception e = new IllegalStateException("Data source is null");
-                    callback.onError(e);
+                    if (callback != null) callback.callSyncError(e);
                     plugin.debug(e);
                     return;
                 }
@@ -748,6 +749,42 @@ public abstract class Database {
         }.runTaskAsynchronously(plugin);
     }
 
+    /** Capture world data on the server thread; write only immutable coordinates asynchronously. */
+    public void moveShop(int shopId, Location location, Callback<Void> callback) {
+        if (!Bukkit.isPrimaryThread()) {
+            throw new IllegalStateException("Shop location snapshots require the server thread");
+        }
+        var anchor = new PendingShopMoves.Anchor(location.getWorld().getName(),
+                location.getBlockX(), location.getBlockY(), location.getBlockZ());
+        HikariDataSource source = dataSource;
+        String table = tableShops;
+        Runnable write = pendingShopMoves.prepare(shopId, anchor, current -> {
+            try (Connection connection = source.getConnection()) {
+                moveShop(connection, table, shopId, current);
+                if (callback != null && plugin.isEnabled()) callback.callSyncResult(null);
+            } catch (SQLException exception) {
+                if (callback != null && plugin.isEnabled()) callback.callSyncError(exception);
+                plugin.getLogger().severe("Failed to update shop container location (#" + shopId + ")");
+                plugin.debug(exception);
+            }
+        });
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, write);
+    }
+
+    static void moveShop(Connection connection, String table, int shopId, PendingShopMoves.Anchor anchor)
+            throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "UPDATE " + table + " SET world = ?, x = ?, y = ?, z = ? WHERE id = ?")) {
+            statement.setString(1, anchor.world());
+            statement.setInt(2, anchor.x());
+            statement.setInt(3, anchor.y());
+            statement.setInt(4, anchor.z());
+            statement.setInt(5, shopId);
+            // Zero rows means the shop was removed in the meantime. Never recreate it.
+            statement.executeUpdate();
+        }
+    }
+
     /**
      * Atomically replaces the editable terms of an existing shop.
      */
@@ -1213,6 +1250,7 @@ public abstract class Database {
      * Closes the data source
      */
     public void disconnect() {
+        pendingShopMoves.clear();
         if (dataSource != null) {
             dataSource.close();
             dataSource = null;

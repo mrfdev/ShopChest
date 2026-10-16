@@ -18,7 +18,7 @@ Player-facing documentation is published at
 
 | Component | Supported target |
 | --- | --- |
-| Minecraft / Paper | Paper 26.3 build 41 alpha |
+| Minecraft / Paper | Paper 26.3 build 175 stable |
 | Server runtime | Java 27 (27+35-2325), project-local testing |
 | Plugin bytecode | Java 25 |
 | Build toolchain | Gradle wrapper with JDK 25.0.4.1 |
@@ -27,12 +27,16 @@ Player-facing documentation is published at
 | Plugin version | 1.15.4-SNAPSHOT |
 | Release status | Pre-live beta snapshot |
 
+Paper 26.3 requires Java 25 or newer; this project retains JDK 25.0.4.1 for
+compilation and Java 27 for server compatibility testing. Paper's STABLE channel
+does not change ShopChest's separate pre-live snapshot status.
+
 `1.15.4-SNAPSHOT` is a pre-live beta checkpoint, not a production release.
 Automated tests and local Paper smoke tests do not replace the complete
 live-server beta checklist, approval, backup, and controlled rollout.
 
-The exact compile target is declared in
-[`plugin/build.gradle.kts`](plugin/build.gradle.kts). The deployable jar uses
+The exact compile and test API is `26.3.build.175-stable`, pinned in
+[`gradle.properties`](gradle.properties) together with the server build and SHA-256. The deployable jar uses
 Paper APIs directly and does not contain version-specific NMS, CraftBukkit
 reflection, or legacy Spigot compatibility modules.
 
@@ -119,6 +123,11 @@ tests, test-server startup, and focused shop testing pass.
 
 Unsupported containers include ender chests, hoppers, furnaces, and other
 inventory blocks not listed above.
+
+Automated transfers into and out of registered shops are blocked, including
+owner/admin hoppers and hopper minecarts. Restock shops manually. Build 795
+removes snapshot-heavy transfer checks; see the
+[verification record](docs/verification/automated-transfers-2026-09-26.md).
 
 ## Installation
 
@@ -431,7 +440,7 @@ PlaceholderAPI expansion.
 
 | Placeholder | Output |
 | --- | --- |
-| `%VENDOR%` | Current shop-owner name. |
+| `%VENDOR%` | Locally cached shop-owner name, or the owner's UUID when unavailable. |
 | `%AMOUNT%` | Number of products in one configured trade. |
 | `%ITEMNAME%` | Localized vanilla name or preserved custom item name. |
 | `%ITEM-DETAILS%` | Combined multiline enchantment and potion details. |
@@ -502,9 +511,9 @@ plugin/build/libs/1MB-ShopChest-v1.15.4-SNAPSHOT-<build>-j25-26.3.jar
 ```
 
 `<build>` is the shared zero-padded release build from `gradle.properties`,
-normally aligned with the Git commit count. Release verification permits only
-the current commit count or its single pending release increment. The build
-reserves build `794` for this `1.15.4-SNAPSHOT` release; reuse that number
+independent of Git commit counts. Release verification rejects build numbers
+below the committed release build. The build reserves `796` for this
+`1.15.4-SNAPSHOT` stable migration; reuse that number
 after failed builds. The separate 26.2 archive branch does not advance the
 release branch. The build disables the unshaded jar and assembles only the
 deployable `1MB-ShopChest-...jar`. Test reports are available under
@@ -513,9 +522,14 @@ deployable `1MB-ShopChest-...jar`. Test reports are available under
 Local `servers/`, Gradle output, logs, and test-server jars are ignored and must
 not be committed.
 
-See the [Paper 26.3 upgrade record](docs/verification/paper-26.3-2026-09-25.md)
+See the [Paper 26.3 stable verification record](docs/verification/paper-26.3-stable-2026-10-11.md)
 for the target, artifact checksum, test results, and preserved 26.2 snapshots.
+The [2026-10-16 documentation check](docs/verification/documentation-drift-2026-10-16.md)
+records the subsequent help-text correction, build checksum, and drift probes.
 The [local server guide](docs/agents/test-server.md) describes the maintained instance.
+The stable verification record also documents the repeatable disposable-server
+suite (`:plugin:paperSmokeJars` and `scripts/verification/run-paper-stable-smoke.py`).
+Its fixture plugins are separate artifacts and are never packaged in ShopChest.
 
 ## Configuration and Operations
 
@@ -652,8 +666,11 @@ that public site.
 `./gradlew :plugin:verifyDocumentation` checks every shipped configuration
 leaf key, every declared permission and default, the canonical external
 Storefront Profile route, imported manifest references, and local Markdown
-links. The task is also part of `check`, so documentation drift blocks a future
-release build.
+links in README, TODO, AGENTS, CONTEXT, and `docs/`.
+`./gradlew :plugin:verifyReleaseMetadata` also checks the documented Paper target
+and server runtime against `gradle.properties`. Both tasks run as part of `check`,
+so these mismatches block a release build. Behavior prose still needs review
+against the implementation and dated verification evidence.
 
 ## License, Credits, and Support
 

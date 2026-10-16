@@ -1,5 +1,9 @@
 # Paper 26.3 upgrade: 2026-09-25
 
+This is a historical alpha verification record. The current pinned target and
+stable verification are documented in the
+[2026-10-11 stable migration record](paper-26.3-stable-2026-10-11.md).
+
 The Java 25 build and Java 27 local runtime verification passed. This remains a
 pre-live beta snapshot; the manual player and economy checklist is incomplete.
 

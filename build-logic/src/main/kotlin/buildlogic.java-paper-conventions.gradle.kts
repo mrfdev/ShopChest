@@ -11,5 +11,8 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:${providers.gradleProperty("shopchestPaperApiVersion").get()}")
+    val paperApiVersion = providers.gradleProperty("shopchestPaperApiVersion").get()
+    compileOnly("io.papermc.paper:paper-api:$paperApiVersion") {
+        version { strictly(paperApiVersion) }
+    }
 }

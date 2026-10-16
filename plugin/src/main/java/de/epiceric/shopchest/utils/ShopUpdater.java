@@ -131,14 +131,16 @@ public class ShopUpdater {
     private void runTick() {
         runQueuedTasks();
         dynamicTextRefreshSweep.tick(
-                plugin.getHologramFormat().isDynamic(),
-                () -> plugin.getShopUtils().getShops(),
+                true,
+                () -> plugin.getShopUtils().getShopsForRefresh(),
                 this::refreshDynamicShopText);
     }
 
     private void refreshDynamicShopText(Shop shop) {
         try {
-            shop.updateHologramText();
+            if (plugin.getHologramFormat().isDynamic() || shop.hasOwnerNameChange()) {
+                shop.updateHologramText();
+            }
         } catch (RuntimeException exception) {
             plugin.getLogger().severe("A periodic ShopChest stock display refresh failed for shop #"
                     + shop.getID() + ": " + exception.getMessage());

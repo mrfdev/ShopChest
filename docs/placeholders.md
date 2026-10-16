@@ -7,7 +7,7 @@ Staff with `shopchest.admin.debug` can also review this catalog in game through
 
 | Placeholder | Output |
 | --- | --- |
-| `%VENDOR%` | Shop owner's current name. |
+| `%VENDOR%` | Locally cached shop-owner name, or the owner's UUID when unavailable. |
 | `%AMOUNT%` | Number of products in one configured trade. |
 | `%ITEMNAME%` | Localized or custom product name. |
 | `%ITEM-DETAILS%` | Multiline combined enchantment and potion details using `hologram-colors.details`. The bundled layout uses this placeholder. |
@@ -29,6 +29,11 @@ Staff with `shopchest.admin.debug` can also review this catalog in game through
 | `%COLOR-ADMIN%` | Global `hologram-colors.admin` RGB color. |
 | `%COLOR-UNAVAILABLE%` | Global `hologram-colors.unavailable` RGB color. |
 | `%COLOR-RESET%` | Clears the active color and text decoration. |
+
+`%VENDOR%` and the `VENDOR` requirement share the same UUID-keyed name cache.
+The owner's next join updates a cached name or UUID fallback; the periodic
+refresh then applies it even to formats without stock placeholders. See the
+[local owner-name lookup](integrations.md#local-owner-names) for lookup sources.
 
 `%ITEM-DETAILS%`, `%ENCHANTMENT%`, and `%POTION-EFFECT%` are Adventure components rather than flattened legacy strings. This preserves Minecraft's client-side translations. Use them directly in a format line; they are not supported inside numeric braced calculations. `%MUSIC-TITLE%`, `%BANNER-PATTERN-NAME%`, and `%GENERATION%` remain reserved and are not connected to runtime providers.
 

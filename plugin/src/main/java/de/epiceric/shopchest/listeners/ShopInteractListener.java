@@ -84,11 +84,7 @@ public class ShopInteractListener implements Listener {
     private void scheduleShopInventoryRefresh(Inventory inventory) {
         if (!plugin.getHologramFormat().isDynamic()) return;
 
-        final Shop shop = ShopContainer.locationsOf(inventory.getHolder()).stream()
-                .map(plugin.getShopUtils()::getShop)
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(null);
+        final Shop shop = shopUtils.getShopByInventory(inventory);
         if (shop == null) return;
 
         Bukkit.getScheduler().runTask(plugin, shop::updateHologramText);

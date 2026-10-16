@@ -66,6 +66,20 @@ normal-shop proposal is being created. CMI remains responsible for interpreting
 item metadata and its worth configuration. `/shops admin debug` reports whether
 the advisory is active and which thresholds are loaded.
 
+## Local Owner Names
+
+Shop holograms resolve an owner's name by their authoritative server UUID: first
+from an online player, then CMI's existing in-memory user record when available,
+then Paper's local profile cache. This lookup does not read offline player NBT,
+query a database, or contact an external identity service. CMI is optional, and
+this cache lookup is independent of the CMI worth-warning setting.
+
+Loaded holograms share the cached name, including a UUID fallback when no local
+name is available. Names and Bedrock prefixes are preserved. An owner joining
+updates their cached name; after the last hologram releases the entry, a later
+display creation checks the local sources again. The periodic refresh applies
+name changes even when the hologram format has no stock placeholders.
+
 ## Multiworld and Proxy Behavior
 
 Multiverse-Core and MultiWorld are soft dependencies used to improve load ordering for persisted shops in multiple worlds. Shop records include world and block coordinates.

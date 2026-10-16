@@ -20,6 +20,7 @@ public class HologramFormat {
 
     private final ShopChest plugin;
     private HologramLine[] lines;
+    private long revision;
 
     public HologramFormat(ShopChest plugin) {
         this.plugin = plugin;
@@ -150,6 +151,11 @@ public class HologramFormat {
         }
 
         this.lines = lines.toArray(new HologramLine[0]);
+        revision++;
+    }
+
+    public long getRevision() {
+        return revision;
     }
 
     static boolean shouldInsertDefaultItemDetails(ConfigurationSection linesSection) {

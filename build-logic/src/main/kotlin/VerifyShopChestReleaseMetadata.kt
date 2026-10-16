@@ -23,7 +23,7 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
     abstract val buildNumber: Property<Int>
 
     @get:Input
-    abstract val gitCommitCount: Property<Int>
+    abstract val committedBuildNumber: Property<Int>
 
     @get:Input
     abstract val javaVersion: Property<String>
@@ -42,6 +42,25 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
 
     @get:Input
     abstract val paperApiVersion: Property<String>
+
+    @get:Input
+    abstract val paperSha256: Property<String>
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val agentInstructionsFile: RegularFileProperty
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val serverGuideFile: RegularFileProperty
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val releaseReadinessFile: RegularFileProperty
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val troubleshootingFile: RegularFileProperty
 
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)
@@ -93,10 +112,9 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
     @TaskAction
     fun verify() {
         val releaseBuild = buildNumber.get()
-        val commits = gitCommitCount.get()
-        requireThat(releaseBuild == commits || releaseBuild == commits + 1) {
-            "Release build $releaseBuild must match Git commit count $commits "
-                .plus("or its single pending release increment ${commits + 1}.")
+        val committedBuild = committedBuildNumber.get()
+        requireThat(releaseBuild > 0 && releaseBuild >= committedBuild) {
+            "Release build $releaseBuild must not regress below committed build $committedBuild."
         }
 
         val version = pluginVersion.get()
@@ -111,6 +129,22 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
         val todo = todoFile.get().asFile
         val installation = installationFile.get().asFile
         val docsManifest = docsManifestFile.get().asFile
+        val agentInstructions = agentInstructionsFile.get().asFile
+        val serverGuide = serverGuideFile.get().asFile
+        val readiness = releaseReadinessFile.get().asFile
+        val troubleshooting = troubleshootingFile.get().asFile
+
+        requireThat(channel == "STABLE") { "Development must target the STABLE Paper channel." }
+        requireThat(apiVersion == "$paperTarget.build.$targetBuild-${channel.lowercase()}") {
+            "Paper API $apiVersion does not match $paperTarget build $targetBuild $channel."
+        }
+        requireThat(paperTarget == "26.3") { "Minecraft / plugin.yml API target must remain 26.3." }
+        requireThat(javaTarget == "25" && runtimeTarget.toInt() >= javaTarget.toInt()) {
+            "Retain Java 25 bytecode and a compatible server runtime."
+        }
+        requireThat(paperSha256.get().matches(Regex("[0-9a-f]{64}"))) {
+            "Paper server must have a pinned SHA-256 from official Fill metadata."
+        }
 
         requireText(readme, "Paper $paperTarget build $targetBuild $channelLabel")
         requireText(readme, "| Plugin version | $version |")
@@ -125,6 +159,20 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
             docsManifest,
             "paper_target: \"$paperTarget build $targetBuild $channelLabel\"")
         requireText(todo, "Paper $paperTarget build $targetBuild $channelLabel")
+        requireText(readme, "`$apiVersion`")
+        requireText(installation, "io.papermc.paper:paper-api:$apiVersion")
+        requireText(agentInstructions, "Paper $paperTarget build $targetBuild $channel")
+        requireText(agentInstructions, "Build $releaseBuild is reserved")
+        requireText(serverGuide, "Paper $paperTarget build $targetBuild $channel")
+        requireText(readiness, "disposable Paper $paperTarget build $targetBuild $channel test server")
+        requireText(readme, "| Server runtime | Java $runtimeTarget")
+        requireText(readme, "| Plugin bytecode | Java $javaTarget |")
+        requireText(installation, "Java $runtimeTarget for the maintained Paper $paperTarget test runtime")
+        requireText(agentInstructions, "Run the maintained local server with JDK $runtimeTarget.")
+        requireText(serverGuide, "Java $runtimeTarget at")
+        requireText(todo, "disposable Paper $paperTarget build $targetBuild $channel server on Java $runtimeTarget")
+        requireText(readiness, "candidate jar on Java $runtimeTarget")
+        requireText(troubleshooting, "verified server runtime is Java $runtimeTarget.")
         requireText(
             paperConventionFile.get().asFile,
             "shopchestPaperApiVersion")
@@ -143,7 +191,8 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
             requireText(installation, "`$version` is a pre-live beta checkpoint")
         }
 
-        val releaseSurface = listOf(readme, todo, installation, docsManifest)
+        val releaseSurface = listOf(readme, todo, installation, docsManifest,
+            agentInstructions, serverGuide, readiness, troubleshooting)
             .joinToString("\n") { it.readText() }
         listOf(
             "1MB-ShopChest-v1.15.2",
@@ -153,6 +202,8 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
             "jdk-26.0.1",
             "jdk-25.0.4.jdk",
             "jdk-26.0.2.jdk",
+            "26.3.build.41-alpha",
+            "26.3 build 41",
         ).forEach { stale ->
             requireThat(!releaseSurface.contains(stale)) {
                 "Release metadata still contains stale value: $stale"
@@ -171,9 +222,11 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
             requireThat(!config.readText().contains("\"download_filename_pattern\"")) {
                 "Maintained PaperScript config still contains deprecated download_filename_pattern."
             }
-            requireText(state, "\"current_version\": \"$paperTarget\"")
-            requireText(state, "\"current_build\": $targetBuild")
-            requireText(state, "\"current_channel\": \"$channel\"")
+            // Staging a verified update must not claim the maintained server was started.
+            requireText(state, "\"staged_version\": \"$paperTarget\"")
+            requireText(state, "\"staged_build\": $targetBuild")
+            requireText(state, "\"staged_channel\": \"$channel\"")
+            requireText(state, "\"staged_sha256\": \"${paperSha256.get()}\"")
             listOf("jdk-25.0.4.jdk", "jdk-26.0.2.jdk").forEach { stale ->
                 requireThat(!launcher.readText().contains(stale)) {
                     "Maintained server launcher still contains removed JDK path: $stale"
@@ -191,13 +244,10 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
             }
         }
 
-        requireThat(apiVersion == "$paperTarget.build.$targetBuild-${channel.lowercase()}") {
-            "Paper API $apiVersion does not match $paperTarget build $targetBuild $channel."
-        }
     }
 
     private fun requireText(file: File, expected: String) {
-        requireThat(file.readText().contains(expected)) {
+        requireThat(file.readText().replace(Regex("\\s+"), " ").contains(expected)) {
             "${file.name} is missing release value: $expected"
         }
     }

@@ -178,9 +178,9 @@ public class LocalizedItemNameManager implements ItemNameManager {
         if (!(stack.getItemMeta() instanceof SkullMeta skullMeta) || !skullMeta.hasOwner()) {
             return null;
         }
-        return skullMeta.getOwningPlayer() == null
-                ? null
-                : skullMeta.getOwningPlayer().getName();
+        // The item's own profile is presentation data. An OfflinePlayer here can load player NBT.
+        final var profile = skullMeta.getPlayerProfile();
+        return profile == null ? null : profile.getName();
     }
 
     @NotNull

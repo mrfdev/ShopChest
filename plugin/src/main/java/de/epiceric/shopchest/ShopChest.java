@@ -81,6 +81,7 @@ public class ShopChest extends JavaPlugin {
     private CmiWorthPriceAdvisor cmiWorthPriceAdvisor;
     private ShopItemAnimator shopItemAnimator;
     private ShopUpdater updater;
+    private final OwnerNameCache ownerNames = new OwnerNameCache(new LocalOwnerNames(this));
     private ShopInteractListener shopInteractListener;
 
     /**
@@ -181,6 +182,7 @@ public class ShopChest extends JavaPlugin {
     @Override
     public void onDisable() {
         debug("Disabling ShopChest...");
+        ownerNames.clear();
 
         if (shopCommand != null) {
             shopCommand.invalidateEphemeralState();
@@ -490,6 +492,10 @@ public class ShopChest extends JavaPlugin {
      */
     public ShopUpdater getUpdater() {
         return updater;
+    }
+
+    public OwnerNameCache getOwnerNames() {
+        return ownerNames;
     }
 
     public CmiWorthPriceAdvisor getCmiWorthPriceAdvisor() {

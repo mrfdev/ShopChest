@@ -19,12 +19,33 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.function.Consumer;
+import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PaperPlatformContractTest {
+
+    @Test
+    void embeddedTargetRequiresAReproducibleStableBuild() throws IOException {
+        Properties metadata = new Properties();
+        try (InputStream stream = getClass().getResourceAsStream("/shopchest-build.properties")) {
+            assertNotNull(stream);
+            metadata.load(stream);
+        }
+        org.junit.jupiter.api.Assertions.assertEquals("STABLE", metadata.getProperty("paper-channel"));
+        org.junit.jupiter.api.Assertions.assertEquals("26.3.build."
+                + metadata.getProperty("paper-build") + "-stable", metadata.getProperty("paper-api-version"));
+    }
+
+    @Test
+    void requiredCompleteItemPersistenceApisArePresent() throws ReflectiveOperationException {
+        assertNotNull(ItemStack.class.getMethod("serializeAsBytes"));
+        assertNotNull(ItemStack.class.getMethod("deserializeBytes", byte[].class));
+        assertNotNull(ItemStack.class.getMethod("isSimilar", ItemStack.class));
+        assertNotNull(ItemStack.class.getMethod("of", org.bukkit.Material.class, int.class));
+    }
 
     @Test
     void pluginDescriptorRequiresPaper263Api() throws IOException {
@@ -55,5 +76,20 @@ class PaperPlatformContractTest {
         assertThrows(
                 ClassNotFoundException.class,
                 () -> Class.forName("de.epiceric.shopchest.nms.paper.v1_21_7.PlatformImpl"));
+    }
+
+    @Test
+    void requiredLocalIdentityApisArePresent() throws ReflectiveOperationException {
+        assertNotNull(org.bukkit.Server.class.getMethod("createProfileExact", java.util.UUID.class, String.class));
+        assertNotNull(com.destroystokyo.paper.profile.PlayerProfile.class.getMethod("completeFromCache"));
+        assertNotNull(org.bukkit.inventory.meta.SkullMeta.class.getMethod("getPlayerProfile"));
+    }
+
+    @Test
+    void requiredSnapshotFreeInventoryApisArePresent() throws ReflectiveOperationException {
+        assertNotNull(org.bukkit.inventory.Inventory.class.getMethod("getLocation"));
+        assertNotNull(org.bukkit.inventory.Inventory.class.getMethod("getHolder", boolean.class));
+        assertNotNull(org.bukkit.inventory.DoubleChestInventory.class.getMethod("getLeftSide"));
+        assertNotNull(org.bukkit.inventory.DoubleChestInventory.class.getMethod("getRightSide"));
     }
 }

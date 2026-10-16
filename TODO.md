@@ -2,8 +2,12 @@
 
 This backlog tracks planned work for the 1MoreBlock ShopChest fork. The current
 working Paper 26.2 build is preserved as rollback material. The maintained
-test target is Paper 26.3 build 41 alpha on Java 27, with Java 25 bytecode.
-See [the upgrade record](docs/verification/paper-26.3-2026-09-25.md).
+test target is Paper 26.3 build 175 stable on Java 27, with Java 25 bytecode.
+See [the stable migration record](docs/verification/paper-26.3-stable-2026-10-11.md).
+
+Platform refresh on 2026-10-11: build 796 pins the stable API and server, verifies
+315 tests on Java 25 and 27, and adds repeatable isolated runtime checks. Database
+connection failures now return to the server thread before disabling the plugin.
 
 Last audited against the source tree, automated tests, documentation contract,
 and Paper 26.2 build 84 stable on 2026-09-02. Checked items have corresponding
@@ -77,6 +81,12 @@ or intentionally shelved.
     remained clean.
 
 ## Supported containers
+
+- [x] Build 795: block automated insertion as well as extraction, with snapshot-free
+  inventory membership checks and no transfer-triggered hologram recounts.
+  Preserve manual restocking, trades and the build-794 owner-name cache. Double
+  chest membership changes immediately, and anchor-only persistence preserves
+  the shop's ownership and trading terms.
 
 - [x] Generalize the current chest-specific storage logic into a supported
   container abstraction.
@@ -214,8 +224,9 @@ or intentionally shelved.
   - Use one shared public-catalogue policy for profile listings, search results,
     advertisements, stock semantics, owner identity, and location disclosure so
     the three features cannot drift apart.
-  - Complete an integrated live-JAR test on the maintained Paper 26.3 and Java
-    25 server with CMI and WorldGuard before release, including clean migration,
+  - Complete an integrated candidate-JAR test on a disposable Paper 26.3 build
+    175 STABLE server on Java 27 with CMI and WorldGuard before release, including
+    clean migration,
     reload, restart persistence, pagination, permissions, scoped location
     disclosure, concurrent advertising, and stale or unloaded shop paths.
 - [x] Persist one storefront profile per owner UUID separately from individual

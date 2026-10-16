@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Paper 26.3 build 41 alpha as the explicitly selected experimental test target
+- Paper 26.3 build 175 stable as the pinned stable development and compatibility target
 - Java 27 for the maintained Paper 26.3 test runtime
 - Vault
 - A Vault-compatible economy provider registered before ShopChest enables
@@ -14,6 +14,8 @@
   administrator currency capture before players can purchase Advertising Passes
 
 ShopChest's own classes target Java 25 bytecode for the supported Paper server.
+Paper's published minimum is Java 25; Java 27 is this project's verified server
+runtime, not an additional Paper API bytecode requirement.
 
 > **Snapshot warning:** `1.15.4-SNAPSHOT` is a pre-live beta checkpoint, not a
 > production release. Complete the
@@ -75,9 +77,10 @@ java -version
 
 The output is `plugin/build/libs/1MB-ShopChest-v1.15.4-SNAPSHOT-<build>-j25-26.3.jar`,
 where `<build>` is the shared release build in `gradle.properties`. Verification
-requires it to match the Git commit count or the single pending release
-increment. The unshaded intermediate jar is disabled, leaving one deployable
-artifact. Local `servers/`, Gradle output, logs, and test-server jars are ignored
+rejects any number below the committed release build; build 796 is reserved
+for this migration, independently of Git commit count. The unshaded intermediate
+jar is disabled, leaving one deployable artifact. Local `servers/`, Gradle output,
+logs, and test-server jars are ignored
 and must not be committed.
 
 For the complete optional Java 27 test run, keep `JAVA_HOME` and `PATH` on JDK 25.0.4.1,
@@ -87,9 +90,12 @@ Only the test JVM changes; the plugin continues to use Java 25 bytecode.
 
 ## Compatibility Policy
 
-The project compiles against the exact experimental Paper API coordinate
-`io.papermc.paper:paper-api:26.3.build.41-alpha` and uses Paper APIs directly.
+The project compiles against the exact stable Paper API coordinate
+`io.papermc.paper:paper-api:26.3.build.175-stable` and uses Paper APIs directly.
 It does not support Spigot or older Paper/Minecraft releases. A newer Paper
 release is considered compatible only after the platform contract tests, clean
 build, and test-server smoke checks pass; there is no version-specific NMS gate
 that would reject it preemptively.
+
+See the [stable verification record](verification/paper-26.3-stable-2026-10-11.md)
+for reproducible isolated-server checks and the remaining player-operated tests.

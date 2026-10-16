@@ -104,7 +104,7 @@ final class ShopDebugCatalog {
 
     static List<PlaceholderEntry> placeholders() {
         return List.of(
-                new PlaceholderEntry("%VENDOR%", "Shop owner's current name."),
+                new PlaceholderEntry("%VENDOR%", "Locally cached shop-owner name, or the owner's UUID when unavailable."),
                 new PlaceholderEntry("%AMOUNT%", "Number of products in one configured trade."),
                 new PlaceholderEntry("%ITEMNAME%", "Localized, custom, or overridden product name."),
                 new PlaceholderEntry("%ITEM-DETAILS%", "Combined enchantment and potion details."),

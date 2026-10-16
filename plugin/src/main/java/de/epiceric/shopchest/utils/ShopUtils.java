@@ -15,6 +15,9 @@ import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.inventory.BlockInventoryHolder;
+import org.bukkit.inventory.DoubleChestInventory;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.entity.Player;
 import org.bukkit.permissions.PermissionAttachmentInfo;
 import org.bukkit.util.Vector;
@@ -66,6 +69,23 @@ public class ShopUtils {
     }
 
     /**
+     * Server-thread inventory membership check without copying block states or items.
+     * Paper's double inventory location is a midpoint: use its two inventory sides,
+     * not DoubleChest#getLeftSide/getRightSide, which obtain snapshot holders.
+     * Ordinary transfers need at most two coordinate lookups per endpoint.
+     */
+    public Shop getShopByInventory(Inventory inventory) {
+        if (inventory instanceof DoubleChestInventory doubleChest) {
+            Shop left = getShop(doubleChest.getLeftSide().getLocation());
+            return left != null ? left : getShop(doubleChest.getRightSide().getLocation());
+        }
+        Shop shop = getShop(inventory.getLocation());
+        // A minecart/player inventory can occupy a shop's coordinates without being
+        // its block inventory. Only positive matches need this snapshot-free check.
+        return shop != null && inventory.getHolder(false) instanceof BlockInventoryHolder ? shop : null;
+    }
+
+    /**
      * Get a collection of all loaded shops
      * <p>
      * This collection is safe to use for looping over and removing shops.
@@ -74,6 +94,11 @@ public class ShopUtils {
      */
     public Collection<Shop> getShops() {
         return Collections.unmodifiableCollection(new ArrayList<>(shopLocationValues));
+    }
+
+    /** Read-only, weakly consistent view for the bounded server-thread display sweep. */
+    Collection<Shop> getShopsForRefresh() {
+        return shopLocationValues;
     }
 
     /**
@@ -122,6 +147,31 @@ public class ShopUtils {
     }
 
     /**
+     * Change membership before another server tick can transfer items. Block events
+     * still expose the old inventory shape, so the caller supplies the new shape.
+     */
+    public void replaceShopContainer(Shop previous, Shop replacement, Set<Location> locations) {
+        if (!Bukkit.isPrimaryThread()) {
+            throw new IllegalStateException("Shop containers must change on the server thread");
+        }
+        removeShop(previous, false);
+        locations.forEach(location -> shopLocation.put(location, replacement));
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            Location anchor = replacement.getLocation();
+            if (getShop(anchor) == replacement && anchor.getWorld().isChunkLoaded(
+                    ChunkCoordinates.fromBlock(anchor.getBlockX()), ChunkCoordinates.fromBlock(anchor.getBlockZ()))) {
+                replacement.create(true);
+            }
+        });
+        // Extension preserves the anchor. Splitting may move it, but must never
+        // delete/reinsert the row or overwrite newer prices, ownership or terms.
+        if (!previous.getLocation().equals(replacement.getLocation())) {
+            plugin.getShopDatabase().moveShop(replacement.getID(), replacement.getLocation(),
+                    refreshCatalogueAfter(null));
+        }
+    }
+
+    /**
      * Removes (i.e. unloads) all currently loaded shops
      */
     public void removeShops() {
@@ -158,8 +208,8 @@ public class ShopUtils {
     public void removeShop(Shop shop, boolean removeFromDatabase, Callback<Void> callback) {
         plugin.debug("Removing shop (#" + shop.getID() + ")");
 
+        shopLocation.entrySet().removeIf(entry -> entry.getValue() == shop);
         if (shop.isCreated()) {
-            shopLocation.entrySet().removeIf(entry -> entry.getValue() == shop);
             shop.removeItem();
             shop.removeHologram();
         }
@@ -398,7 +448,7 @@ public class ShopUtils {
 
                     final Shop existingShop = shopLocation.get(loc);
                     if (existingShop != null) {
-                        if (existingShop.restoreDisplays()) {
+                        if (existingShop.isCreated() ? existingShop.restoreDisplays() : existingShop.create(true)) {
                             loadedShops.add(existingShop);
                         }
                         continue;

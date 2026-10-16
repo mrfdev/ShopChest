@@ -1,10 +1,10 @@
 # Maintained local test server
 
-The active test instance is `servers/Paper-26.3`, cloned from the stopped
+The maintained development instance is `servers/Paper-26.3`, cloned from the stopped
 `servers/Paper-26.2` instance. Preserve the entire 26.2 directory for rollback.
 Never open its worlds or databases with a newer server.
 
-The new instance targets Paper 26.3 build 41 ALPHA. Java 27 at
+The instance targets Paper 26.3 build 175 STABLE. Java 27 at
 `/Library/Java/JavaVirtualMachines/jdk-27.jdk/Contents/Home` runs its maintained
 `1MB-minecraft.sh` launcher. The launcher selects only the 26.3 JAR family and
 requires Java 27. Compilation and the required unit suite use JDK 25.0.4.1;
@@ -14,20 +14,30 @@ The instance binds to loopback on TCP 28673. Query UDP 28674 and RCON TCP 28675
 are reserved but disabled. Its session name is `shopchest-paper-26.3-28673`.
 Before starting, check both TCP and UDP availability and other projects' saved
 server ports. PaperScript uses this distinct session and server directory,
-with both channel selectors set to `ALPHA`. Download exact builds explicitly:
+with both channel selectors set to `STABLE`. Stage and verify exact builds
+without starting this instance:
 
 ```bash
 cd servers/Paper-26.3
-python3 paperscript/paperscript.py --server-dir "$PWD" download --version 26.3 --build 41 --channel ALPHA
+python3 paperscript/paperscript.py --server-dir "$PWD" download --version 26.3 --build 175 --channel STABLE
 python3 paperscript/paperscript.py --server-dir "$PWD" verify
-./1MB-minecraft.sh
 ```
 
-Keep external messaging plugins such as DiscordSRV inactive. The smoke instance
-uses Vault, CMI, CMILib, LuckPerms, PlaceholderAPI, CoreProtect, WorldEdit, and
-WorldGuard. Compatible JARs may be copied from the shared server; preserve the
+Keep external messaging plugins such as DiscordSRV inactive. The maintained instance
+contains Vault, CMI, CMILib, LuckPerms, PlaceholderAPI, CoreProtect, WorldEdit, and
+WorldGuard. The disposable stable suite copies only Vault, CMI, CMILib, LuckPerms,
+WorldEdit, and WorldGuard JARs and creates fresh configuration and data.
+Compatible JARs may be copied from the shared server; preserve the
 project-local configuration and data. Copied plugins outside this smoke scope
 are retained in `plugins-disabled/copied-paper-26.2/`.
+
+Use a fresh disposable server for compatibility verification. Never copy worlds,
+databases, player records, or credentials from the maintained or shared servers.
+The repeatable isolated test instructions and results are in the
+[stable migration record](../verification/paper-26.3-stable-2026-10-11.md).
+Staging a Paper JAR changes `staged_*` metadata; `current_*` and the last-launched
+marker continue to describe the last actual launch. Do not start the maintained
+instance as part of this migration.
 
 Run `./gradlew clean build --no-build-cache` from the repository root with
 `JAVA_HOME` and `PATH` selecting JDK 25.0.4.1. This includes unit tests,
@@ -49,4 +59,6 @@ exact tested artifact with an atomic rename. Check its destination checksum,
 ensure no obsolete ShopChest JAR remains active (including the update directory),
 and confirm the shared server is still stopped. Never remove other `1MB-*` JARs.
 
-See the [upgrade record](../verification/paper-26.3-2026-09-25.md) for exact evidence.
+See the [stable migration record](../verification/paper-26.3-stable-2026-10-11.md)
+for current evidence. The [alpha upgrade record](../verification/paper-26.3-2026-09-25.md)
+is retained as dated history.

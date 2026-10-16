@@ -1,0 +1,8 @@
+name: ShopTransferSmoke
+version: '1'
+main: ShopTransferSmoke
+api-version: '${paperVersion}'
+depend: [ShopChest]
+commands:
+  transfersmoke:
+    description: Disposable-server automated-transfer fixture
