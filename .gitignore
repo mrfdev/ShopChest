@@ -12,6 +12,7 @@ target/
 /.vscode/
 /servers/
 /logs/
+/.scratch/
 
 # macOS metadata
 .DS_Store

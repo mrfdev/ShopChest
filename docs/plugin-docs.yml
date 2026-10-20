@@ -20,6 +20,6 @@ technical_readme: ../README.md
 marketplace_snapshot_json: catalogue/marketplace-snapshot.json
 marketplace_snapshot_csv: catalogue/marketplace-snapshot.csv
 java_target: 25
-paper_target: "26.3 build 175 stable"
+paper_target: "26.3 build 207 stable"
 official_project: true
 repository: mrfdev/ShopChest

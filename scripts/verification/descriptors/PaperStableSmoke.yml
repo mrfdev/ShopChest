@@ -5,4 +5,4 @@ api-version: '${paperVersion}'
 depend: [ShopChest]
 commands:
   stablesmoke:
-    description: Disposable-server compatibility fixture, console only
+    description: Disposable-server seed, verify and showcase fixture, console only

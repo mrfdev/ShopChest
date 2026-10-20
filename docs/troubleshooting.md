@@ -9,7 +9,7 @@ Check the first ShopChest error in `logs/latest.log`.
 - Database connection failure: verify SQLite file access or MySQL host, port, database, credentials, and network access.
 - Unsupported server/platform: use the maintained jar on Paper 26.3.
 - `UnsupportedClassVersionError`: check the Java executable used by the launcher.
-  ShopChest bytecode requires Java 25 or newer; this project's verified server runtime is Java 27.
+  ShopChest bytecode requires Java 25 or newer; this project's verified server runtime is Java 27.0.1.
 
 ## Shop Creation Does Not Finish
 

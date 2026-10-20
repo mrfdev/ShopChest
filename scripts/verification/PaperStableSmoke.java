@@ -3,12 +3,14 @@ import de.epiceric.shopchest.advertising.AdvertisingCurrencyMatcher;
 import de.epiceric.shopchest.advertising.ItemStackBinaryCodec;
 import de.epiceric.shopchest.shop.Shop;
 import de.epiceric.shopchest.shop.ShopProduct;
+import de.epiceric.shopchest.storefront.StorefrontDisplay;
 import de.epiceric.shopchest.storefront.StorefrontProfile;
 import de.epiceric.shopchest.utils.Callback;
 import de.epiceric.shopchest.utils.Utils;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.GameRules;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -16,6 +18,9 @@ import org.bukkit.World;
 import org.bukkit.block.Container;
 import org.bukkit.block.ShulkerBox;
 import org.bukkit.command.ConsoleCommandSender;
+import org.bukkit.entity.Interaction;
+import org.bukkit.entity.ItemDisplay;
+import org.bukkit.entity.TextDisplay;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -43,12 +48,13 @@ public final class PaperStableSmoke extends JavaPlugin {
         Objects.requireNonNull(getCommand("stablesmoke")).setExecutor((sender, command, label, args) -> {
             if (!(sender instanceof ConsoleCommandSender)) return true;
             guarded(() -> {
-                require(args.length == 1, "seed or verify argument required");
+                require(args.length == 1, "seed, verify or showcase argument required");
                 world = Bukkit.getWorlds().getFirst();
                 world.setChunkForceLoaded(0, 0, true);
                 metadata();
                 if (args[0].equals("seed")) seed(0);
                 else if (args[0].equals("verify")) verify(0);
+                else if (args[0].equals("showcase")) showcase();
                 else throw new IllegalArgumentException("Unknown smoke action");
             });
             return true;
@@ -147,6 +153,107 @@ public final class PaperStableSmoke extends JavaPlugin {
                         verify(index + 1);
                     }));
         }));
+    }
+
+    /** Optional player-review area, created only after the synthetic shops exist. */
+    private void showcase() {
+        require(world.getName().equals("stable-fixture"), "Showcase requires the disposable fixture world");
+        for (int index = 0; index < OWNERS.size(); index++) {
+            Shop shop = shops.getShopUtils().getShop(location(index));
+            require(shop != null && shop.getVendor().getUniqueId().equals(OWNERS.get(index)),
+                    "Showcase requires the seeded synthetic shops");
+        }
+        StorefrontDisplay candidate = new StorefrontDisplay(OWNERS.getFirst(), world.getUID(),
+                world.getName(), 12, 100, 4, 1792497600000L);
+        shops.getStorefrontRepository().findDisplay(candidate.ownerId(),
+                callback((Optional<StorefrontDisplay> existing) -> {
+                    require(existing.isEmpty() || existing.get().anchor().equals(candidate.anchor()),
+                            "Do not replace another Storefront Display");
+                    preflightShowcase(existing.isPresent());
+                    if (existing.isPresent()) {
+                        buildShowcase();
+                    } else {
+                        shops.getStorefrontRepository().createDisplay(candidate,
+                                callback(ignored -> buildShowcase()));
+                    }
+                }));
+    }
+
+    private void preflightShowcase(boolean existingDisplay) {
+        for (int x = -8; x <= 20; x++) {
+            for (int z = -8; z <= 20; z++) {
+                Material floor = world.getBlockAt(x, 99, z).getType();
+                require(floor.isAir() || floor == showcaseFloor(x, z),
+                        "Do not overwrite unrelated floor blocks");
+                if (showcaseEdge(x, z)) {
+                    for (int y = 100; y <= 101; y++) {
+                        Material rail = world.getBlockAt(x, y, z).getType();
+                        require(rail.isAir() || rail == Material.GLASS,
+                                "Do not overwrite unrelated edge blocks");
+                    }
+                }
+            }
+        }
+        Material anchor = world.getBlockAt(12, 100, 4).getType();
+        require(anchor.isAir() || existingDisplay && anchor == Material.ENDER_CHEST,
+                "Do not overwrite an unrelated display anchor");
+        require(world.getBlockAt(12, 101, 4).getType().isAir(), "Display has clear space above it");
+        require(world.getBlockAt(6, 100, -2).getType().isAir()
+                && world.getBlockAt(6, 101, -2).getType().isAir(), "Showcase spawn has clear space");
+    }
+
+    private Material showcaseFloor(int x, int z) {
+        return Math.floorMod(x, 4) == 0 && Math.floorMod(z, 4) == 0
+                ? Material.SEA_LANTERN : Material.STONE_BRICKS;
+    }
+
+    private boolean showcaseEdge(int x, int z) {
+        return x == -8 || x == 20 || z == -8 || z == 20;
+    }
+
+    private void buildShowcase() {
+        preflightShowcase(true);
+        for (int x = -8; x <= 20; x++) {
+            for (int z = -8; z <= 20; z++) {
+                world.getBlockAt(x, 99, z).setType(showcaseFloor(x, z), false);
+                if (showcaseEdge(x, z)) {
+                    for (int y = 100; y <= 101; y++) {
+                        world.getBlockAt(x, y, z).setType(Material.GLASS, false);
+                    }
+                }
+            }
+        }
+        world.getBlockAt(12, 100, 4).setType(Material.ENDER_CHEST, false);
+        require(world.setSpawnLocation(new Location(world, 6.5, 100, -2, 0, 0)),
+                "Set a safe showcase spawn facing the fixtures");
+        require(world.setGameRule(GameRules.RESPAWN_RADIUS, 0), "Keep joins on the showcase platform");
+        world.setTime(6000);
+        world.setStorm(false);
+        world.setThundering(false);
+        world.setWeatherDuration(1_728_000);
+        world.setThunderDuration(1_728_000);
+        for (int index = 0; index < OWNERS.size(); index++) {
+            shops.getShopUtils().getShop(location(index)).restoreDisplays();
+        }
+        shops.getStorefrontDisplayManager().start();
+        awaitShowcase(20);
+    }
+
+    private void awaitShowcase(int attempts) {
+        Bukkit.getScheduler().runTaskLater(this, () -> guarded(() -> {
+            Collection<org.bukkit.entity.Entity> entities = world.getNearbyEntities(
+                    new Location(world, 12.5, 102, 4.5), 1, 4, 1);
+            boolean ready = entities.stream().anyMatch(entity -> entity instanceof TextDisplay)
+                    && entities.stream().anyMatch(entity -> entity instanceof ItemDisplay)
+                    && entities.stream().anyMatch(entity -> entity instanceof Interaction);
+            if (!ready && attempts > 1) {
+                awaitShowcase(attempts - 1);
+                return;
+            }
+            require(ready, "Storefront text, icon and click target are ready");
+            getLogger().info("SHOWCASE_READY shops=(4,100,4),(8,100,4)"
+                    + " storefront=(12,100,4) spawn=(6.5,100,-2) facing=+Z");
+        }), 10L);
     }
 
     private <T> Callback<T> callback(Consumer<T> next) {

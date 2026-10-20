@@ -1,0 +1,12 @@
+name: CmiCompatibilitySmoke
+version: '1'
+main: CmiCompatibilitySmoke
+api-version: '${paperVersion}'
+depend: [ShopChest, CMI, CMILib]
+commands:
+  cmicompat:
+    description: Disposable-server CMI compatibility checks and player visual samples
+    permission: cmicompat.use
+permissions:
+  cmicompat.use:
+    default: op

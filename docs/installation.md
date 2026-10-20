@@ -2,8 +2,8 @@
 
 ## Requirements
 
-- Paper 26.3 build 175 stable as the pinned stable development and compatibility target
-- Java 27 for the maintained Paper 26.3 test runtime
+- Paper 26.3 build 207 stable as the pinned stable development and compatibility target
+- Java 27.0.1 for the maintained Paper 26.3 test runtime
 - Vault
 - A Vault-compatible economy provider registered before ShopChest enables
 - CMI is optional; when present, it enables the configurable worth-price advisory
@@ -14,7 +14,7 @@
   administrator currency capture before players can purchase Advertising Passes
 
 ShopChest's own classes target Java 25 bytecode for the supported Paper server.
-Paper's published minimum is Java 25; Java 27 is this project's verified server
+Paper's published minimum is Java 25; Java 27.0.1 is this project's verified server
 runtime, not an additional Paper API bytecode requirement.
 
 > **Snapshot warning:** `1.15.4-SNAPSHOT` is a pre-live beta checkpoint, not a
@@ -69,7 +69,7 @@ database engines.
 From the repository root:
 
 ```bash
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-25.0.4.1.jdk/Contents/Home
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-25.0.5.jdk/Contents/Home
 export PATH="$JAVA_HOME/bin:$PATH"
 java -version
 ./gradlew clean build
@@ -77,25 +77,25 @@ java -version
 
 The output is `plugin/build/libs/1MB-ShopChest-v1.15.4-SNAPSHOT-<build>-j25-26.3.jar`,
 where `<build>` is the shared release build in `gradle.properties`. Verification
-rejects any number below the committed release build; build 796 is reserved
+rejects any number below the committed release build; build 797 is reserved
 for this migration, independently of Git commit count. The unshaded intermediate
 jar is disabled, leaving one deployable artifact. Local `servers/`, Gradle output,
 logs, and test-server jars are ignored
 and must not be committed.
 
-For the complete optional Java 27 test run, keep `JAVA_HOME` and `PATH` on JDK 25.0.4.1,
-set `JAVA27_HOME=/Library/Java/JavaVirtualMachines/jdk-27.jdk/Contents/Home`,
-and run `./gradlew :plugin:test -PshopchestTestJavaVersion=27 --rerun-tasks`.
+For the complete optional Java 27.0.1 test run, keep `JAVA_HOME` and `PATH` on JDK 25.0.5,
+set `JAVA27_HOME=/Library/Java/JavaVirtualMachines/jdk-27.0.1.jdk/Contents/Home`,
+and run `./gradlew :plugin:verifyReleaseMetadata :plugin:test -PshopchestTestJavaVersion=27 --rerun-tasks`.
 Only the test JVM changes; the plugin continues to use Java 25 bytecode.
 
 ## Compatibility Policy
 
 The project compiles against the exact stable Paper API coordinate
-`io.papermc.paper:paper-api:26.3.build.175-stable` and uses Paper APIs directly.
+`io.papermc.paper:paper-api:26.3.build.207-stable` and uses Paper APIs directly.
 It does not support Spigot or older Paper/Minecraft releases. A newer Paper
 release is considered compatible only after the platform contract tests, clean
 build, and test-server smoke checks pass; there is no version-specific NMS gate
 that would reject it preemptively.
 
-See the [stable verification record](verification/paper-26.3-stable-2026-10-11.md)
+See the [current compatibility record](verification/paper-cmi-java-2026-10-20.md)
 for reproducible isolated-server checks and the remaining player-operated tests.

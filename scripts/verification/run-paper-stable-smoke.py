@@ -35,6 +35,8 @@ def main():
     parser.add_argument('--dependencies', type=Path, required=True,
                         help='Read-only source of Vault, CMI, CMILib, LuckPerms, WorldEdit, WorldGuard JARs')
     parser.add_argument('--java-home', type=Path, required=True)
+    parser.add_argument('--copper-lifecycle', action='store_true',
+                        help='Also verify one persisted copper shop through state changes and chunk/restart recovery')
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
     properties = dict(line.split('=', 1) for line in (root / 'gradle.properties').read_text().splitlines()
@@ -65,9 +67,11 @@ def main():
     plugins = server / 'plugins'
     plugins.mkdir()
     shutil.copy2(args.paper_jar, server / 'paper.jar')
-    for jar in [artifact, *dependencies.values(),
-                root / 'plugin/build/paper-smoke/PaperStableSmoke.jar',
-                root / 'plugin/build/paper-smoke/ShopTransferSmoke.jar']:
+    fixture_names = ['PaperStableSmoke', 'ShopTransferSmoke', 'CmiCompatibilitySmoke']
+    if args.copper_lifecycle:
+        fixture_names.append('CopperLifecycleSmoke')
+    fixtures = [root / 'plugin/build/paper-smoke' / f'{name}.jar' for name in fixture_names]
+    for jar in [artifact, *dependencies.values(), *fixtures]:
         shutil.copy2(jar, plugins / jar.name)
     with socket.socket() as probe:
         probe.bind(('127.0.0.1', 0))
@@ -91,11 +95,14 @@ def main():
     (server / 'config/paper-global.yml').write_text('spark:\n  enabled: false\n')
     receipt = {'paper_sha256': sha256(server / 'paper.jar'), 'artifact': artifact_name,
                'artifact_sha256': sha256(artifact), 'port': port,
+               'copper_lifecycle': args.copper_lifecycle,
+               'fixtures': {p.name: sha256(p) for p in fixtures},
                'dependencies': {n: {'file': p.name, 'sha256': sha256(p)} for n, p in dependencies.items()},
                'runs': []}
     java = args.java_home / 'bin/java'
     receipt['java'] = subprocess.run([str(java), '-version'], capture_output=True, text=True, check=True).stderr
-    require(f'version "{properties["shopchestRuntimeJavaVersion"]}' in receipt['java'], 'Wrong runtime Java')
+    require(f'version "{properties["shopchestRuntimeJdkVersion"]}"' in receipt['java'],
+            'Wrong runtime Java update')
 
     def run(label, action, failure=None):
         healthy = failure is None
@@ -131,10 +138,10 @@ def main():
                         return ''.join(observed)
                 raise AssertionError(f'{label}: timeout waiting for {marker}; see {log}')
 
-            def command(value, marker):
+            def command(value, marker, timeout=120):
                 process.stdin.write(value + '\n')
                 process.stdin.flush()
-                return wait(marker)
+                return wait(marker, timeout=timeout)
 
             try:
                 startup = wait('Done (', timeout=300)
@@ -151,11 +158,24 @@ def main():
                         require(value in status, f'{label}: missing {value}; see {log}')
                     command('shops info', 'Open the ShopChest player guide:')
                     command(f'stablesmoke {action}', 'STABLE_SMOKE_PASS')
+                    if args.copper_lifecycle:
+                        command(f'coppersmoke {action}', 'COPPER_SMOKE_PASS', timeout=240)
+                    command('cmicompat smoke', 'CMI_COMPAT_SMOKE_PASS')
                     command('transfersmoke', 'TRANSFER_SMOKE_PASS')
-                    command('shops reload', 'Successfully reloaded 2 shop/s.')
+                    shop_count = 3 if args.copper_lifecycle else 2
+                    command('shops reload', f'Successfully reloaded {shop_count} shop/s.')
+                    command('stablesmoke verify', 'STABLE_SMOKE_PASS')
+                    command('cmicompat smoke', 'CMI_COMPAT_SMOKE_PASS')
+                    if action == 'verify':
+                        command('cmicompat verifyvisual', 'CMI_COMPAT_VISUAL_VERIFY_PASS')
+                    command('cmicompat preparevisual', 'CMI_COMPAT_VISUAL_SAVED')
+                    command('cmi reload', 'CMI Configs and locale files reloaded!')
+                    command('cmil reload', 'CMIL Configs and locale files reloaded!')
+                    command('cmicompat verifyvisual', 'CMI_COMPAT_VISUAL_VERIFY_PASS')
+                    command('cmicompat smoke', 'CMI_COMPAT_SMOKE_PASS')
                     command('stablesmoke verify', 'STABLE_SMOKE_PASS')
                     audit = command('shops admin audit all', 'Dry run only:')
-                    require('Ready: 2' in audit and 'Known issues: 0' in audit, f'{label}: audit failed')
+                    require(f'Ready: {shop_count}' in audit and 'Known issues: 0' in audit, f'{label}: audit failed')
                     command('shops admin advertise currency status', 'No AFK Shrine Token')
                     print(f'{label}: metadata, persistence, displays, transfers and audit passed', flush=True)
             finally:
@@ -181,7 +201,8 @@ def main():
             with sqlite3.connect(dbpath.as_uri() + '?mode=ro', uri=True) as db:
                 require(db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok', 'SQLite integrity failed')
                 rows = db.execute('SELECT * FROM shopchest_shops ORDER BY id').fetchall()
-                require(len(rows) == 2, 'Expected two persisted shops')
+                require(len(rows) == (3 if args.copper_lifecycle else 2),
+                        'Unexpected persisted shop count')
                 if 'shops' in receipt:
                     require(rows == receipt['shops'], 'Persisted shop rows changed across restart')
                 receipt['shops'] = rows
@@ -209,10 +230,16 @@ def main():
     # Dependency failure uses only the disposable fixture, never source plugin directories.
     disabled = server / 'plugins-disabled'
     disabled.mkdir()
+    moved = []
     for source in list(plugins.glob('*.jar')):
         if source.name not in {artifact.name, dependencies['Vault'].name}:
             source.rename(disabled / source.name)
-    run('missing-economy', None, failure='Could not find any Vault economy dependency!')
+            moved.append(source.name)
+    try:
+        run('missing-economy', None, failure='Could not find any Vault economy dependency!')
+    finally:
+        for name in moved:
+            (disabled / name).rename(plugins / name)
     print(f'PASS: {server / "verification.json"}', flush=True)
 
 

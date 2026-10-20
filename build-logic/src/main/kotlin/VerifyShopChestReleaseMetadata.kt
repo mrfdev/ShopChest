@@ -32,6 +32,24 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
     abstract val runtimeJavaVersion: Property<String>
 
     @get:Input
+    abstract val buildJdkVersion: Property<String>
+
+    @get:Input
+    abstract val runtimeJdkVersion: Property<String>
+
+    @get:Input
+    abstract val gradleJdkVersion: Property<String>
+
+    @get:Input
+    abstract val compilerJdkVersion: Property<String>
+
+    @get:Input
+    abstract val testJdkVersion: Property<String>
+
+    @get:Input
+    abstract val testJavaVersion: Property<String>
+
+    @get:Input
     abstract val paperVersion: Property<String>
 
     @get:Input
@@ -125,6 +143,8 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
         val apiVersion = paperApiVersion.get()
         val channelLabel = channel.lowercase()
         val runtimeTarget = runtimeJavaVersion.get()
+        val buildJdk = buildJdkVersion.get()
+        val runtimeJdk = runtimeJdkVersion.get()
         val readme = readmeFile.get().asFile
         val todo = todoFile.get().asFile
         val installation = installationFile.get().asFile
@@ -142,6 +162,17 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
         requireThat(javaTarget == "25" && runtimeTarget.toInt() >= javaTarget.toInt()) {
             "Retain Java 25 bytecode and a compatible server runtime."
         }
+        requireThat(buildJdk.startsWith("$javaTarget.") && runtimeJdk.startsWith("$runtimeTarget.")) {
+            "Exact JDK versions must match the compilation and server Java targets."
+        }
+        requireJdk(gradleJdkVersion.get(), buildJdk, "Gradle")
+        requireJdk(compilerJdkVersion.get(), buildJdk, "Java compiler")
+        val expectedTestJdk = when (testJavaVersion.get()) {
+            javaTarget -> buildJdk
+            runtimeTarget -> runtimeJdk
+            else -> throw GradleException("Tests must use the build or server Java target.")
+        }
+        requireJdk(testJdkVersion.get(), expectedTestJdk, "Test JVM")
         requireThat(paperSha256.get().matches(Regex("[0-9a-f]{64}"))) {
             "Paper server must have a pinned SHA-256 from official Fill metadata."
         }
@@ -165,14 +196,22 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
         requireText(agentInstructions, "Build $releaseBuild is reserved")
         requireText(serverGuide, "Paper $paperTarget build $targetBuild $channel")
         requireText(readiness, "disposable Paper $paperTarget build $targetBuild $channel test server")
-        requireText(readme, "| Server runtime | Java $runtimeTarget")
+        requireText(readme, "| Server runtime | Java $runtimeJdk")
+        requireText(readme, "| Build toolchain | Gradle wrapper with JDK $buildJdk |")
         requireText(readme, "| Plugin bytecode | Java $javaTarget |")
-        requireText(installation, "Java $runtimeTarget for the maintained Paper $paperTarget test runtime")
-        requireText(agentInstructions, "Run the maintained local server with JDK $runtimeTarget.")
-        requireText(serverGuide, "Java $runtimeTarget at")
-        requireText(todo, "disposable Paper $paperTarget build $targetBuild $channel server on Java $runtimeTarget")
-        requireText(readiness, "candidate jar on Java $runtimeTarget")
-        requireText(troubleshooting, "verified server runtime is Java $runtimeTarget.")
+        requireText(installation, "Java $runtimeJdk for the maintained Paper $paperTarget test runtime")
+        requireText(agentInstructions, "Build and test with JDK $buildJdk")
+        requireText(agentInstructions, "Run the maintained local server with JDK $runtimeJdk.")
+        requireText(serverGuide, "Java $runtimeJdk at")
+        requireText(todo, "disposable Paper $paperTarget build $targetBuild $channel server on Java $runtimeJdk")
+        requireText(readiness, "Select JDK $buildJdk")
+        requireText(readiness, "candidate jar on Java $runtimeJdk")
+        requireText(troubleshooting, "verified server runtime is Java $runtimeJdk.")
+        listOf(readme, installation).forEach { file ->
+            requireText(file, "jdk-$buildJdk.jdk/Contents/Home")
+            requireText(file, "jdk-$runtimeJdk.jdk/Contents/Home")
+        }
+        requireText(serverGuide, "jdk-$runtimeJdk.jdk/Contents/Home")
         requireText(
             paperConventionFile.get().asFile,
             "shopchestPaperApiVersion")
@@ -202,6 +241,8 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
             "jdk-26.0.1",
             "jdk-25.0.4.jdk",
             "jdk-26.0.2.jdk",
+            "jdk-25.0.4.1.jdk",
+            "jdk-27.jdk",
             "26.3.build.41-alpha",
             "26.3 build 41",
         ).forEach { stale ->
@@ -227,7 +268,7 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
             requireText(state, "\"staged_build\": $targetBuild")
             requireText(state, "\"staged_channel\": \"$channel\"")
             requireText(state, "\"staged_sha256\": \"${paperSha256.get()}\"")
-            listOf("jdk-25.0.4.jdk", "jdk-26.0.2.jdk").forEach { stale ->
+            listOf("jdk-25.0.4.jdk", "jdk-26.0.2.jdk", "jdk-25.0.4.1.jdk", "jdk-27.jdk").forEach { stale ->
                 requireThat(!launcher.readText().contains(stale)) {
                     "Maintained server launcher still contains removed JDK path: $stale"
                 }
@@ -235,7 +276,7 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
             requireText(launcher, "_javaBin")
             requireText(launcher, "_minJavaVersion=$runtimeTarget")
             requireText(launcher, "_minecraftVersion=\"$paperTarget\"")
-            requireText(launcher, "jdk-$runtimeTarget.jdk/Contents/Home")
+            requireText(launcher, "jdk-$runtimeJdk.jdk/Contents/Home")
             requireThat(!launcher.readText().contains("jdk-25." + "0.2")) {
                 "Maintained server launcher still contains the stale JDK 25.0.2 path."
             }
@@ -244,6 +285,12 @@ abstract class VerifyShopChestReleaseMetadata : DefaultTask() {
             }
         }
 
+    }
+
+    private fun requireJdk(actual: String, expected: String, label: String) {
+        requireThat(actual.substringBefore('+').substringBefore('-') == expected) {
+            "$label must use JDK $expected; found $actual."
+        }
     }
 
     private fun requireText(file: File, expected: String) {

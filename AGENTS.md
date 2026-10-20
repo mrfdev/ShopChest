@@ -11,12 +11,12 @@ This repository uses a single-context domain-doc layout. See `docs/agents/domain
 ### Paper target and release checks
 
 - Read `docs/agents/test-server.md` and `docs/release-readiness.md` before building or deploying.
-- Maintain Paper 26.3 build 175 STABLE and API `26.3.build.175-stable`; consult the live
+- Maintain Paper 26.3 build 207 STABLE and API `26.3.build.207-stable`; consult the live
   PaperMC documentation index, official references, and exact-version Javadocs
   before changing the target. Use only verified STABLE builds for development.
-- Build and test with JDK 25.0.4.1 using `JAVA_HOME` and `PATH`; retain Java 25
-  toolchains and `--release 25`. Run the maintained local server with JDK 27.
-- `gradle.properties` owns release metadata. Build 796 is reserved for
+- Build and test with JDK 25.0.5 using `JAVA_HOME` and `PATH`; retain Java 25
+  toolchains and `--release 25`. Run the maintained local server with JDK 27.0.1.
+- `gradle.properties` owns release metadata. Build 797 is reserved for
   `1.15.4-SNAPSHOT`; reuse it after failures. Release numbers advance independently
   of Git commit counts and must never regress below the committed build. Keep the
   separate 26.2 archive branch outside the release branch ancestry so it consumes

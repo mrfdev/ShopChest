@@ -18,24 +18,24 @@ Player-facing documentation is published at
 
 | Component | Supported target |
 | --- | --- |
-| Minecraft / Paper | Paper 26.3 build 175 stable |
-| Server runtime | Java 27 (27+35-2325), project-local testing |
+| Minecraft / Paper | Paper 26.3 build 207 stable |
+| Server runtime | Java 27.0.1 (27.0.1+9-62), project-local testing |
 | Plugin bytecode | Java 25 |
-| Build toolchain | Gradle wrapper with JDK 25.0.4.1 |
+| Build toolchain | Gradle wrapper with JDK 25.0.5 |
 | Required plugins | Vault and a Vault-compatible economy provider |
 | Optional price advisory | CMI |
 | Plugin version | 1.15.4-SNAPSHOT |
 | Release status | Pre-live beta snapshot |
 
-Paper 26.3 requires Java 25 or newer; this project retains JDK 25.0.4.1 for
-compilation and Java 27 for server compatibility testing. Paper's STABLE channel
+Paper 26.3 requires Java 25 or newer; this project retains JDK 25.0.5 for
+compilation and Java 27.0.1 for server compatibility testing. Paper's STABLE channel
 does not change ShopChest's separate pre-live snapshot status.
 
 `1.15.4-SNAPSHOT` is a pre-live beta checkpoint, not a production release.
 Automated tests and local Paper smoke tests do not replace the complete
 live-server beta checklist, approval, backup, and controlled rollout.
 
-The exact compile and test API is `26.3.build.175-stable`, pinned in
+The exact compile and test API is `26.3.build.207-stable`, pinned in
 [`gradle.properties`](gradle.properties) together with the server build and SHA-256. The deployable jar uses
 Paper APIs directly and does not contain version-specific NMS, CraftBukkit
 reflection, or legacy Spigot compatibility modules.
@@ -133,7 +133,7 @@ removes snapshot-heavy transfer checks; see the
 
 ### Requirements
 
-1. Paper 26.3 running on Java 27.
+1. Paper 26.3 running on Java 27.0.1.
 2. Vault.
 3. A Vault-compatible economy plugin registered before ShopChest enables.
 4. The shaded `1MB-ShopChest-v1.15.4-SNAPSHOT-<build>-j25-26.3.jar`.
@@ -477,7 +477,7 @@ calculations, and layout examples. Run `/shops reload` after editing
 ### Prerequisites
 
 - Git
-- JDK 25.0.4.1 for release builds; JDK 27 for the maintained local server
+- JDK 25.0.5 for release builds; JDK 27.0.1 for the maintained local server
 - Network access for the Gradle wrapper and Maven dependencies
 
 The repository includes the Gradle wrapper; a separate Gradle installation is
@@ -487,7 +487,7 @@ not required.
 git clone https://github.com/mrfdev/ShopChest.git
 cd ShopChest
 
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-25.0.4.1.jdk/Contents/Home
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-25.0.5.jdk/Contents/Home
 export PATH="$JAVA_HOME/bin:$PATH"
 java -version
 ./gradlew --version
@@ -495,13 +495,14 @@ java -version
 ```
 
 Gradle uses the JDK selected by `JAVA_HOME`, with automatic JDK discovery and
-downloads disabled. Compilation remains pinned to Java 25 with `--release 25`.
-To rerun the complete test suite on the installed Java 27 runtime while keeping
-the compiler and Gradle on JDK 25.0.4.1:
+downloads disabled. Release verification checks the exact JDK updates declared in
+`gradle.properties`. Compilation remains pinned to Java 25 with `--release 25`.
+To rerun the complete test suite on the installed Java 27.0.1 runtime while keeping
+the compiler and Gradle on JDK 25.0.5:
 
 ```bash
-export JAVA27_HOME=/Library/Java/JavaVirtualMachines/jdk-27.jdk/Contents/Home
-./gradlew :plugin:test -PshopchestTestJavaVersion=27 --rerun-tasks
+export JAVA27_HOME=/Library/Java/JavaVirtualMachines/jdk-27.0.1.jdk/Contents/Home
+./gradlew :plugin:verifyReleaseMetadata :plugin:test -PshopchestTestJavaVersion=27 --rerun-tasks
 ```
 
 The build runs the test suite and writes the deployable shaded jar to:
@@ -512,8 +513,8 @@ plugin/build/libs/1MB-ShopChest-v1.15.4-SNAPSHOT-<build>-j25-26.3.jar
 
 `<build>` is the shared zero-padded release build from `gradle.properties`,
 independent of Git commit counts. Release verification rejects build numbers
-below the committed release build. The build reserves `796` for this
-`1.15.4-SNAPSHOT` stable migration; reuse that number
+below the committed release build. The build reserves `797` for this
+`1.15.4-SNAPSHOT` compatibility update; reuse that number
 after failed builds. The separate 26.2 archive branch does not advance the
 release branch. The build disables the unshaded jar and assembles only the
 deployable `1MB-ShopChest-...jar`. Test reports are available under
@@ -522,12 +523,12 @@ deployable `1MB-ShopChest-...jar`. Test reports are available under
 Local `servers/`, Gradle output, logs, and test-server jars are ignored and must
 not be committed.
 
-See the [Paper 26.3 stable verification record](docs/verification/paper-26.3-stable-2026-10-11.md)
-for the target, artifact checksum, test results, and preserved 26.2 snapshots.
+See the [Paper, CMI and Java compatibility record](docs/verification/paper-cmi-java-2026-10-20.md)
+for the target, artifact checksum, test results, and remaining player checks.
 The [2026-10-16 documentation check](docs/verification/documentation-drift-2026-10-16.md)
-records the subsequent help-text correction, build checksum, and drift probes.
+records the earlier build 796 help-text correction, build checksum, and drift probes.
 The [local server guide](docs/agents/test-server.md) describes the maintained instance.
-The stable verification record also documents the repeatable disposable-server
+The current compatibility record also documents the repeatable disposable-server
 suite (`:plugin:paperSmokeJars` and `scripts/verification/run-paper-stable-smoke.py`).
 Its fixture plugins are separate artifacts and are never packaged in ShopChest.
 

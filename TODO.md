@@ -2,12 +2,13 @@
 
 This backlog tracks planned work for the 1MoreBlock ShopChest fork. The current
 working Paper 26.2 build is preserved as rollback material. The maintained
-test target is Paper 26.3 build 175 stable on Java 27, with Java 25 bytecode.
-See [the stable migration record](docs/verification/paper-26.3-stable-2026-10-11.md).
+test target is Paper 26.3 build 207 stable on Java 27.0.1, with Java 25 bytecode.
+See [the current compatibility record](docs/verification/paper-cmi-java-2026-10-20.md).
 
-Platform refresh on 2026-10-11: build 796 pins the stable API and server, verifies
-315 tests on Java 25 and 27, and adds repeatable isolated runtime checks. Database
-connection failures now return to the server thread before disabling the plugin.
+The [2026-10-11 platform refresh](docs/verification/paper-26.3-stable-2026-10-11.md)
+pinned build 796 to the then-current stable API and server, verified 315 tests on
+Java 25 and 27, and added repeatable isolated runtime checks. Database connection
+failures now return to the server thread before disabling the plugin.
 
 Last audited against the source tree, automated tests, documentation contract,
 and Paper 26.2 build 84 stable on 2026-09-02. Checked items have corresponding
@@ -225,7 +226,7 @@ or intentionally shelved.
     advertisements, stock semantics, owner identity, and location disclosure so
     the three features cannot drift apart.
   - Complete an integrated candidate-JAR test on a disposable Paper 26.3 build
-    175 STABLE server on Java 27 with CMI and WorldGuard before release, including
+    207 STABLE server on Java 27.0.1 with CMI and WorldGuard before release, including
     clean migration,
     reload, restart persistence, pagination, permissions, scoped location
     disclosure, concurrent advertising, and stale or unloaded shop paths.

@@ -1,0 +1,8 @@
+name: CopperLifecycleSmoke
+version: '1'
+main: CopperLifecycleSmoke
+api-version: '${paperVersion}'
+depend: [ShopChest, CMI, Vault]
+commands:
+  coppersmoke:
+    description: Disposable-server persistent copper lifecycle fixture, console only

@@ -119,7 +119,7 @@ val paperSmokeJars by tasks.registering {
     group = "verification"
     description = "Builds the isolated Paper runtime verification plugins."
 }
-listOf("PaperStableSmoke", "ShopTransferSmoke").forEach { fixture ->
+listOf("PaperStableSmoke", "ShopTransferSmoke", "CmiCompatibilitySmoke", "CopperLifecycleSmoke").forEach { fixture ->
     val fixtureJar = tasks.register<Jar>("${fixture.replaceFirstChar { it.lowercase() }}Jar") {
         archiveFileName.set("$fixture.jar")
         destinationDirectory.set(layout.buildDirectory.dir("paper-smoke"))
@@ -159,6 +159,12 @@ val verifyReleaseMetadata by tasks.registering(VerifyShopChestReleaseMetadata::c
     this.committedBuildNumber.set(committedReleaseBuild)
     this.javaVersion.set(targetJavaVersion)
     this.runtimeJavaVersion.set(providers.gradleProperty("shopchestRuntimeJavaVersion"))
+    this.buildJdkVersion.set(providers.gradleProperty("shopchestBuildJdkVersion"))
+    this.runtimeJdkVersion.set(providers.gradleProperty("shopchestRuntimeJdkVersion"))
+    this.gradleJdkVersion.set(providers.systemProperty("java.version"))
+    this.compilerJdkVersion.set(tasks.compileJava.get().javaCompiler.map { it.metadata.javaRuntimeVersion })
+    this.testJdkVersion.set(tasks.test.get().javaLauncher.map { it.metadata.javaRuntimeVersion })
+    this.testJavaVersion.set(providers.gradleProperty("shopchestTestJavaVersion").orElse(targetJavaVersion))
     this.paperVersion.set(targetPaperVersion)
     this.paperBuild.set(targetPaperBuild.toInt())
     this.paperChannel.set(targetPaperChannel)

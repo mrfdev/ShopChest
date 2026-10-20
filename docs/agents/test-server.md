@@ -4,10 +4,10 @@ The maintained development instance is `servers/Paper-26.3`, cloned from the sto
 `servers/Paper-26.2` instance. Preserve the entire 26.2 directory for rollback.
 Never open its worlds or databases with a newer server.
 
-The instance targets Paper 26.3 build 175 STABLE. Java 27 at
-`/Library/Java/JavaVirtualMachines/jdk-27.jdk/Contents/Home` runs its maintained
+The instance targets Paper 26.3 build 207 STABLE. Java 27.0.1 at
+`/Library/Java/JavaVirtualMachines/jdk-27.0.1.jdk/Contents/Home` runs its maintained
 `1MB-minecraft.sh` launcher. The launcher selects only the 26.3 JAR family and
-requires Java 27. Compilation and the required unit suite use JDK 25.0.4.1;
+requires Java 27.0.1. Compilation and the required unit suite use JDK 25.0.5;
 the plugin's bytecode remains Java 25.
 
 The instance binds to loopback on TCP 28673. Query UDP 28674 and RCON TCP 28675
@@ -19,7 +19,7 @@ without starting this instance:
 
 ```bash
 cd servers/Paper-26.3
-python3 paperscript/paperscript.py --server-dir "$PWD" download --version 26.3 --build 175 --channel STABLE
+python3 paperscript/paperscript.py --server-dir "$PWD" download --version 26.3 --build 207 --channel STABLE
 python3 paperscript/paperscript.py --server-dir "$PWD" verify
 ```
 
@@ -34,13 +34,17 @@ are retained in `plugins-disabled/copied-paper-26.2/`.
 Use a fresh disposable server for compatibility verification. Never copy worlds,
 databases, player records, or credentials from the maintained or shared servers.
 The repeatable isolated test instructions and results are in the
-[stable migration record](../verification/paper-26.3-stable-2026-10-11.md).
+[current compatibility record](../verification/paper-cmi-java-2026-10-20.md).
+Add `--copper-lifecycle` to the runner for the
+[persistent copper shop regression](../verification/copper-lifecycle-2026-10-20.md),
+including all eight copper variants, real chunk recovery and CMI/Vault trades
+through a synthetic player boundary.
 Staging a Paper JAR changes `staged_*` metadata; `current_*` and the last-launched
 marker continue to describe the last actual launch. Do not start the maintained
 instance as part of this migration.
 
 Run `./gradlew clean build --no-build-cache` from the repository root with
-`JAVA_HOME` and `PATH` selecting JDK 25.0.4.1. This includes unit tests,
+`JAVA_HOME` and `PATH` selecting JDK 25.0.5. This includes unit tests,
 platform contracts, release metadata, generated descriptors, and documentation
 checks. Freeze the one shaded JAR and its SHA-256 before installing it locally.
 Verify readiness, ShopChest enable, build/API/runtime diagnostics, shop audit,
@@ -59,6 +63,7 @@ exact tested artifact with an atomic rename. Check its destination checksum,
 ensure no obsolete ShopChest JAR remains active (including the update directory),
 and confirm the shared server is still stopped. Never remove other `1MB-*` JARs.
 
-See the [stable migration record](../verification/paper-26.3-stable-2026-10-11.md)
+See the [current compatibility record](../verification/paper-cmi-java-2026-10-20.md)
 for current evidence. The [alpha upgrade record](../verification/paper-26.3-2026-09-25.md)
-is retained as dated history.
+is retained as dated history. The [previous stable migration](../verification/paper-26.3-stable-2026-10-11.md)
+is also historical; use the current record for build 207 and the updated JDKs.
